@@ -15,7 +15,7 @@ class DashboardController extends Controller
     {
         $stats = [
             'today_sales'       => Order::whereDate('created_at', today())
-                                        ->where('status', '!=', 'cancelled')
+                                        ->where('status', 'delivered')
                                         ->sum('total'),
             'today_orders'      => Order::whereDate('created_at', today())->count(),
             'pending_orders'    => Order::where('status', 'pending')->count(),
@@ -26,7 +26,7 @@ class DashboardController extends Controller
             'outstanding_khata' => abs(Customer::where('credit_balance', '<', 0)->sum('credit_balance')),
             'month_sales'       => Order::whereMonth('created_at', now()->month)
                                         ->whereYear('created_at', now()->year)
-                                        ->where('status', '!=', 'cancelled')
+                                        ->where('status', 'delivered')
                                         ->sum('total'),
             'today_expenses'    => Expense::whereDate('expense_date', today())->sum('amount'),
         ];
@@ -40,7 +40,7 @@ class DashboardController extends Controller
             'date'  => now()->subDays($i)->format('M d'),
             'total' => Order::whereDate('created_at', now()->subDays($i))
                             ->where('source', 'pos')
-                            ->where('status', '!=', 'cancelled')
+                            ->where('status', 'delivered')
                             ->sum('total'),
         ]);
 
@@ -48,7 +48,7 @@ class DashboardController extends Controller
             'date'  => now()->subDays($i)->format('M d'),
             'total' => Order::whereDate('created_at', now()->subDays($i))
                             ->where('source', 'ecommerce')
-                            ->where('status', '!=', 'cancelled')
+                            ->where('status', 'delivered')
                             ->sum('total'),
         ]);
 
@@ -60,12 +60,12 @@ class DashboardController extends Controller
         $user = Auth::user();
 
         $todaySales  = Order::where('served_by', $user->id)->whereDate('created_at', today())
-                            ->where('status', '!=', 'cancelled')->sum('total');
+                            ->where('status', 'delivered')->sum('total');
         $todayOrders = Order::where('served_by', $user->id)->whereDate('created_at', today())->count();
         $monthSales  = Order::where('served_by', $user->id)
                             ->whereMonth('created_at', now()->month)
                             ->whereYear('created_at', now()->year)
-                            ->where('status', '!=', 'cancelled')
+                            ->where('status', 'delivered')
                             ->sum('total');
         $lowStockCount = Product::active()->where('track_inventory', true)
                                  ->whereColumn('stock_quantity', '<=', 'low_stock_threshold')

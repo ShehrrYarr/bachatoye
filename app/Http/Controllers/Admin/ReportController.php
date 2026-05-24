@@ -39,7 +39,7 @@ class ReportController extends Controller
         ['from' => $from, 'to' => $to] = $this->dateRange($request);
 
         $query = Order::whereBetween(DB::raw('DATE(created_at)'), [$from, $to])
-                       ->where('status', '!=', 'cancelled');
+                       ->where('status', 'delivered');
 
         if ($request->filled('source')) {
             $query->where('source', $request->source);
@@ -62,7 +62,7 @@ class ReportController extends Controller
         $topProducts = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->whereBetween(DB::raw('DATE(orders.created_at)'), [$from, $to])
-            ->where('orders.status', '!=', 'cancelled')
+            ->where('orders.status', 'delivered')
             ->select(
                 'order_items.product_name',
                 DB::raw('SUM(order_items.quantity) as total_qty'),
@@ -87,7 +87,7 @@ class ReportController extends Controller
         ['from' => $from, 'to' => $to, 'label' => $periodLabel] = $this->dateRange($request);
 
         $ordersBase = Order::whereBetween(DB::raw('DATE(created_at)'), [$from, $to])
-                            ->where('status', '!=', 'cancelled');
+                            ->where('status', 'delivered');
 
         $grossRevenue   = $ordersBase->sum('total');
         $totalDiscounts = $ordersBase->sum('discount_amount');
@@ -97,7 +97,7 @@ class ReportController extends Controller
         $totalCogs = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->whereBetween(DB::raw('DATE(orders.created_at)'), [$from, $to])
-            ->where('orders.status', '!=', 'cancelled')
+            ->where('orders.status', 'delivered')
             ->sum(DB::raw('order_items.quantity * COALESCE(order_items.cost_price, 0)'));
 
         $grossProfit   = $netRevenue - $totalCogs;
@@ -118,7 +118,7 @@ class ReportController extends Controller
 
         $monthlyData = DB::table('orders')
             ->whereBetween(DB::raw('DATE(created_at)'), [$from, $to])
-            ->where('status', '!=', 'cancelled')
+            ->where('status', 'delivered')
             ->select(
                 DB::raw('MONTH(created_at) as month'),
                 DB::raw('SUM(total) as revenue')
@@ -176,7 +176,7 @@ class ReportController extends Controller
         $salesmen = User::role('salesman')->get()->each(function ($user) use ($from, $to) {
             $orders = Order::where('served_by', $user->id)
                            ->whereBetween(DB::raw('DATE(created_at)'), [$from, $to])
-                           ->where('status', '!=', 'cancelled');
+                           ->where('status', 'delivered');
 
             $user->period_orders_count = $orders->count();
             $user->period_sales_total  = $orders->sum('total');

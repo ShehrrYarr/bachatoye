@@ -42,7 +42,7 @@ class PosController extends Controller
         // Daily sales orders with items (salesman sees only their own)
         $todaySalesOrders = Order::where('source', 'pos')
             ->whereDate('created_at', today())
-            ->where('status', '!=', 'cancelled')
+            ->where('status', 'delivered')
             ->when(!$isAdmin, fn($q) => $q->where('served_by', $user->id))
             ->with(['items', 'customer'])
             ->latest()

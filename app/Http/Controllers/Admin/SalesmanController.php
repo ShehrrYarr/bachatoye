@@ -61,9 +61,9 @@ class SalesmanController extends Controller
         $salesman->load(['loginLogs', 'orders']);
         $stats = [
             'total_orders'    => $salesman->orders->count(),
-            'total_sales'     => $salesman->orders->where('status', '!=', 'cancelled')->sum('total'),
+            'total_sales'     => $salesman->orders->where('status', 'delivered')->sum('total'),
             'today_orders'    => $salesman->orders->filter(fn($o) => $o->created_at->isToday())->count(),
-            'month_sales'     => $salesman->orders->where('status', '!=', 'cancelled')
+            'month_sales'     => $salesman->orders->where('status', 'delivered')
                                           ->filter(fn($o) => $o->created_at->isCurrentMonth())->sum('total'),
         ];
         $recentOrders = $salesman->orders->sortByDesc('created_at')->take(10);
