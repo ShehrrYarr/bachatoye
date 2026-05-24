@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Models\ProductColor;
 use App\Models\Purchase;
 use App\Models\StockMovement;
 use App\Models\Vendor;
@@ -56,6 +57,8 @@ class PurchaseController extends Controller
             'items.*.product_id'  => 'required|exists:products,id',
             'items.*.quantity'    => 'required|integer|min:1',
             'items.*.unit_cost'   => 'required|numeric|min:0',
+            'items.*.color_id'    => 'nullable|exists:product_colors,id',
+            'items.*.color_name'  => 'nullable|string|max:100',
         ]);
 
         DB::transaction(function () use ($request) {
@@ -91,14 +94,23 @@ class PurchaseController extends Controller
             foreach ($items as $row) {
                 $product = Product::find($row['product_id']);
                 $lineTotal = $row['quantity'] * $row['unit_cost'];
+                $colorId   = !empty($row['color_id']) ? (int) $row['color_id'] : null;
+                $colorName = !empty($row['color_name']) ? $row['color_name'] : null;
 
                 $purchase->items()->create([
                     'product_id'   => $product->id,
                     'product_name' => $product->name,
+                    'color_id'     => $colorId,
+                    'color_name'   => $colorName,
                     'quantity'     => $row['quantity'],
                     'unit_cost'    => $row['unit_cost'],
                     'line_total'   => $lineTotal,
                 ]);
+
+                // If a color is specified, increment its stock too
+                if ($colorId) {
+                    ProductColor::where('id', $colorId)->increment('stock_quantity', $row['quantity']);
+                }
 
                 // Record stock movement (capture before/after)
                 $before = (int) $product->stock_quantity;

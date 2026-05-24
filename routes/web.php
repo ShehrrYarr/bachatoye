@@ -128,12 +128,22 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::get('api/products/search', function (\Illuminate\Http\Request $request) {
         $q = $request->input('q', '');
         if (strlen($q) < 2) return response()->json([]);
-        return response()->json(
-            \App\Models\Product::where('name', 'like', "%{$q}%")
-                ->orWhere('sku', 'like', "%{$q}%")
-                ->orderBy('name')->limit(10)
-                ->get(['id', 'name', 'sku', 'cost_price'])
-        );
+        $products = \App\Models\Product::where('name', 'like', "%{$q}%")
+            ->orWhere('sku', 'like', "%{$q}%")
+            ->orderBy('name')->limit(10)
+            ->with('colors')
+            ->get(['id', 'name', 'sku', 'cost_price']);
+        return response()->json($products->map(fn($p) => [
+            'id'         => $p->id,
+            'name'       => $p->name,
+            'sku'        => $p->sku,
+            'cost_price' => $p->cost_price,
+            'colors'     => $p->colors->map(fn($c) => [
+                'id'       => $c->id,
+                'name'     => $c->name,
+                'hex_code' => $c->hex_code,
+            ])->values(),
+        ]));
     })->name('admin.api.products.search');
     Route::get('purchases', [Admin\PurchaseController::class, 'index'])->name('purchases.index');
     Route::get('purchases/create', [Admin\PurchaseController::class, 'create'])->name('purchases.create');

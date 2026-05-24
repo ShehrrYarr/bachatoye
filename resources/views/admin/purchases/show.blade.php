@@ -40,6 +40,11 @@
                         <tr>
                             <td>
                                 <div class="font-medium text-gray-800">{{ $item->product_name }}</div>
+                                @if($item->color_name)
+                                    <div class="text-xs text-purple-600 font-medium mt-0.5">
+                                        <i class="fas fa-circle text-[8px] mr-1"></i>{{ $item->color_name }}
+                                    </div>
+                                @endif
                                 @if($item->product)
                                     <div class="text-xs text-gray-400 font-mono">{{ $item->product->sku }}</div>
                                 @endif
