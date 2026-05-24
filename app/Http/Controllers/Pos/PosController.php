@@ -132,12 +132,13 @@ class PosController extends Controller
             ->limit(15)
             ->get()
             ->map(fn($p) => [
-                'id'       => $p->id,
-                'name'     => $p->name,
-                'barcode'  => $p->barcode,
-                'price'    => $p->getDiscountedPrice(),
-                'stock'    => $p->stock_quantity,
-                'image'    => $p->primary_image_url,
+                'id'         => $p->id,
+                'name'       => $p->name,
+                'barcode'    => $p->barcode,
+                'price'      => $p->getDiscountedPrice(),
+                'cost_price' => $p->cost_price,
+                'stock'      => $p->stock_quantity,
+                'image'      => $p->primary_image_url,
             ]);
 
         return response()->json($products);
@@ -158,12 +159,13 @@ class PosController extends Controller
         }
 
         return response()->json([
-            'id'      => $product->id,
-            'name'    => $product->name,
-            'barcode' => $product->barcode,
-            'price'   => $product->getDiscountedPrice(),
-            'stock'   => $product->stock_quantity,
-            'image'   => $product->primary_image_url,
+            'id'         => $product->id,
+            'name'       => $product->name,
+            'barcode'    => $product->barcode,
+            'price'      => $product->getDiscountedPrice(),
+            'cost_price' => $product->cost_price,
+            'stock'      => $product->stock_quantity,
+            'image'      => $product->primary_image_url,
         ]);
     }
 

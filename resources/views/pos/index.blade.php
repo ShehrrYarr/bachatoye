@@ -1,7 +1,7 @@
 @extends('layouts.pos')
 
 @section('content')
-<div class="pos-grid no-print" x-data="posApp()" x-init="init()">
+<div class="pos-grid no-print" x-data="posApp()" x-init="init()" @keydown.f1.window.prevent="showCostPrice = !showCostPrice">
 
     {{-- ===== LEFT PANEL: Products ===== --}}
     <div class="pos-left bg-gray-100 flex flex-col">
@@ -92,7 +92,13 @@
 
         {{-- Cart header --}}
         <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-            <h2 class="font-bold text-gray-800">Current Sale</h2>
+            <div class="flex items-center gap-2">
+                <h2 class="font-bold text-gray-800">Current Sale</h2>
+                <span x-show="showCostPrice"
+                      class="text-xs bg-amber-100 text-amber-700 border border-amber-300 px-2 py-0.5 rounded-full font-semibold animate-pulse">
+                    <i class="fas fa-eye mr-1"></i>Cost
+                </span>
+            </div>
             <button @click="clearCart()" x-show="cart.length > 0"
                     class="text-xs text-red-400 hover:text-red-600 transition-colors">
                 <i class="fas fa-trash mr-1"></i> Clear
@@ -174,6 +180,12 @@
                     </div>
                     <div class="text-right text-xs font-bold text-gray-800 mt-1"
                          x-text="`Rs. ${(item.price * item.quantity).toLocaleString()}`"></div>
+                    <div x-show="showCostPrice" class="text-right mt-0.5 space-y-0.5">
+                        <div class="text-xs text-amber-600 font-medium"
+                             x-text="`Cost: Rs. ${(item.cost_price * item.quantity).toLocaleString()}`"></div>
+                        <div class="text-xs text-green-600 font-medium"
+                             x-text="`Margin: Rs. ${((item.price - item.cost_price) * item.quantity).toLocaleString()}`"></div>
+                    </div>
                 </div>
             </template>
         </div>
@@ -801,6 +813,7 @@ function posApp() {
         quickCash: [500, 1000, 2000, 5000],
         orderNotes: '',
         processingOrder: false,
+        showCostPrice: false,
 
         // Customer
         customerSearch: '',
@@ -865,6 +878,7 @@ function posApp() {
                     name: product.name,
                     image: product.image,
                     price: parseFloat(product.price),
+                    cost_price: parseFloat(product.cost_price) || 0,
                     quantity: 1,
                     stock: product.stock,
                 });
