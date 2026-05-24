@@ -91,7 +91,7 @@
     <div class="pos-cart bg-white border-l border-gray-200">
 
         {{-- Cart header --}}
-        <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+        <div class="px-4 py-2 border-b border-gray-200 flex items-center justify-between">
             <div class="flex items-center gap-2">
                 <h2 class="font-bold text-gray-800">Current Sale</h2>
                 <span x-show="showCostPrice"
@@ -106,12 +106,12 @@
         </div>
 
         {{-- Customer section --}}
-        <div class="px-4 py-3 border-b border-gray-100 bg-gray-50">
+        <div class="px-3 py-2 border-b border-gray-100 bg-gray-50">
             <div x-show="!selectedCustomer">
                 <div class="relative">
                     <input type="text" x-model="customerSearch" @input.debounce.300ms="searchCustomers()"
                            placeholder="Search customer (optional)..."
-                           class="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500">
+                           class="w-full text-xs px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500">
                     <div x-show="customerResults.length > 0"
                          class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 overflow-hidden">
                         <template x-for="cust in customerResults" :key="cust.id">
@@ -145,19 +145,19 @@
         {{-- Cart items --}}
         <div class="pos-cart-items px-4 py-2">
             <template x-if="cart.length === 0">
-                <div class="text-center py-12 text-gray-300">
-                    <i class="fas fa-shopping-cart text-4xl mb-3"></i>
+                <div class="text-center py-6 text-gray-300">
+                    <i class="fas fa-shopping-cart text-3xl mb-2"></i>
                     <p class="text-sm">Cart is empty</p>
-                    <p class="text-xs mt-1">Scan a barcode or click a product</p>
+                    <p class="text-xs mt-0.5">Scan a barcode or click a product</p>
                 </div>
             </template>
 
             <template x-for="(item, index) in cart" :key="item.product_id">
-                <div class="py-3 border-b border-gray-100 last:border-0">
+                <div class="py-1.5 border-b border-gray-100 last:border-0">
                     <div class="flex items-start gap-2">
-                        <img :src="item.image" class="w-10 h-10 object-cover rounded-lg bg-gray-100 shrink-0">
+                        <img :src="item.image" class="w-8 h-8 object-cover rounded-lg bg-gray-100 shrink-0 mt-0.5">
                         <div class="flex-1 min-w-0">
-                            <div class="text-xs font-semibold text-gray-800 leading-tight line-clamp-2 mb-1.5" x-text="item.name"></div>
+                            <div class="text-xs font-semibold text-gray-800 leading-tight line-clamp-1 mb-1" x-text="item.name"></div>
                             <div class="flex items-center gap-2">
                                 {{-- Qty controls --}}
                                 <div class="flex items-center border border-gray-200 rounded-lg overflow-hidden">
@@ -191,16 +191,16 @@
         </div>
 
         {{-- Totals & payment --}}
-        <div class="border-t border-gray-200 p-4 space-y-3">
+        <div class="border-t border-gray-200 px-3 py-2 space-y-2">
             {{-- Discount --}}
             <div class="flex items-center gap-2">
                 <label class="text-xs text-gray-500 shrink-0">Discount (Rs.):</label>
                 <input type="number" x-model.number="discount" @change="recalculate()" min="0"
-                       class="flex-1 text-xs border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500">
+                       class="flex-1 text-xs border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500">
             </div>
 
             {{-- Subtotal / Discount / Total --}}
-            <div class="space-y-1 text-sm">
+            <div class="space-y-0.5">
                 <div class="flex justify-between text-gray-500 text-xs">
                     <span>Subtotal</span>
                     <span x-text="`Rs. ${subtotal.toLocaleString()}`"></span>
@@ -209,7 +209,7 @@
                     <span class="text-red-500">Discount</span>
                     <span class="text-red-500" x-text="`– Rs. ${discount.toLocaleString()}`"></span>
                 </div>
-                <div class="flex justify-between font-bold text-base text-gray-900 pt-1 border-t border-gray-100">
+                <div class="flex justify-between font-bold text-sm text-gray-900 pt-0.5 border-t border-gray-100">
                     <span>Total</span>
                     <span class="text-primary-700" x-text="`Rs. ${total.toLocaleString()}`"></span>
                 </div>
@@ -219,41 +219,41 @@
             <div class="grid grid-cols-5 gap-1">
                 <button @click="setPayment('cash')"
                         :class="paymentMethod === 'cash' ? 'bg-primary-600 text-white border-primary-600' : 'border-gray-300 text-gray-600 hover:border-primary-300'"
-                        class="border rounded-lg py-2 text-xs font-semibold transition-all">
-                    <i class="fas fa-money-bill-wave block text-sm mb-0.5"></i> Cash
+                        class="border rounded-lg py-1.5 text-xs font-semibold transition-all flex flex-col items-center gap-0.5">
+                    <i class="fas fa-money-bill-wave text-xs"></i> Cash
                 </button>
                 <button @click="setPayment('bank_transfer')"
                         :class="paymentMethod === 'bank_transfer' ? 'bg-primary-600 text-white border-primary-600' : 'border-gray-300 text-gray-600 hover:border-primary-300'"
-                        class="border rounded-lg py-2 text-xs font-semibold transition-all">
-                    <i class="fas fa-university block text-sm mb-0.5"></i> Bank
+                        class="border rounded-lg py-1.5 text-xs font-semibold transition-all flex flex-col items-center gap-0.5">
+                    <i class="fas fa-university text-xs"></i> Bank
                 </button>
                 <button @click="setPayment('split')"
                         :class="paymentMethod === 'split' ? 'bg-teal-600 text-white border-teal-600' : 'border-gray-300 text-gray-600 hover:border-teal-300'"
-                        class="border rounded-lg py-2 text-xs font-semibold transition-all">
-                    <i class="fas fa-random block text-sm mb-0.5"></i> Split
+                        class="border rounded-lg py-1.5 text-xs font-semibold transition-all flex flex-col items-center gap-0.5">
+                    <i class="fas fa-random text-xs"></i> Split
                 </button>
                 <button @click="setPayment('khata')" :disabled="!selectedCustomer"
                         :class="paymentMethod === 'khata' ? 'bg-primary-600 text-white border-primary-600' : 'border-gray-300 text-gray-600 hover:border-primary-300'"
-                        class="border rounded-lg py-2 text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        class="border rounded-lg py-1.5 text-xs font-semibold transition-all flex flex-col items-center gap-0.5 disabled:opacity-40 disabled:cursor-not-allowed"
                         title="Select a customer first">
-                    <i class="fas fa-book block text-sm mb-0.5"></i> Khata
+                    <i class="fas fa-book text-xs"></i> Khata
                 </button>
                 <button @click="setPayment('partial')" :disabled="!selectedCustomer"
                         :class="paymentMethod === 'partial' ? 'bg-orange-500 text-white border-orange-500' : 'border-gray-300 text-gray-600 hover:border-orange-300'"
-                        class="border rounded-lg py-2 text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        class="border rounded-lg py-1.5 text-xs font-semibold transition-all flex flex-col items-center gap-0.5 disabled:opacity-40 disabled:cursor-not-allowed"
                         title="Select a customer first">
-                    <i class="fas fa-code-branch block text-sm mb-0.5"></i> Part
+                    <i class="fas fa-code-branch text-xs"></i> Part
                 </button>
             </div>
 
             {{-- Cash tendered (full cash payment) --}}
-            <div x-show="paymentMethod === 'cash'" class="space-y-2">
+            <div x-show="paymentMethod === 'cash'" class="space-y-1">
                 <div class="flex items-center gap-2">
                     <label class="text-xs text-gray-500 shrink-0 w-16">Received:</label>
                     <input type="number" x-model.number="cashReceived" @input="calcChange()" min="0"
-                           class="flex-1 text-sm font-semibold border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500">
+                           class="flex-1 text-sm font-semibold border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500">
                 </div>
-                <div x-show="cashReceived > 0" class="flex justify-between text-sm font-bold"
+                <div x-show="cashReceived > 0" class="flex justify-between text-xs font-bold"
                      :class="cashReceived >= total ? 'text-green-700' : 'text-red-500'">
                     <span x-text="cashReceived >= total ? 'Change:' : 'Short:'"></span>
                     <span x-text="`Rs. ${Math.abs(cashReceived - total).toLocaleString()}`"></span>
@@ -261,31 +261,31 @@
                 <div class="grid grid-cols-4 gap-1">
                     <template x-for="amount in quickCash">
                         <button @click="cashReceived = amount; calcChange()"
-                                class="text-xs border border-gray-200 rounded-lg py-1 hover:bg-gray-50 text-gray-600 font-medium"
+                                class="text-xs border border-gray-200 rounded-lg py-0.5 hover:bg-gray-50 text-gray-600 font-medium"
                                 x-text="`${amount >= 1000 ? amount/1000+'k' : amount}`"></button>
                     </template>
                 </div>
             </div>
 
             {{-- Partial payment --}}
-            <div x-show="paymentMethod === 'partial'" class="space-y-2 bg-orange-50 border border-orange-200 rounded-xl p-3">
-                <div class="text-xs font-semibold text-orange-700 mb-2">
+            <div x-show="paymentMethod === 'partial'" class="space-y-1 bg-orange-50 border border-orange-200 rounded-xl p-2">
+                <div class="text-xs font-semibold text-orange-700 mb-1">
                     <i class="fas fa-code-branch mr-1"></i> Partial Payment (Cash + Khata)
                 </div>
                 <div class="flex items-center gap-2">
                     <label class="text-xs text-gray-600 shrink-0 w-20">Paid Now:</label>
                     <input type="number" x-model.number="partialAmountPaid" @input="calcPartialKhata()"
                            :max="total" min="0" placeholder="0"
-                           class="flex-1 text-sm font-bold border border-orange-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-orange-400 bg-white">
+                           class="flex-1 text-sm font-bold border border-orange-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orange-400 bg-white">
                 </div>
                 <div class="grid grid-cols-4 gap-1">
                     <template x-for="amount in quickCash">
                         <button @click="partialAmountPaid = Math.min(amount, total); calcPartialKhata()"
-                                class="text-xs border border-orange-200 rounded-lg py-1 hover:bg-orange-100 text-orange-700 font-medium bg-white"
+                                class="text-xs border border-orange-200 rounded-lg py-0.5 hover:bg-orange-100 text-orange-700 font-medium bg-white"
                                 x-text="`${amount >= 1000 ? amount/1000+'k' : amount}`"></button>
                     </template>
                 </div>
-                <div class="border-t border-orange-200 pt-2 space-y-1 text-xs">
+                <div class="border-t border-orange-200 pt-1 space-y-0.5 text-xs">
                     <div class="flex justify-between text-gray-600">
                         <span>Cash Received:</span>
                         <span class="font-semibold text-green-700" x-text="`Rs. ${partialAmountPaid.toLocaleString()}`"></span>
@@ -294,44 +294,40 @@
                         <span>Added to Khata:</span>
                         <span class="font-bold text-red-600" x-text="`Rs. ${Math.max(0, total - partialAmountPaid).toLocaleString()}`"></span>
                     </div>
-                    <div x-show="selectedCustomer" class="text-gray-400 pt-1">
-                        New khata balance: <span class="font-semibold text-red-500"
-                            x-text="`Rs. ${Math.abs((selectedCustomer?.credit_balance || 0) - Math.max(0, total - partialAmountPaid)).toLocaleString()}`"></span> owed
-                    </div>
                 </div>
             </div>
 
             {{-- Split payment: cash + bank --}}
-            <div x-show="paymentMethod === 'split'" class="space-y-2 bg-teal-50 border border-teal-200 rounded-xl p-3">
-                <div class="text-xs font-semibold text-teal-700 mb-2">
+            <div x-show="paymentMethod === 'split'" class="space-y-1 bg-teal-50 border border-teal-200 rounded-xl p-2">
+                <div class="text-xs font-semibold text-teal-700 mb-1">
                     <i class="fas fa-random mr-1"></i> Split Payment (Cash + Bank)
                 </div>
                 <div class="flex items-center gap-2">
                     <label class="text-xs text-gray-600 shrink-0 w-16"><i class="fas fa-money-bill-wave text-green-500 mr-1"></i>Cash:</label>
                     <input type="number" x-model.number="splitCash" @input="calcSplitBank()" min="0"
-                           class="flex-1 text-sm font-bold border border-teal-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-teal-400 bg-white"
+                           class="flex-1 text-sm font-bold border border-teal-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-teal-400 bg-white"
                            placeholder="0">
                 </div>
                 <div class="flex items-center gap-2">
                     <label class="text-xs text-gray-600 shrink-0 w-16"><i class="fas fa-university text-blue-500 mr-1"></i>Bank:</label>
                     <input type="number" x-model.number="splitBank" @input="calcSplitCash()" min="0"
-                           class="flex-1 text-sm font-bold border border-teal-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-teal-400 bg-white"
+                           class="flex-1 text-sm font-bold border border-teal-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-teal-400 bg-white"
                            placeholder="0">
                 </div>
                 <div class="grid grid-cols-4 gap-1">
                     <template x-for="amount in quickCash">
                         <button @click="splitCash = Math.min(amount, total); splitBank = Math.max(0, total - splitCash)"
-                                class="text-xs border border-teal-200 rounded-lg py-1 hover:bg-teal-100 text-teal-700 font-medium bg-white"
+                                class="text-xs border border-teal-200 rounded-lg py-0.5 hover:bg-teal-100 text-teal-700 font-medium bg-white"
                                 x-text="`${amount >= 1000 ? amount/1000+'k' : amount}`"></button>
                     </template>
                 </div>
-                <div class="border-t border-teal-200 pt-2 space-y-1 text-xs">
+                <div class="border-t border-teal-200 pt-1 space-y-0.5 text-xs">
                     <div class="flex justify-between text-gray-600">
                         <span>Total collected:</span>
                         <span class="font-semibold" :class="(splitCash + splitBank) >= total ? 'text-green-700' : 'text-red-600'"
                               x-text="`Rs. ${(splitCash + splitBank).toLocaleString()}`"></span>
                     </div>
-                    <div x-show="(splitCash + splitBank) > total" class="text-orange-600 font-medium">
+                    <div x-show="(splitCash + splitBank) > total" class="text-orange-600 font-medium text-xs">
                         Change: <span x-text="`Rs. ${((splitCash + splitBank) - total).toLocaleString()}`"></span>
                     </div>
                 </div>
@@ -339,12 +335,12 @@
 
             {{-- Notes --}}
             <input type="text" x-model="orderNotes" placeholder="Order notes (optional)..."
-                   class="w-full text-xs border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary-500">
+                   class="w-full text-xs border border-gray-300 rounded-lg px-3 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500">
 
             {{-- Place order button --}}
             <button @click="placeOrder()"
                     :disabled="cart.length === 0 || processingOrder"
-                    class="w-full btn-primary btn-lg justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                    class="w-full btn-primary py-2.5 justify-center disabled:opacity-50 disabled:cursor-not-allowed">
                 <span x-show="!processingOrder"><i class="fas fa-check-circle mr-2"></i> Complete Sale</span>
                 <span x-show="processingOrder"><i class="fas fa-spinner fa-spin mr-2"></i> Processing...</span>
             </button>
