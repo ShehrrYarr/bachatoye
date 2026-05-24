@@ -250,4 +250,9 @@ Route::prefix('pos')->name('pos.')->middleware(['auth', 'permission:pos.access']
         ->middleware('permission:pos.process_returns')->name('return.process');
     Route::get('/return/{return}/receipt', [Pos\PosReturnController::class, 'receipt'])
         ->middleware('permission:pos.process_returns')->name('return.receipt');
+
+    // Exchanges
+    Route::get('/exchange', [Pos\PosExchangeController::class, 'index'])->name('exchange.index');
+    Route::get('/exchange/order/{orderNumber}', [Pos\PosExchangeController::class, 'findOrder'])->name('exchange.find');
+    Route::post('/exchange', [Pos\PosExchangeController::class, 'processExchange'])->name('exchange.process');
 });
