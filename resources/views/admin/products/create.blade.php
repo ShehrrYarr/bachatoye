@@ -185,22 +185,33 @@
                     <template x-for="(color, i) in colors" :key="i">
                         <div class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-200">
                             <input type="hidden" :name="`colors[${i}][id]`" value="">
-                            {{-- Swatch preview --}}
-                            <div class="w-8 h-8 rounded-full border border-gray-300 shrink-0 transition-colors"
-                                 :style="color.hex_code ? `background:${color.hex_code}` : 'background:#e5e7eb'"></div>
+                            <input type="hidden" :name="`colors[${i}][hex_code]`" :value="color.hex_code">
+
+                            {{-- Color picker swatch (click to open native picker) --}}
+                            <label class="relative shrink-0 w-9 h-9 cursor-pointer" title="Click to pick a color">
+                                <div class="w-9 h-9 rounded-full border-2 border-gray-300 shadow-sm transition-colors"
+                                     :style="{ backgroundColor: color.hex_code || '#e5e7eb' }"></div>
+                                <input type="color"
+                                       :value="color.hex_code || '#000000'"
+                                       @change="color.hex_code = $event.target.value"
+                                       class="absolute inset-0 opacity-0 w-full h-full cursor-pointer rounded-full">
+                            </label>
+
+                            {{-- Hex value display --}}
+                            <span class="text-xs font-mono text-gray-400 shrink-0 w-16 text-center"
+                                  x-text="color.hex_code || '—'"></span>
+
                             {{-- Name --}}
                             <input type="text" :name="`colors[${i}][name]`" x-model="color.name"
                                    placeholder="Color name (e.g. Red)" class="form-input flex-1 text-sm" required>
-                            {{-- Hex code --}}
-                            <input type="text" :name="`colors[${i}][hex_code]`" x-model="color.hex_code"
-                                   placeholder="#FF0000" maxlength="7"
-                                   class="form-input w-24 text-sm font-mono text-center">
+
                             {{-- Stock --}}
                             <div class="shrink-0">
                                 <label class="text-xs text-gray-400 block text-center mb-0.5">Stock</label>
                                 <input type="number" :name="`colors[${i}][stock_quantity]`" x-model="color.stock_quantity"
                                        min="0" class="form-input w-20 text-sm text-center">
                             </div>
+
                             {{-- Remove --}}
                             <button type="button" @click="colors.splice(i, 1)"
                                     class="btn-danger btn-sm shrink-0"><i class="fas fa-times"></i></button>
