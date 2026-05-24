@@ -50,7 +50,7 @@ class ProductController extends Controller
 
     public function show(string $slug)
     {
-        $product = Product::active()->with([
+        $product = Product::active()->inStock()->with([
             'images', 'videos', 'socialLinks', 'category', 'brand'
         ])->where('slug', $slug)->firstOrFail();
 

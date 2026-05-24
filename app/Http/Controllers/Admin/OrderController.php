@@ -55,19 +55,41 @@ class OrderController extends Controller
 
         $previousStatus = $order->status;
 
+        // ── Stock check before marking an ecommerce order as delivered ────────
+        if ($data['status'] === 'delivered' && $previousStatus !== 'delivered' && $order->source === 'ecommerce') {
+            $order->load('items.product');
+            $outOfStock = [];
+
+            foreach ($order->items as $item) {
+                if ($item->product && $item->product->track_inventory) {
+                    if ($item->product->stock_quantity < $item->quantity) {
+                        $available = max(0, $item->product->stock_quantity);
+                        $outOfStock[] = "{$item->product_name} (need {$item->quantity}, only {$available} in stock)";
+                    }
+                }
+            }
+
+            if (!empty($outOfStock)) {
+                return back()->withErrors([
+                    'status' => 'Cannot mark as delivered — insufficient stock: ' . implode(' | ', $outOfStock),
+                ]);
+            }
+        }
+
         $order->update(array_filter([
             'status'          => $data['status'],
             'payment_status'  => $data['payment_status'] ?? null,
             'tracking_number' => $data['tracking_number'] ?? null,
         ], fn($v) => $v !== null));
 
-        // Deduct stock when an ecommerce order is marked as delivered (only once)
+        // ── Deduct stock when an ecommerce order is marked as delivered ───────
         if ($data['status'] === 'delivered' && $previousStatus !== 'delivered' && $order->source === 'ecommerce') {
-            $order->load('items.product');
+            $order->loadMissing('items.product');
             foreach ($order->items as $item) {
                 if ($item->product && $item->product->track_inventory) {
                     $before = $item->product->stock_quantity;
                     $item->product->decrement('stock_quantity', $item->quantity);
+
                     StockMovement::create([
                         'product_id'      => $item->product_id,
                         'type'            => 'sale',
