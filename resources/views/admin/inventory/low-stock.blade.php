@@ -42,9 +42,18 @@
                 </td>
                 <td class="text-center text-sm text-gray-500">{{ $product->low_stock_threshold }}</td>
                 <td class="text-right">
-                    <a href="{{ route('admin.inventory.adjust.form', $product) }}" class="btn-primary btn-sm">
-                        <i class="fas fa-plus mr-1"></i> Restock
-                    </a>
+                    <div class="flex items-center justify-end gap-2">
+                        <a href="{{ route('admin.inventory.adjust.form', $product) }}" class="btn-primary btn-sm">
+                            <i class="fas fa-plus mr-1"></i> Restock
+                        </a>
+                        <form method="POST" action="{{ route('admin.products.destroy', $product) }}"
+                              onsubmit="return confirm('Delete {{ addslashes($product->name) }}? This cannot be undone.')">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="btn-danger btn-sm">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
                 </td>
             </tr>
             @endforeach
