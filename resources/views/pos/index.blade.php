@@ -396,6 +396,24 @@
 
         <div class="w-px h-4 bg-gray-700 shrink-0"></div>
 
+        {{-- Cash chip --}}
+        <div class="flex items-center gap-1.5 text-emerald-300 shrink-0">
+            <i class="fas fa-money-bill-wave text-xs"></i>
+            <span class="text-xs">Cash:</span>
+            <span class="font-semibold text-xs">Rs. {{ number_format($todaySales->cash_total ?? 0) }}</span>
+        </div>
+
+        <div class="w-px h-4 bg-gray-700 shrink-0"></div>
+
+        {{-- Bank chip --}}
+        <div class="flex items-center gap-1.5 text-blue-300 shrink-0">
+            <i class="fas fa-university text-xs"></i>
+            <span class="text-xs">Bank:</span>
+            <span class="font-semibold text-xs">Rs. {{ number_format($todaySales->bank_total ?? 0) }}</span>
+        </div>
+
+        <div class="w-px h-4 bg-gray-700 shrink-0"></div>
+
         {{-- Returns chip --}}
         <button @click="activeTab = 'returns'; showDailyModal = true"
                 class="flex items-center gap-1.5 bg-red-900/60 hover:bg-red-800 text-red-300 px-2.5 py-1 rounded-lg shrink-0 transition-colors">

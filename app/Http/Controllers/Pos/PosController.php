@@ -64,9 +64,27 @@ class PosController extends Controller
             ->get();
 
         // Aggregated totals for the summary bar
+        $cashTotal = $todaySalesOrders->sum(function ($o) {
+            return match ($o->payment_method) {
+                'cash'    => $o->total,
+                'split'   => $o->cash_amount ?? 0,
+                'partial' => $o->amount_paid ?? 0,
+                default   => 0,
+            };
+        });
+        $bankTotal = $todaySalesOrders->sum(function ($o) {
+            return match ($o->payment_method) {
+                'bank_transfer' => $o->total,
+                'split'         => $o->bank_amount ?? 0,
+                default         => 0,
+            };
+        });
+
         $todaySales = (object)[
             'order_count'    => $todaySalesOrders->count(),
             'total_revenue'  => $todaySalesOrders->sum('total'),
+            'cash_total'     => $cashTotal,
+            'bank_total'     => $bankTotal,
         ];
         $todayReturns = (object)[
             'return_count'   => $todayReturnsList->count(),
