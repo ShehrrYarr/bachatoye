@@ -166,24 +166,23 @@
             @forelse($sections as $section)
             <div class="flex items-center justify-between px-5 py-4"
                  x-data="{ on: {{ $section->exchange_enabled ? 'true' : 'false' }} }">
-                <div>
+                <div class="flex-1 min-w-0">
                     <div class="font-medium text-gray-800">{{ $section->name }}</div>
                     <div class="text-xs mt-0.5"
                          :class="on ? 'text-primary-600' : 'text-gray-400'"
                          x-text="on ? 'Exchange enabled — cashier will see trade-in panel' : 'No exchange for this section'"></div>
                 </div>
-                <label class="relative inline-flex items-center cursor-pointer ml-4 shrink-0" @click.prevent="on = !on">
-                    <input type="checkbox" name="exchange_{{ $section->id }}" value="1"
-                           class="sr-only"
-                           :checked="on">
-                    {{-- Toggle track --}}
-                    <div class="w-11 h-6 rounded-full transition-colors duration-200 ease-in-out"
-                         :class="on ? 'bg-primary-600' : 'bg-gray-300'">
-                        {{-- Toggle knob --}}
-                        <div class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ease-in-out"
-                             :class="on ? 'translate-x-5' : 'translate-x-0'"></div>
-                    </div>
-                </label>
+
+                {{-- Hidden checkbox for form submission --}}
+                <input type="checkbox" name="exchange_{{ $section->id }}" value="1" class="sr-only" x-model="on">
+
+                {{-- Visual toggle --}}
+                <div class="relative ml-4 shrink-0 cursor-pointer w-11 h-6 rounded-full transition-colors duration-200"
+                     :class="on ? 'bg-primary-600' : 'bg-gray-300'"
+                     @click="on = !on">
+                    <div class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200"
+                         :class="on ? 'translate-x-5' : 'translate-x-0'"></div>
+                </div>
             </div>
             @empty
             <div class="px-5 py-6 text-center text-sm text-gray-400">
