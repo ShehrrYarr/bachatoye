@@ -17,13 +17,16 @@
                 @error('name') <p class="form-error">{{ $message }}</p> @enderror
             </div>
             <div>
-                <label class="form-label">Parent Category</label>
+                <label class="form-label">Parent Category <span class="text-gray-400 font-normal text-xs">(leave empty for top-level)</span></label>
                 <select name="parent_id" class="form-select">
-                    <option value="">— Top Level —</option>
+                    <option value="">— Top Level Category —</option>
                     @foreach($parents as $p)
-                    <option value="{{ $p->id }}" {{ old('parent_id') == $p->id ? 'selected' : '' }}>{{ $p->name }}</option>
+                    <option value="{{ $p->id }}" {{ old('parent_id', $selectedParent) == $p->id ? 'selected' : '' }}>{{ $p->name }}</option>
                     @endforeach
                 </select>
+                @if($selectedParent)
+                <p class="form-hint text-indigo-600"><i class="fas fa-info-circle mr-1"></i>This will be created as a sub category.</p>
+                @endif
             </div>
             @if($sections->count())
             <div>

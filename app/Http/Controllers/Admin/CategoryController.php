@@ -11,15 +11,20 @@ class CategoryController extends Controller
 {
     public function index()
     {
-        $categories = Category::with('parent')->withCount('products')->orderBy('sort_order')->paginate(30);
+        $categories = Category::whereNull('parent_id')
+            ->with(['children' => fn($q) => $q->withCount('products')])
+            ->withCount(['products', 'children'])
+            ->orderBy('sort_order')
+            ->get();
         return view('admin.categories.index', compact('categories'));
     }
 
     public function create()
     {
-        $parents  = Category::whereNull('parent_id')->get();
-        $sections = Section::orderBy('sort_order')->get();
-        return view('admin.categories.create', compact('parents', 'sections'));
+        $parents    = Category::whereNull('parent_id')->orderBy('name')->get();
+        $sections   = Section::orderBy('sort_order')->get();
+        $selectedParent = request('parent_id');
+        return view('admin.categories.create', compact('parents', 'sections', 'selectedParent'));
     }
 
     public function store(Request $request)
