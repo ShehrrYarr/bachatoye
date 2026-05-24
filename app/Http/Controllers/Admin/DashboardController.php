@@ -36,14 +36,23 @@ class DashboardController extends Controller
                                  ->whereColumn('stock_quantity', '<=', 'low_stock_threshold')
                                  ->with('category')->take(8)->get();
 
-        $salesChart = collect(range(6, 0))->map(fn($i) => [
+        $posChart = collect(range(6, 0))->map(fn($i) => [
             'date'  => now()->subDays($i)->format('M d'),
             'total' => Order::whereDate('created_at', now()->subDays($i))
+                            ->where('source', 'pos')
                             ->where('status', '!=', 'cancelled')
                             ->sum('total'),
         ]);
 
-        return view('admin.dashboard', compact('stats', 'recentOrders', 'lowStockItems', 'salesChart'));
+        $ecomChart = collect(range(6, 0))->map(fn($i) => [
+            'date'  => now()->subDays($i)->format('M d'),
+            'total' => Order::whereDate('created_at', now()->subDays($i))
+                            ->where('source', 'ecommerce')
+                            ->where('status', '!=', 'cancelled')
+                            ->sum('total'),
+        ]);
+
+        return view('admin.dashboard', compact('stats', 'recentOrders', 'lowStockItems', 'posChart', 'ecomChart'));
     }
 
     public function salesmanDashboard()

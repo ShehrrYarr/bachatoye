@@ -68,29 +68,64 @@
         </div>
     </div>
 
-    {{-- Sales Chart + Recent Orders --}}
-    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+    {{-- Sales Charts --}}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
-        {{-- 7-Day Sales Chart --}}
-        <div class="card lg:col-span-3">
+        {{-- POS Sales Chart --}}
+        <div class="card">
             <div class="card-header">
-                <h3 class="font-semibold text-gray-800">Sales (Last 7 Days)</h3>
+                <h3 class="font-semibold text-gray-800">POS Sales <span class="text-xs font-normal text-gray-400">(Last 7 Days)</span></h3>
+                <span class="text-xs font-semibold text-purple-600">
+                    Rs. {{ number_format($posChart->sum('total')) }}
+                </span>
             </div>
             <div class="card-body">
-                <div class="flex items-end gap-2 h-40">
-                    @php $maxVal = $salesChart->max('total') ?: 1; @endphp
-                    @foreach($salesChart as $day)
+                <div class="flex items-end gap-2 h-36">
+                    @php $posMax = $posChart->max('total') ?: 1; @endphp
+                    @foreach($posChart as $day)
                         <div class="flex-1 flex flex-col items-center gap-1">
-                            <div class="text-xs text-gray-500">{{ number_format($day['total'] / 1000, 1) }}k</div>
-                            <div class="w-full bg-primary-500 rounded-t-sm transition-all"
-                                 style="height: {{ max(4, ($day['total'] / $maxVal) * 120) }}px"
+                            @if($day['total'] > 0)
+                            <div class="text-xs text-gray-500" style="font-size:9px;">{{ number_format($day['total'] / 1000, 1) }}k</div>
+                            @endif
+                            <div class="w-full bg-purple-500 hover:bg-purple-600 rounded-t-sm transition-all"
+                                 style="height: {{ max(4, ($day['total'] / $posMax) * 100) }}px"
                                  title="Rs. {{ number_format($day['total']) }}"></div>
-                            <div class="text-xs text-gray-400">{{ $day['date'] }}</div>
+                            <div class="text-gray-400" style="font-size:9px;">{{ $day['date'] }}</div>
                         </div>
                     @endforeach
                 </div>
             </div>
         </div>
+
+        {{-- Ecommerce Sales Chart --}}
+        <div class="card">
+            <div class="card-header">
+                <h3 class="font-semibold text-gray-800">Ecommerce Sales <span class="text-xs font-normal text-gray-400">(Last 7 Days)</span></h3>
+                <span class="text-xs font-semibold text-primary-600">
+                    Rs. {{ number_format($ecomChart->sum('total')) }}
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="flex items-end gap-2 h-36">
+                    @php $ecomMax = $ecomChart->max('total') ?: 1; @endphp
+                    @foreach($ecomChart as $day)
+                        <div class="flex-1 flex flex-col items-center gap-1">
+                            @if($day['total'] > 0)
+                            <div class="text-xs text-gray-500" style="font-size:9px;">{{ number_format($day['total'] / 1000, 1) }}k</div>
+                            @endif
+                            <div class="w-full bg-primary-500 hover:bg-primary-600 rounded-t-sm transition-all"
+                                 style="height: {{ max(4, ($day['total'] / $ecomMax) * 100) }}px"
+                                 title="Rs. {{ number_format($day['total']) }}"></div>
+                            <div class="text-gray-400" style="font-size:9px;">{{ $day['date'] }}</div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Low Stock + Recent Orders --}}
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
         {{-- Low Stock Alerts --}}
         <div class="card lg:col-span-2">

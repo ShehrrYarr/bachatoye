@@ -25,15 +25,25 @@
                         <input type="text" name="name" value="{{ old('name') }}" class="form-input @error('name') border-red-500 @enderror" required>
                         @error('name') <p class="form-error">{{ $message }}</p> @enderror
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" x-data="subcatPicker('{{ old('category_id') }}', '{{ old('subcategory_id') }}')">
                         <div>
                             <label class="form-label">Category</label>
-                            <select name="category_id" class="form-select">
+                            <select name="category_id" class="form-select" x-model="categoryId" @change="loadSubcategories()">
                                 <option value="">— None —</option>
                                 @foreach($categories as $cat)
-                                <option value="{{ $cat->id }}" {{ old('category_id') == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
+                                <option value="{{ $cat->id }}">{{ $cat->name }}</option>
                                 @endforeach
                             </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Sub Category <span class="text-gray-400 font-normal text-xs">(optional)</span></label>
+                            <select name="subcategory_id" class="form-select" x-model="subcategoryId" :disabled="subcategories.length === 0">
+                                <option value="">— None —</option>
+                                <template x-for="sub in subcategories" :key="sub.id">
+                                    <option :value="sub.id" x-text="sub.name"></option>
+                                </template>
+                            </select>
+                            <p class="form-hint" x-show="subcategories.length === 0 && categoryId">No sub categories for this category.</p>
                         </div>
                         <div>
                             <label class="form-label">Brand</label>
@@ -289,6 +299,28 @@
 
 @push('scripts')
 <script>
+function subcatPicker(initCat, initSub) {
+    return {
+        categoryId:    initCat || '',
+        subcategoryId: initSub || '',
+        subcategories: [],
+
+        async init() {
+            if (this.categoryId) await this.loadSubcategories();
+        },
+
+        async loadSubcategories() {
+            this.subcategoryId = '';
+            this.subcategories = [];
+            if (!this.categoryId) return;
+            try {
+                const res  = await fetch(`/admin/categories/${this.categoryId}/subcategories`);
+                this.subcategories = await res.json();
+            } catch (e) { this.subcategories = []; }
+        },
+    };
+}
+
 function productForm() {
     return {
         trackInventory: {{ old('track_inventory', true) ? 'true' : 'false' }},

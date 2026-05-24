@@ -12,7 +12,7 @@ class Product extends Model
     protected $fillable = [
         'name', 'slug', 'sku', 'barcode', 'short_description', 'description',
         'price', 'cost_price', 'compare_price', 'stock_quantity',
-        'low_stock_threshold', 'category_id', 'brand_id',
+        'low_stock_threshold', 'category_id', 'subcategory_id', 'brand_id',
         'is_active', 'is_featured', 'track_inventory',
     ];
 
@@ -36,6 +36,11 @@ class Product extends Model
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function subcategory()
+    {
+        return $this->belongsTo(Category::class, 'subcategory_id');
     }
 
     public function brand()

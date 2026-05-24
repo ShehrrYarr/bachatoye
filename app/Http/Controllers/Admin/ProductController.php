@@ -44,10 +44,16 @@ class ProductController extends Controller
 
     public function create()
     {
-        $categories = Category::active()->get();
+        $categories = Category::active()->whereNull('parent_id')->get();
         $brands     = Brand::all();
         $deals      = Deal::active()->get();
         return view('admin.products.create', compact('categories', 'brands', 'deals'));
+    }
+
+    public function subcategories(Category $category)
+    {
+        $subs = $category->children()->active()->orderBy('name')->get(['id', 'name']);
+        return response()->json($subs);
     }
 
     public function store(Request $request)
@@ -62,6 +68,7 @@ class ProductController extends Controller
             'stock_quantity'      => 'required|integer|min:0',
             'low_stock_threshold' => 'required|integer|min:0',
             'category_id'         => 'nullable|exists:categories,id',
+            'subcategory_id'      => 'nullable|exists:categories,id',
             'brand_id'            => 'nullable|exists:brands,id',
             'barcode'             => 'nullable|string|max:50|unique:products',
             'sku'                 => 'nullable|string|max:100|unique:products',
@@ -134,9 +141,12 @@ class ProductController extends Controller
     public function edit(Product $product)
     {
         $product->load(['images', 'videos', 'socialLinks', 'colors']);
-        $categories = Category::active()->get();
-        $brands     = Brand::all();
-        return view('admin.products.edit', compact('product', 'categories', 'brands'));
+        $categories    = Category::active()->whereNull('parent_id')->get();
+        $brands        = Brand::all();
+        $subcategories = $product->category_id
+            ? Category::active()->where('parent_id', $product->category_id)->orderBy('name')->get()
+            : collect();
+        return view('admin.products.edit', compact('product', 'categories', 'brands', 'subcategories'));
     }
 
     public function update(Request $request, Product $product)
@@ -151,6 +161,7 @@ class ProductController extends Controller
             'stock_quantity'      => 'required|integer|min:0',
             'low_stock_threshold' => 'required|integer|min:0',
             'category_id'         => 'nullable|exists:categories,id',
+            'subcategory_id'      => 'nullable|exists:categories,id',
             'brand_id'            => 'nullable|exists:brands,id',
             'barcode'             => 'nullable|string|max:50|unique:products,barcode,' . $product->id,
             'sku'                 => 'nullable|string|max:100|unique:products,sku,' . $product->id,

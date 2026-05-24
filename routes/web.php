@@ -69,6 +69,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
 
     // Products
     Route::get('products/generate-barcode', [Admin\ProductController::class, 'generateBarcodeAjax'])->name('products.generate_barcode');
+    Route::get('categories/{category}/subcategories', [Admin\ProductController::class, 'subcategories'])->name('categories.subcategories');
     Route::resource('products', Admin\ProductController::class);
     Route::post('products/{product}/images', [Admin\ProductController::class, 'uploadImages'])->name('products.images.upload');
     Route::delete('products/images/{image}', [Admin\ProductController::class, 'deleteImage'])->name('products.images.delete');
