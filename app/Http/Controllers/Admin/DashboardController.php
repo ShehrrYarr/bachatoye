@@ -31,7 +31,7 @@ class DashboardController extends Controller
             'today_expenses'    => Expense::whereDate('expense_date', today())->sum('amount'),
         ];
 
-        $recentOrders  = Order::latest()->take(10)->get();
+        $recentOrders  = Order::where('source', 'ecommerce')->latest()->take(10)->get();
         $lowStockItems = Product::active()->where('track_inventory', true)
                                  ->whereColumn('stock_quantity', '<=', 'low_stock_threshold')
                                  ->with('category')->take(8)->get();
