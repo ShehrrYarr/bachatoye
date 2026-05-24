@@ -1,0 +1,94 @@
+<?php
+
+namespace App\Http\Controllers\Ecom;
+
+use App\Http\Controllers\Controller;
+use App\Models\Brand;
+use App\Models\Category;
+use App\Models\Product;
+use Illuminate\Http\Request;
+
+class ProductController extends Controller
+{
+    public function index(Request $request)
+    {
+        $query = Product::active()->inStock()->with(['images', 'category', 'brand']);
+
+        if ($request->filled('q')) {
+            $q = $request->q;
+            $query->where(fn($sq) => $sq->where('name', 'like', "%{$q}%")
+                                        ->orWhere('short_description', 'like', "%{$q}%"));
+        }
+
+        if ($request->filled('category')) {
+            $query->where('category_id', $request->category);
+        }
+        if ($request->filled('brand')) {
+            $query->where('brand_id', $request->brand);
+        }
+        if ($request->filled('min_price')) {
+            $query->where('price', '>=', $request->min_price);
+        }
+        if ($request->filled('max_price')) {
+            $query->where('price', '<=', $request->max_price);
+        }
+
+        $sort = $request->input('sort', 'newest');
+        match ($sort) {
+            'price_asc'  => $query->orderBy('price'),
+            'price_desc' => $query->orderByDesc('price'),
+            'popular'    => $query->withCount('items')->orderByDesc('items_count'),
+            default      => $query->latest(),
+        };
+
+        $products   = $query->paginate(20)->withQueryString();
+        $categories = Category::active()->whereNull('parent_id')->get();
+        $brands     = Brand::all();
+
+        return view('ecom.products.index', compact('products', 'categories', 'brands'));
+    }
+
+    public function show(string $slug)
+    {
+        $product = Product::active()->with([
+            'images', 'videos', 'socialLinks', 'category', 'brand'
+        ])->where('slug', $slug)->firstOrFail();
+
+        $related = Product::active()->inStock()
+                           ->where('category_id', $product->category_id)
+                           ->where('id', '!=', $product->id)
+                           ->with('images')
+                           ->take(4)
+                           ->get();
+
+        $deal = $product->getActiveDeal();
+
+        return view('ecom.products.show', compact('product', 'related', 'deal'));
+    }
+
+    public function search(Request $request)
+    {
+        $request->validate(['q' => 'required|string|min:2']);
+        return redirect()->route('products.index', ['q' => $request->q]);
+    }
+
+    public function liveSearch(Request $request)
+    {
+        $q = $request->input('q', '');
+        if (strlen($q) < 2) return response()->json([]);
+
+        $products = Product::active()->inStock()
+                            ->where('name', 'like', "%{$q}%")
+                            ->with('images')
+                            ->limit(6)
+                            ->get()
+                            ->map(fn($p) => [
+                                'name'  => $p->name,
+                                'slug'  => $p->slug,
+                                'price' => $p->getDiscountedPrice(),
+                                'image' => $p->primary_image_url,
+                            ]);
+
+        return response()->json($products);
+    }
+}

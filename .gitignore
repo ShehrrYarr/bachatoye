@@ -1,0 +1,84 @@
+# ============================================================
+# Laravel .gitignore — MobileHub Project
+# ============================================================
+
+# --- Dependencies ---
+/vendor/
+/node_modules/
+
+# --- Environment & Secrets (NEVER commit these) ---
+.env
+.env.*
+!.env.example
+*.key
+/auth.json
+
+# --- Storage: user-uploaded files ---
+/storage/app/public/*
+!/storage/app/public/.gitkeep
+
+# --- Storage: logs, cache, sessions, views ---
+/storage/logs/*
+!/storage/logs/.gitkeep
+/storage/framework/cache/data/*
+!/storage/framework/cache/data/.gitkeep
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitkeep
+/storage/framework/views/*
+!/storage/framework/views/.gitkeep
+/storage/framework/testing/
+/storage/debugbar/
+/storage/pail/
+/storage/*.key
+
+# --- Bootstrap cache ---
+/bootstrap/cache/*.php
+!/bootstrap/cache/.gitkeep
+
+# --- Public: compiled assets & symlink ---
+/public/storage
+/public/hot
+/public/build/
+
+# --- PHPUnit ---
+.phpunit.result.cache
+/.phpunit.cache/
+/coverage/
+
+# --- NPM / Yarn ---
+npm-debug.log*
+yarn-error.log*
+
+# --- Claude Code local config ---
+/.claude/
+
+# --- IDE & Editors ---
+/.idea/
+/.vscode/
+/.zed/
+/.fleet/
+/.nova/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+.phpactor.json
+_ide_helper.php
+_ide_helper_models.php
+.phpstorm.meta.php
+.php-cs-fixer.cache
+
+# --- OS files ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Laravel Homestead / Sail ---
+Homestead.json
+Homestead.yaml
+docker-compose.override.yml
+
+# --- Misc ---
+*.log
+*.cache
+*.tmp
