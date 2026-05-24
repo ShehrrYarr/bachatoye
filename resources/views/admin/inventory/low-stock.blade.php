@@ -46,11 +46,11 @@
                         <a href="{{ route('admin.inventory.adjust.form', $product) }}" class="btn-primary btn-sm">
                             <i class="fas fa-plus mr-1"></i> Restock
                         </a>
-                        <form method="POST" action="{{ route('admin.products.destroy', $product) }}"
-                              onsubmit="return confirm('Delete {{ addslashes($product->name) }}? This cannot be undone.')">
-                            @csrf @method('DELETE')
-                            <button type="submit" class="btn-danger btn-sm">
-                                <i class="fas fa-trash"></i>
+                        <form method="POST" action="{{ route('admin.inventory.dismiss', $product) }}">
+                            @csrf @method('PATCH')
+                            <button type="submit" class="btn-outline btn-sm text-gray-500"
+                                    title="Dismiss from low stock alerts">
+                                <i class="fas fa-eye-slash mr-1"></i> Dismiss
                             </button>
                         </form>
                     </div>

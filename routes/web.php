@@ -94,6 +94,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('inventory/barcode-assign', [Admin\InventoryController::class, 'assignBarcode'])->name('inventory.barcode_assign');
     Route::get('inventory/barcode-print', [Admin\InventoryController::class, 'printLabels'])->name('inventory.barcode_print');
     Route::get('inventory/low-stock', [Admin\InventoryController::class, 'lowStock'])->name('inventory.low_stock');
+    Route::patch('inventory/{product}/dismiss', [Admin\InventoryController::class, 'dismissLowStock'])->name('inventory.dismiss');
 
     // Banners
     Route::resource('banners', Admin\BannerController::class);

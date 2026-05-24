@@ -12,19 +12,20 @@ class Product extends Model
     protected $fillable = [
         'name', 'slug', 'sku', 'barcode', 'short_description', 'description',
         'price', 'cost_price', 'compare_price', 'stock_quantity',
-        'low_stock_threshold', 'category_id', 'subcategory_id', 'brand_id',
+        'low_stock_threshold', 'low_stock_dismissed', 'category_id', 'subcategory_id', 'brand_id',
         'is_active', 'is_featured', 'track_inventory',
     ];
 
     protected function casts(): array
     {
         return [
-            'price'               => 'decimal:2',
-            'cost_price'          => 'decimal:2',
-            'compare_price'       => 'decimal:2',
-            'is_active'           => 'boolean',
-            'is_featured'         => 'boolean',
-            'track_inventory'     => 'boolean',
+            'price'                => 'decimal:2',
+            'cost_price'           => 'decimal:2',
+            'compare_price'        => 'decimal:2',
+            'is_active'            => 'boolean',
+            'is_featured'          => 'boolean',
+            'track_inventory'      => 'boolean',
+            'low_stock_dismissed'  => 'boolean',
         ];
     }
 

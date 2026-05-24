@@ -65,7 +65,14 @@ class InventoryController extends Controller
         }
 
         DB::transaction(function () use ($product, $data, $before, $after) {
-            $product->update(['stock_quantity' => $after]);
+            $updates = ['stock_quantity' => $after];
+
+            // Auto-clear the low stock dismissal when restocked above threshold
+            if ($after > $product->low_stock_threshold && $product->low_stock_dismissed) {
+                $updates['low_stock_dismissed'] = false;
+            }
+
+            $product->update($updates);
 
             StockMovement::create([
                 'product_id'       => $product->id,
@@ -137,11 +144,18 @@ class InventoryController extends Controller
     {
         $products = Product::active()
                             ->where('track_inventory', true)
+                            ->where('low_stock_dismissed', false)
                             ->whereColumn('stock_quantity', '<=', 'low_stock_threshold')
                             ->with(['category', 'brand'])
                             ->orderBy('stock_quantity')
                             ->paginate(30);
 
         return view('admin.inventory.low-stock', compact('products'));
+    }
+
+    public function dismissLowStock(Product $product)
+    {
+        $product->update(['low_stock_dismissed' => true]);
+        return back()->with('success', "{$product->name} dismissed from low stock alerts.");
     }
 }

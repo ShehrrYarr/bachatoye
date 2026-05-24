@@ -20,6 +20,7 @@ class DashboardController extends Controller
             'today_orders'      => Order::whereDate('created_at', today())->count(),
             'pending_orders'    => Order::where('status', 'pending')->count(),
             'low_stock'         => Product::active()->where('track_inventory', true)
+                                           ->where('low_stock_dismissed', false)
                                            ->whereColumn('stock_quantity', '<=', 'low_stock_threshold')
                                            ->count(),
             'total_customers'   => Customer::count(),
@@ -33,6 +34,7 @@ class DashboardController extends Controller
 
         $recentOrders  = Order::where('source', 'ecommerce')->latest()->take(10)->get();
         $lowStockItems = Product::active()->where('track_inventory', true)
+                                 ->where('low_stock_dismissed', false)
                                  ->whereColumn('stock_quantity', '<=', 'low_stock_threshold')
                                  ->with('category')->take(8)->get();
 
