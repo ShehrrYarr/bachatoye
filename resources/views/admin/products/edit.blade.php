@@ -120,31 +120,27 @@
                 <div class="card-body space-y-4">
                     @if($product->images->count())
                     <div>
-                        <p class="text-sm text-gray-600 mb-3">Existing images (click star to set primary, click × to delete):</p>
+                        <p class="text-sm text-gray-600 mb-3">Hover an image — ⭐ to set primary, × to delete.</p>
                         <div class="grid grid-cols-4 gap-3">
                             @foreach($product->images as $img)
                             <div class="relative group">
                                 <img src="{{ $img->url }}" class="w-full aspect-square object-cover rounded-xl bg-gray-100
                                     {{ $img->is_primary ? 'ring-2 ring-primary-500' : '' }}">
                                 @if($img->is_primary)
-                                <div class="absolute top-1 left-1 bg-primary-600 text-white text-xs px-1.5 py-0.5 rounded">Primary</div>
+                                    <div class="absolute top-1 left-1 bg-primary-600 text-white text-xs px-1.5 py-0.5 rounded">Primary</div>
                                 @else
-                                <form method="POST" action="{{ route('admin.products.images.primary', [$product, $img]) }}"
-                                      class="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    @csrf @method('PATCH')
-                                    <button type="submit" class="w-6 h-6 bg-yellow-400 text-white rounded-full text-xs" title="Set as primary">
+                                    <button type="button"
+                                            onclick="editPageSetPrimary('{{ route('admin.products.images.primary', [$product, $img]) }}')"
+                                            class="absolute top-1 left-1 w-6 h-6 bg-yellow-400 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                            title="Set as primary">
                                         <i class="fas fa-star"></i>
                                     </button>
-                                </form>
                                 @endif
-                                <form method="POST" action="{{ route('admin.products.images.delete', $img) }}"
-                                      onsubmit="return confirm('Delete image?')"
-                                      class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="w-6 h-6 bg-red-500 text-white rounded-full text-xs">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                </form>
+                                <button type="button"
+                                        onclick="editPageDeleteImage('{{ route('admin.products.images.delete', $img) }}')"
+                                        class="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <i class="fas fa-times"></i>
+                                </button>
                             </div>
                             @endforeach
                         </div>
@@ -170,11 +166,11 @@
                                 <i class="fas fa-video mr-2 text-gray-400"></i>
                                 {{ $video->type === 'embed' ? 'Embedded video' : 'Uploaded file' }}
                             </span>
-                            <form method="POST" action="{{ route('admin.products.videos.delete', $video) }}"
-                                  onsubmit="return confirm('Delete video?')">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="btn-danger btn-sm"><i class="fas fa-trash"></i></button>
-                            </form>
+                            <button type="button"
+                                    onclick="editPageDeleteVideo('{{ route('admin.products.videos.delete', $video) }}')"
+                                    class="btn-danger btn-sm">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </div>
                         @endforeach
                     </div>
@@ -316,6 +312,33 @@ function productEditForm() {
             } catch(e) {}
         },
     };
+}
+
+// AJAX helpers — avoids nested <form> tags that break the update button
+const _csrf = document.querySelector('meta[name=csrf-token]').content;
+
+function _editPageAjax(url, method) {
+    const fd = new FormData();
+    fd.append('_token', _csrf);
+    fd.append('_method', method);
+    return fetch(url, { method: 'POST', body: fd });
+}
+
+async function editPageSetPrimary(url) {
+    await _editPageAjax(url, 'PATCH');
+    location.reload();
+}
+
+async function editPageDeleteImage(url) {
+    if (!confirm('Delete this image?')) return;
+    await _editPageAjax(url, 'DELETE');
+    location.reload();
+}
+
+async function editPageDeleteVideo(url) {
+    if (!confirm('Delete this video?')) return;
+    await _editPageAjax(url, 'DELETE');
+    location.reload();
 }
 </script>
 @endpush
