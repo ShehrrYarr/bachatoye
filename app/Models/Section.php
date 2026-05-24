@@ -6,7 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class Section extends Model
 {
-    protected $fillable = ['name', 'slug', 'sort_order'];
+    protected $fillable = ['name', 'slug', 'sort_order', 'exchange_enabled'];
+
+    protected function casts(): array
+    {
+        return ['exchange_enabled' => 'boolean'];
+    }
 
     public function categories()
     {

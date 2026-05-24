@@ -66,7 +66,7 @@
 </div>
 
 {{-- Summary stats --}}
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+<div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
     <div class="stat-card">
         <div class="stat-icon bg-primary-100"><i class="fas fa-chart-line text-primary-600"></i></div>
         <div>
@@ -93,6 +93,13 @@
         <div>
             <div class="text-2xl font-extrabold text-gray-900">{{ number_format($itemsSold) }}</div>
             <div class="text-sm text-gray-500">Items Sold</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon bg-orange-100"><i class="fas fa-sync-alt text-orange-600"></i></div>
+        <div>
+            <div class="text-2xl font-extrabold text-gray-900">Rs. {{ number_format($totalExchangeValue) }}</div>
+            <div class="text-sm text-gray-500">Exchange Value</div>
         </div>
     </div>
 </div>
@@ -173,6 +180,7 @@
                     <th>Source</th>
                     <th>Payment</th>
                     <th class="text-right">Amount</th>
+                    <th class="text-right">Exchange</th>
                     <th>Status</th>
                     <th>Date</th>
                 </tr>
@@ -185,11 +193,21 @@
                     <td><span class="badge {{ $order->source === 'pos' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">{{ strtoupper($order->source) }}</span></td>
                     <td>{{ ucfirst(str_replace('_', ' ', $order->payment_method)) }}</td>
                     <td class="text-right font-semibold">Rs. {{ number_format($order->total) }}</td>
+                    <td class="text-right">
+                        @if($order->exchange_value > 0)
+                            <div class="text-xs font-semibold text-orange-600">Rs. {{ number_format($order->exchange_value) }}</div>
+                            @if($order->exchange_item_name)
+                                <div class="text-xs text-gray-400 max-w-[120px] truncate" title="{{ $order->exchange_item_name }}">{{ $order->exchange_item_name }}</div>
+                            @endif
+                        @else
+                            <span class="text-gray-300">—</span>
+                        @endif
+                    </td>
                     <td><span class="badge {{ $order->status === 'delivered' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' }}">{{ ucfirst($order->status) }}</span></td>
                     <td class="text-xs text-gray-500">{{ $order->created_at->format('d M Y') }}</td>
                 </tr>
                 @empty
-                <tr><td colspan="7" class="text-center py-8 text-gray-400">No orders in this period.</td></tr>
+                <tr><td colspan="8" class="text-center py-8 text-gray-400">No orders in this period.</td></tr>
                 @endforelse
             </tbody>
         </table>

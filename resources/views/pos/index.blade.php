@@ -199,7 +199,36 @@
                        class="flex-1 text-xs border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500">
             </div>
 
-            {{-- Subtotal / Discount / Total --}}
+            {{-- Exchange / Trade-in (shown only when cart has exchange-eligible items) --}}
+            <div x-show="cartHasExchangeEligible">
+                <div class="flex items-center justify-between mb-1">
+                    <label class="text-xs text-gray-500">Exchange / Trade-in:</label>
+                    <button @click="toggleExchange()"
+                            :class="showExchangePanel ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-700'"
+                            class="text-xs px-2 py-0.5 rounded-lg font-medium transition-colors">
+                        <i class="fas fa-sync-alt mr-1"></i>
+                        <span x-text="showExchangePanel ? 'Remove' : 'Add Exchange'"></span>
+                    </button>
+                </div>
+                <div x-show="showExchangePanel" class="bg-purple-50 border border-purple-200 rounded-xl p-2 space-y-1">
+                    <div class="text-xs font-semibold text-purple-700 mb-1">
+                        <i class="fas fa-sync-alt mr-1"></i> Trade-in / Exchange Item
+                    </div>
+                    <input type="text" x-model="exchangeItemName"
+                           placeholder="Item name (e.g. iPhone 12 64GB)"
+                           class="w-full text-xs border border-purple-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-purple-400 bg-white">
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs text-gray-600 shrink-0 w-16">Value (Rs.):</label>
+                        <input type="number" x-model.number="exchangeValue" @input="recalculate()" min="0" placeholder="0"
+                               class="flex-1 text-sm font-bold border border-purple-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-purple-400 bg-white">
+                    </div>
+                    <div x-show="exchangeValue > 0" class="border-t border-purple-200 pt-1 text-xs text-purple-700">
+                        <span class="font-semibold">– Rs. <span x-text="exchangeValue.toLocaleString()"></span></span> deducted from total
+                    </div>
+                </div>
+            </div>
+
+            {{-- Subtotal / Discount / Exchange / Total --}}
             <div class="space-y-0.5">
                 <div class="flex justify-between text-gray-500 text-xs">
                     <span>Subtotal</span>
@@ -208,6 +237,10 @@
                 <div class="flex justify-between text-xs" x-show="discount > 0">
                     <span class="text-red-500">Discount</span>
                     <span class="text-red-500" x-text="`– Rs. ${discount.toLocaleString()}`"></span>
+                </div>
+                <div class="flex justify-between text-xs" x-show="showExchangePanel && exchangeValue > 0">
+                    <span class="text-purple-600">Exchange</span>
+                    <span class="text-purple-600" x-text="`– Rs. ${exchangeValue.toLocaleString()}`"></span>
                 </div>
                 <div class="flex justify-between font-bold text-sm text-gray-900 pt-0.5 border-t border-gray-100">
                     <span>Total</span>
@@ -841,6 +874,12 @@ function posApp() {
         showCostPrice: false,
         colorPickerProduct: null,
 
+        // Exchange / Trade-in
+        exchangeItemName: '',
+        exchangeValue: 0,
+        showExchangePanel: false,
+        cartHasExchangeEligible: false,
+
         // Customer
         customerSearch: '',
         customerResults: [],
@@ -918,16 +957,17 @@ function posApp() {
             } else {
                 const label = product.name + (colorName ? ` — ${colorName}` : '');
                 this.cart.push({
-                    _key:       cartKey,
-                    product_id: product.id,
-                    color_id:   colorId || null,
-                    color_name: colorName || null,
-                    name:       label,
-                    image:      product.image,
-                    price:      parseFloat(product.price),
-                    cost_price: parseFloat(product.cost_price) || 0,
-                    quantity:   1,
-                    stock:      maxStock,
+                    _key:             cartKey,
+                    product_id:       product.id,
+                    color_id:         colorId || null,
+                    color_name:       colorName || null,
+                    name:             label,
+                    image:            product.image,
+                    price:            parseFloat(product.price),
+                    cost_price:       parseFloat(product.cost_price) || 0,
+                    quantity:         1,
+                    stock:            maxStock,
+                    exchange_eligible: product.exchange_eligible || false,
                 });
             }
             this.recalculate();
@@ -969,14 +1009,34 @@ function posApp() {
             this.splitCash = 0;
             this.splitBank = 0;
             this.partialAmountPaid = 0;
+            this.exchangeItemName = '';
+            this.exchangeValue = 0;
+            this.showExchangePanel = false;
+            this.cartHasExchangeEligible = false;
             this.recalculate();
         },
 
         recalculate() {
             this.subtotal = this.cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
-            this.total = Math.max(0, this.subtotal - this.discount);
+            this.cartHasExchangeEligible = this.cart.some(i => i.exchange_eligible);
+            if (!this.cartHasExchangeEligible) {
+                this.showExchangePanel = false;
+                this.exchangeItemName = '';
+                this.exchangeValue = 0;
+            }
+            const effectiveExchange = this.showExchangePanel ? (this.exchangeValue || 0) : 0;
+            this.total = Math.max(0, this.subtotal - this.discount - effectiveExchange);
             if (this.paymentMethod === 'cash') {
                 this.cashReceived = Math.ceil(this.total / 100) * 100;
+            }
+        },
+
+        toggleExchange() {
+            this.showExchangePanel = !this.showExchangePanel;
+            if (!this.showExchangePanel) {
+                this.exchangeItemName = '';
+                this.exchangeValue = 0;
+                this.recalculate();
             }
         },
 
@@ -1057,6 +1117,8 @@ function posApp() {
                         customer_id: this.selectedCustomer?.id || null,
                         notes: this.orderNotes || null,
                         cash_received: this.cashReceived,
+                        exchange_item_name: (this.showExchangePanel && this.exchangeItemName) ? this.exchangeItemName : null,
+                        exchange_value: (this.showExchangePanel && this.exchangeValue > 0) ? this.exchangeValue : 0,
                     })
                 });
                 const data = await res.json();

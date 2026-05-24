@@ -47,10 +47,11 @@ class ReportController extends Controller
 
         $orders = $query->with('items')->latest()->get();
 
-        $totalRevenue  = $orders->sum('total');
-        $totalOrders   = $orders->count();
-        $avgOrderValue = $totalOrders ? round($totalRevenue / $totalOrders, 2) : 0;
-        $itemsSold     = $orders->sum(fn($o) => $o->items->sum('quantity'));
+        $totalRevenue       = $orders->sum('total');
+        $totalOrders        = $orders->count();
+        $avgOrderValue      = $totalOrders ? round($totalRevenue / $totalOrders, 2) : 0;
+        $itemsSold          = $orders->sum(fn($o) => $o->items->sum('quantity'));
+        $totalExchangeValue = $orders->whereNotNull('exchange_value')->sum('exchange_value');
 
         $dailyData = $orders->groupBy(fn($o) => $o->created_at->toDateString())
                             ->map(fn($g, $date) => ['date' => $date, 'total' => $g->sum('total')])
@@ -77,7 +78,7 @@ class ReportController extends Controller
 
         return view('admin.reports.sales', compact(
             'orders', 'totalRevenue', 'totalOrders', 'avgOrderValue', 'itemsSold',
-            'dailyData', 'topProducts', 'byPayment', 'from', 'to'
+            'totalExchangeValue', 'dailyData', 'topProducts', 'byPayment', 'from', 'to'
         ));
     }
 

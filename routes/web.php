@@ -186,6 +186,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('settings', [Admin\SettingController::class, 'update'])->name('settings.update');
     Route::post('settings/logo', [Admin\SettingController::class, 'uploadLogo'])->name('settings.logo');
     Route::post('settings/account', [Admin\SettingController::class, 'updateAccount'])->name('settings.account');
+    Route::post('settings/sections', [Admin\SettingController::class, 'updateSectionPermissions'])->name('settings.sections');
 });
 
 /*

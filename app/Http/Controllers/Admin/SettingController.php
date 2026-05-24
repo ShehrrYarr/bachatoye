@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Section;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -25,7 +26,19 @@ class SettingController extends Controller
             'low_stock_threshold' => Setting::get('low_stock_threshold', 5),
             'logo'                => Setting::get('logo'),
         ];
-        return view('admin.settings.index', compact('settings'));
+        $sections = Section::orderBy('sort_order')->orderBy('name')->get();
+        return view('admin.settings.index', compact('settings', 'sections'));
+    }
+
+    public function updateSectionPermissions(Request $request)
+    {
+        $sections = Section::all();
+        foreach ($sections as $section) {
+            $section->update([
+                'exchange_enabled' => $request->boolean("exchange_{$section->id}"),
+            ]);
+        }
+        return back()->with('success', 'Section permissions saved.');
     }
 
     public function update(Request $request)

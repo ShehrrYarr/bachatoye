@@ -12,7 +12,8 @@ class Order extends Model
         'subtotal', 'discount_amount', 'delivery_charge', 'total', 'amount_paid',
         'cash_amount', 'bank_amount',
         'payment_method', 'payment_status', 'payment_proof', 'payment_notes',
-        'notes', 'status', 'tracking_number', 'served_by', 'deal_id',
+        'notes', 'exchange_item_name', 'exchange_value',
+        'status', 'tracking_number', 'served_by', 'deal_id',
     ];
 
     protected function casts(): array
@@ -25,6 +26,7 @@ class Order extends Model
             'amount_paid'     => 'decimal:2',
             'cash_amount'     => 'decimal:2',
             'bank_amount'     => 'decimal:2',
+            'exchange_value'  => 'decimal:2',
         ];
     }
 

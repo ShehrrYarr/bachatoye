@@ -100,6 +100,14 @@
                             <td class="text-right text-red-500 font-semibold">– Rs. {{ number_format($order->discount_amount) }}</td>
                         </tr>
                         @endif
+                        @if($order->exchange_value > 0)
+                        <tr class="bg-orange-50">
+                            <td colspan="3" class="text-right text-sm text-orange-600">
+                                Exchange: <span class="font-medium">{{ $order->exchange_item_name ?? 'Item' }}</span>
+                            </td>
+                            <td class="text-right text-orange-600 font-semibold">– Rs. {{ number_format($order->exchange_value) }}</td>
+                        </tr>
+                        @endif
                         @if($order->delivery_charge > 0)
                         <tr class="bg-gray-50">
                             <td colspan="3" class="text-right text-sm">Delivery</td>

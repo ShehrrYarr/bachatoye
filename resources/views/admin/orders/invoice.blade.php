@@ -77,6 +77,12 @@
                     <td class="py-1 text-sm text-right text-red-500">– Rs. {{ number_format($order->discount_amount, 2) }}</td>
                 </tr>
                 @endif
+                @if($order->exchange_value > 0)
+                <tr>
+                    <td colspan="4" class="py-1 text-sm text-right text-orange-600">Exchange ({{ $order->exchange_item_name ?? 'Item' }})</td>
+                    <td class="py-1 text-sm text-right text-orange-600">– Rs. {{ number_format($order->exchange_value, 2) }}</td>
+                </tr>
+                @endif
                 @if($order->delivery_charge > 0)
                 <tr>
                     <td colspan="4" class="py-1 text-sm text-right text-gray-500">Delivery</td>

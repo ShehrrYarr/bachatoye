@@ -129,18 +129,19 @@ class PosController extends Controller
             ->where(fn($query) => $query->where('name', 'like', "%{$q}%")
                                         ->orWhere('barcode', 'like', "%{$q}%")
                                         ->orWhere('sku', 'like', "%{$q}%"))
-            ->with(['images', 'colors'])
+            ->with(['images', 'colors', 'category.section'])
             ->limit(15)
             ->get()
             ->map(fn($p) => [
-                'id'         => $p->id,
-                'name'       => $p->name,
-                'barcode'    => $p->barcode,
-                'price'      => $p->getDiscountedPrice(),
-                'cost_price' => $p->cost_price,
-                'stock'      => $p->stock_quantity,
-                'image'      => $p->primary_image_url,
-                'colors'     => $p->colors->map(fn($c) => [
+                'id'               => $p->id,
+                'name'             => $p->name,
+                'barcode'          => $p->barcode,
+                'price'            => $p->getDiscountedPrice(),
+                'cost_price'       => $p->cost_price,
+                'stock'            => $p->stock_quantity,
+                'image'            => $p->primary_image_url,
+                'exchange_eligible' => (bool)($p->category?->section?->exchange_enabled),
+                'colors'           => $p->colors->map(fn($c) => [
                     'id'             => $c->id,
                     'name'           => $c->name,
                     'hex_code'       => $c->hex_code,
@@ -158,7 +159,7 @@ class PosController extends Controller
         $product = Product::active()
             ->when($allowedCategoryIds !== null, fn($q) => $q->whereIn('category_id', $allowedCategoryIds))
             ->where('barcode', $barcode)
-            ->with('images')
+            ->with(['images', 'colors', 'category.section'])
             ->first();
 
         if (!$product) {
@@ -166,14 +167,15 @@ class PosController extends Controller
         }
 
         return response()->json([
-            'id'         => $product->id,
-            'name'       => $product->name,
-            'barcode'    => $product->barcode,
-            'price'      => $product->getDiscountedPrice(),
-            'cost_price' => $product->cost_price,
-            'stock'      => $product->stock_quantity,
-            'image'      => $product->primary_image_url,
-            'colors'     => $product->colors->map(fn($c) => [
+            'id'               => $product->id,
+            'name'             => $product->name,
+            'barcode'          => $product->barcode,
+            'price'            => $product->getDiscountedPrice(),
+            'cost_price'       => $product->cost_price,
+            'stock'            => $product->stock_quantity,
+            'image'            => $product->primary_image_url,
+            'exchange_eligible' => (bool)($product->category?->section?->exchange_enabled),
+            'colors'           => $product->colors->map(fn($c) => [
                 'id'             => $c->id,
                 'name'           => $c->name,
                 'hex_code'       => $c->hex_code,
@@ -219,6 +221,8 @@ class PosController extends Controller
             'customer_id'         => 'nullable|exists:customers,id',
             'discount'            => 'nullable|numeric|min:0',
             'notes'               => 'nullable|string|max:500',
+            'exchange_item_name'  => 'nullable|string|max:200',
+            'exchange_value'      => 'nullable|numeric|min:0',
         ]);
 
         DB::beginTransaction();
@@ -261,8 +265,9 @@ class PosController extends Controller
                 ];
             }
 
-            $discount  = (float)($request->discount ?? 0);
-            $total     = max(0, $subtotal - $discount);
+            $discount      = (float)($request->discount ?? 0);
+            $exchangeValue = (float)($request->exchange_value ?? 0);
+            $total         = max(0, $subtotal - $discount - $exchangeValue);
 
             // Resolve payment details
             $payMethod   = $request->payment_method;
@@ -305,8 +310,10 @@ class PosController extends Controller
                 'bank_amount'     => $bankAmount,
                 'payment_method'  => $payMethod,
                 'payment_status'  => $payStatus,
-                'notes'           => $request->notes,
-                'status'          => 'delivered',
+                'notes'              => $request->notes,
+                'exchange_item_name' => $request->exchange_item_name ?: null,
+                'exchange_value'     => $exchangeValue > 0 ? $exchangeValue : null,
+                'status'             => 'delivered',
                 'served_by'       => Auth::id(),
             ]);
 

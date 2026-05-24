@@ -97,6 +97,12 @@
                 <td class="right" style="color:#ef4444">– Rs. {{ number_format($order->discount_amount, 2) }}</td>
             </tr>
             @endif
+            @if($order->exchange_value > 0)
+            <tr class="totals-row">
+                <td colspan="4" class="right" style="color:#ea580c">Exchange ({{ $order->exchange_item_name ?? 'Item' }})</td>
+                <td class="right" style="color:#ea580c">– Rs. {{ number_format($order->exchange_value, 2) }}</td>
+            </tr>
+            @endif
             @if($order->delivery_charge > 0)
             <tr class="totals-row">
                 <td colspan="4" class="right" style="color:#6b7280">Delivery</td>

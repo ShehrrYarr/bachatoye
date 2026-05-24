@@ -154,6 +154,51 @@
     </div>
 </form>
 
+{{-- ===== Section Permissions (separate form) ===== --}}
+<h2 class="text-lg font-bold text-gray-900 mt-10 mb-4">Section Permissions</h2>
+<p class="text-sm text-gray-500 mb-4">Control which sections allow the Exchange / Trade-in feature in the POS. When enabled, the cashier will see an exchange panel whenever a product from that section is added to the cart.</p>
+
+<form method="POST" action="{{ route('admin.settings.sections') }}" class="max-w-2xl">
+    @csrf
+    <div class="card">
+        <div class="card-header"><h2 class="font-semibold text-gray-800">POS Exchange Feature — by Section</h2></div>
+        <div class="divide-y divide-gray-100">
+            @forelse($sections as $section)
+            <div class="flex items-center justify-between px-5 py-4">
+                <div>
+                    <div class="font-medium text-gray-800">{{ $section->name }}</div>
+                    <div class="text-xs text-gray-400 mt-0.5">
+                        {{ $section->exchange_enabled ? 'Exchange enabled — cashier will see trade-in panel' : 'No exchange for this section' }}
+                    </div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer ml-4">
+                    <input type="checkbox" name="exchange_{{ $section->id }}" value="1"
+                           class="sr-only peer"
+                           {{ $section->exchange_enabled ? 'checked' : '' }}>
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-400 rounded-full peer
+                                peer-checked:after:translate-x-full peer-checked:after:border-white
+                                after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+                                after:bg-white after:border-gray-300 after:border after:rounded-full
+                                after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                </label>
+            </div>
+            @empty
+            <div class="px-5 py-6 text-center text-sm text-gray-400">
+                <i class="fas fa-layer-group text-2xl mb-2 block"></i>
+                No sections created yet. Go to <a href="{{ route('admin.sections.index') }}" class="text-primary-600 hover:underline">Sections</a> to create some.
+            </div>
+            @endforelse
+        </div>
+    </div>
+    @if($sections->count())
+    <div class="flex gap-3 mt-4">
+        <button type="submit" class="btn-primary btn-lg">
+            <i class="fas fa-save mr-2"></i> Save Section Permissions
+        </button>
+    </div>
+    @endif
+</form>
+
 {{-- ===== Account Settings (separate form) ===== --}}
 <h2 class="text-lg font-bold text-gray-900 mt-10 mb-4">My Account</h2>
 

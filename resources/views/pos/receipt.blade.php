@@ -93,6 +93,12 @@
             <span>- Rs.{{ number_format($order->discount_amount) }}</span>
         </div>
         @endif
+        @if($order->exchange_value > 0)
+        <div class="row">
+            <span>Exchange: {{ $order->exchange_item_name ?? 'Item' }}</span>
+            <span>- Rs.{{ number_format($order->exchange_value) }}</span>
+        </div>
+        @endif
     </div>
 
     <div class="divider-solid"></div>
