@@ -10,28 +10,58 @@
 </div>
 
 {{-- Date filters --}}
-<div class="card p-4 mb-5 no-print">
-    <form method="GET" action="{{ route('admin.reports.sales') }}" class="flex flex-wrap gap-3 items-end">
+<div class="card p-4 mb-5 no-print" x-data="salesFilter()">
+
+    {{-- Quick period chips --}}
+    <div class="flex flex-wrap items-center gap-2 mb-4">
+        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide shrink-0">Quick:</span>
+        @foreach([
+            'today'      => 'Today',
+            'yesterday'  => 'Yesterday',
+            'this_week'  => 'This Week',
+            'last_week'  => 'Last Week',
+            'this_month' => 'This Month',
+            'last_month' => 'Last Month',
+            'this_year'  => 'This Year',
+        ] as $key => $label)
+        <button type="button" @click="setRange('{{ $key }}')"
+                class="text-xs px-3 py-1.5 rounded-lg border transition-all font-medium
+                       {{ ($from === now()->toDateString() && $to === now()->toDateString() && $key === 'today')
+                          || ($from === now()->startOfMonth()->toDateString() && $key === 'this_month')
+                          ? 'bg-primary-600 text-white border-primary-600'
+                          : 'border-gray-300 text-gray-600 hover:border-primary-400 hover:text-primary-600' }}">
+            {{ $label }}
+        </button>
+        @endforeach
+    </div>
+
+    {{-- Date range inputs + source + submit --}}
+    <form method="GET" action="{{ route('admin.reports.sales') }}" id="salesFilterForm"
+          class="flex flex-wrap items-end gap-3">
         <div>
-            <label class="form-label text-xs">Period</label>
-            <select name="period" class="form-select text-sm" onchange="toggleCustom(this.value)">
-                @foreach(['today'=>'Today','yesterday'=>'Yesterday','this_week'=>'This Week','last_week'=>'Last Week','this_month'=>'This Month','last_month'=>'Last Month','this_year'=>'This Year','custom'=>'Custom Range'] as $v=>$l)
-                <option value="{{ $v }}" {{ request('period', 'this_month') === $v ? 'selected' : '' }}>{{ $l }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div id="customRange" class="{{ request('period') === 'custom' ? 'flex' : 'hidden' }} gap-2">
-            <input type="date" name="date_from" value="{{ request('date_from') }}" class="form-input text-sm">
-            <input type="date" name="date_to" value="{{ request('date_to') }}" class="form-input text-sm">
+            <label class="form-label text-xs">From</label>
+            <input type="date" name="date_from" x-model="dateFrom"
+                   class="form-input text-sm" required>
         </div>
         <div>
+            <label class="form-label text-xs">To</label>
+            <input type="date" name="date_to" x-model="dateTo"
+                   class="form-input text-sm" required>
+        </div>
+        <div>
+            <label class="form-label text-xs">Source</label>
             <select name="source" class="form-select text-sm">
                 <option value="">All Sources</option>
                 <option value="ecommerce" {{ request('source') === 'ecommerce' ? 'selected' : '' }}>Ecommerce</option>
                 <option value="pos" {{ request('source') === 'pos' ? 'selected' : '' }}>POS</option>
             </select>
         </div>
-        <button type="submit" class="btn-primary btn-sm">Apply</button>
+        <button type="submit" class="btn-primary btn-sm">
+            <i class="fas fa-filter mr-1"></i> Filter
+        </button>
+        <div class="text-xs text-gray-400 self-center ml-1">
+            Showing: <span class="font-semibold text-gray-700">{{ \Carbon\Carbon::parse($from)->format('d M Y') }} — {{ \Carbon\Carbon::parse($to)->format('d M Y') }}</span>
+        </div>
     </form>
 </div>
 
@@ -171,9 +201,54 @@
 
 @push('scripts')
 <script>
-function toggleCustom(val) {
-    document.getElementById('customRange').classList.toggle('hidden', val !== 'custom');
-    document.getElementById('customRange').classList.toggle('flex', val === 'custom');
+function salesFilter() {
+    return {
+        dateFrom: '{{ $from }}',
+        dateTo:   '{{ $to }}',
+
+        setRange(period) {
+            const today = new Date();
+            const fmt   = d => d.toISOString().slice(0, 10);
+
+            const startOfWeek = d => {
+                const copy = new Date(d);
+                copy.setDate(d.getDate() - ((d.getDay() + 6) % 7)); // Monday
+                return copy;
+            };
+
+            let from, to;
+            switch (period) {
+                case 'today':
+                    from = to = fmt(today); break;
+                case 'yesterday': {
+                    const y = new Date(today); y.setDate(today.getDate() - 1);
+                    from = to = fmt(y); break;
+                }
+                case 'this_week': {
+                    from = fmt(startOfWeek(today)); to = fmt(today); break;
+                }
+                case 'last_week': {
+                    const lws = startOfWeek(today); lws.setDate(lws.getDate() - 7);
+                    const lwe = new Date(lws); lwe.setDate(lws.getDate() + 6);
+                    from = fmt(lws); to = fmt(lwe); break;
+                }
+                case 'this_month':
+                    from = fmt(new Date(today.getFullYear(), today.getMonth(), 1));
+                    to   = fmt(today); break;
+                case 'last_month': {
+                    const lm = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                    const lme = new Date(today.getFullYear(), today.getMonth(), 0);
+                    from = fmt(lm); to = fmt(lme); break;
+                }
+                case 'this_year':
+                    from = fmt(new Date(today.getFullYear(), 0, 1));
+                    to   = fmt(today); break;
+            }
+            this.dateFrom = from;
+            this.dateTo   = to;
+            this.$nextTick(() => document.getElementById('salesFilterForm').submit());
+        },
+    };
 }
 </script>
 @endpush
