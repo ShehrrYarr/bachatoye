@@ -193,9 +193,11 @@
                     <button type="submit" class="flex-1 btn-primary btn-lg justify-center">
                         <i class="fas fa-cart-plus mr-2"></i> Add to Cart
                     </button>
-                    <a href="{{ route('cart.index') }}" class="btn-outline btn-lg px-4">
-                        <i class="fas fa-shopping-cart"></i>
-                    </a>
+                    <button type="submit" name="buy_now" value="1"
+                            class="flex-1 btn-lg justify-center font-semibold text-white"
+                            style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); border-radius: 0.75rem; display:inline-flex; align-items:center; gap:0.4rem;">
+                        <i class="fas fa-bolt"></i> Buy Now
+                    </button>
                 </div>
             </form>
             @else
