@@ -6,14 +6,14 @@
 <div class="space-y-6">
 
     {{-- Stat Cards --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
         <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3 md:p-6 flex items-start gap-3">
             <div class="stat-icon bg-blue-50 shrink-0">
                 <i class="fas fa-shopping-bag text-blue-600 text-xl"></i>
             </div>
             <div class="min-w-0">
                 <div class="text-lg md:text-2xl font-bold text-gray-900 truncate">{{ number_format($stats['today_sales']) }}</div>
-                <div class="text-xs text-gray-500 mt-0.5">Today's Revenue (Rs.)</div>
+                <div class="text-xs text-gray-500 mt-0.5">Today Sale (Rs.)</div>
                 <div class="text-xs text-gray-400 mt-1">{{ $stats['today_orders'] }} orders</div>
             </div>
         </div>
@@ -32,16 +32,6 @@
         </div>
 
         <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3 md:p-6 flex items-start gap-3">
-            <div class="stat-icon bg-green-50 shrink-0">
-                <i class="fas fa-chart-line text-green-600 text-xl"></i>
-            </div>
-            <div class="min-w-0">
-                <div class="text-lg md:text-2xl font-bold text-gray-900 truncate">{{ number_format($stats['month_sales']) }}</div>
-                <div class="text-xs text-gray-500 mt-0.5">This Month (Rs.)</div>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3 md:p-6 flex items-start gap-3">
             <div class="stat-icon bg-red-50 shrink-0">
                 <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
             </div>
@@ -51,16 +41,6 @@
                 <div class="text-xs">
                     <a href="{{ route('admin.inventory.low_stock') }}" class="text-red-600 hover:underline">View</a>
                 </div>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3 md:p-6 flex items-start gap-3">
-            <div class="stat-icon bg-purple-50 shrink-0">
-                <i class="fas fa-users text-purple-600 text-xl"></i>
-            </div>
-            <div class="min-w-0">
-                <div class="text-lg md:text-2xl font-bold text-gray-900">{{ $stats['total_customers'] }}</div>
-                <div class="text-xs text-gray-500 mt-0.5">Total Customers</div>
             </div>
         </div>
 
@@ -84,16 +64,6 @@
             <div class="min-w-0">
                 <div class="text-lg md:text-2xl font-bold text-gray-900 truncate">{{ number_format($stats['today_expenses']) }}</div>
                 <div class="text-xs text-gray-500 mt-0.5">Today's Expenses (Rs.)</div>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3 md:p-6 flex items-start gap-3">
-            <div class="stat-icon bg-cyan-50 shrink-0">
-                <i class="fas fa-cash-register text-cyan-600 text-xl"></i>
-            </div>
-            <div class="min-w-0">
-                <a href="{{ route('pos.index') }}" class="btn-primary btn-sm">Open POS</a>
-                <div class="text-xs text-gray-500 mt-1">Point of Sale</div>
             </div>
         </div>
     </div>
