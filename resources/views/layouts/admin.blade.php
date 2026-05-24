@@ -11,12 +11,26 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     @stack('styles')
 </head>
-<body class="h-full flex" x-data="{ sidebarOpen: true }">
+<body class="h-full flex" x-data="{ sidebarOpen: window.innerWidth >= 1024, isMobile: window.innerWidth < 1024 }">
+
+    {{-- Mobile backdrop (only on small screens when sidebar is open) --}}
+    <div x-show="isMobile && sidebarOpen"
+         @click="sidebarOpen = false"
+         class="fixed inset-0 bg-black/40 z-40"
+         x-transition:enter="transition-opacity ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"></div>
 
     {{-- Sidebar --}}
+    {{-- On mobile: fixed overlay (position via inline style so it always wins) --}}
+    {{-- On desktop: static flex child that pushes content --}}
     <aside
         class="flex flex-col bg-white border-r border-gray-200 shrink-0 overflow-hidden transition-all duration-300"
-        :style="sidebarOpen ? 'width:256px; min-width:256px;' : 'width:0; min-width:0; border-right-width:0;'"
+        :style="(isMobile ? 'position:fixed;top:0;bottom:0;left:0;z-index:50;' : '') +
+                (sidebarOpen ? 'width:256px;min-width:256px;' : 'width:0;min-width:0;border-right-width:0;')"
     >
         {{-- Logo --}}
         <div class="flex items-center gap-3 px-5 py-5" style="background: linear-gradient(135deg, #f43f5e 0%, #be123c 100%)">
@@ -66,18 +80,18 @@
     <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
 
         {{-- Topbar --}}
-        <header class="bg-white flex items-center gap-4 px-6 py-3 shrink-0" style="border-bottom: 2px solid transparent; border-image: linear-gradient(135deg, #f43f5e, #be123c) 1">
-            <button @click="sidebarOpen = !sidebarOpen" class="text-gray-500 hover:text-gray-800 transition-colors">
+        <header class="bg-white flex items-center gap-3 px-4 md:px-6 py-3 shrink-0" style="border-bottom: 2px solid transparent; border-image: linear-gradient(135deg, #f43f5e, #be123c) 1">
+            <button @click="sidebarOpen = !sidebarOpen" class="text-gray-500 hover:text-gray-800 transition-colors shrink-0">
                 <i class="fas fa-bars"></i>
             </button>
-            <div class="flex-1">
-                <h1 class="text-base font-semibold text-gray-800">@yield('page-title', 'Dashboard')</h1>
+            <div class="flex-1 min-w-0">
+                <h1 class="text-base font-semibold text-gray-800 truncate">@yield('page-title', 'Dashboard')</h1>
             </div>
-            <div class="flex items-center gap-3 text-sm text-gray-500">
-                <span>{{ now()->format('D, d M Y') }}</span>
+            <div class="flex items-center gap-2 md:gap-3 shrink-0">
+                <span class="hidden sm:block text-sm text-gray-500">{{ now()->format('D, d M Y') }}</span>
                 @if(auth()->user()->isAdmin())
                     <a href="{{ route('pos.index') }}" class="btn-primary btn-sm">
-                        <i class="fas fa-cash-register"></i> POS
+                        <i class="fas fa-cash-register"></i> <span class="hidden sm:inline">POS</span>
                     </a>
                 @endif
             </div>
@@ -85,7 +99,7 @@
 
         {{-- Flash messages --}}
         @if(session('success'))
-            <div class="mx-6 mt-4">
+            <div class="mx-4 md:mx-6 mt-4">
                 <div class="alert-success" x-data x-init="setTimeout(() => $el.remove(), 4000)">
                     <i class="fas fa-check-circle mt-0.5"></i>
                     <span>{{ session('success') }}</span>
@@ -93,7 +107,7 @@
             </div>
         @endif
         @if(session('error') || $errors->any())
-            <div class="mx-6 mt-4">
+            <div class="mx-4 md:mx-6 mt-4">
                 <div class="alert-error" x-data x-init="setTimeout(() => $el.remove(), 6000)">
                     <i class="fas fa-exclamation-circle mt-0.5"></i>
                     <div>
@@ -107,7 +121,7 @@
         @endif
 
         {{-- Page content --}}
-        <main class="flex-1 overflow-y-auto p-6">
+        <main class="flex-1 overflow-y-auto p-4 md:p-6">
             @yield('content')
         </main>
     </div>

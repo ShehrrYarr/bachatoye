@@ -6,24 +6,24 @@
 <div class="space-y-6">
 
     {{-- Stat Cards --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="stat-card">
-            <div class="stat-icon bg-blue-50">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3 md:p-6 flex items-start gap-3">
+            <div class="stat-icon bg-blue-50 shrink-0">
                 <i class="fas fa-shopping-bag text-blue-600 text-xl"></i>
             </div>
-            <div>
-                <div class="text-2xl font-bold text-gray-900">{{ number_format($stats['today_sales']) }}</div>
+            <div class="min-w-0">
+                <div class="text-lg md:text-2xl font-bold text-gray-900 truncate">{{ number_format($stats['today_sales']) }}</div>
                 <div class="text-xs text-gray-500 mt-0.5">Today's Revenue (Rs.)</div>
                 <div class="text-xs text-gray-400 mt-1">{{ $stats['today_orders'] }} orders</div>
             </div>
         </div>
 
-        <div class="stat-card">
-            <div class="stat-icon bg-yellow-50">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3 md:p-6 flex items-start gap-3">
+            <div class="stat-icon bg-yellow-50 shrink-0">
                 <i class="fas fa-clock text-yellow-600 text-xl"></i>
             </div>
-            <div>
-                <div class="text-2xl font-bold text-gray-900">{{ $stats['pending_orders'] }}</div>
+            <div class="min-w-0">
+                <div class="text-lg md:text-2xl font-bold text-gray-900">{{ $stats['pending_orders'] }}</div>
                 <div class="text-xs text-gray-500 mt-0.5">Pending Orders</div>
                 <div class="text-xs">
                     <a href="{{ route('admin.orders.index', ['status' => 'pending']) }}" class="text-blue-600 hover:underline">View all</a>
@@ -31,22 +31,22 @@
             </div>
         </div>
 
-        <div class="stat-card">
-            <div class="stat-icon bg-green-50">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3 md:p-6 flex items-start gap-3">
+            <div class="stat-icon bg-green-50 shrink-0">
                 <i class="fas fa-chart-line text-green-600 text-xl"></i>
             </div>
-            <div>
-                <div class="text-2xl font-bold text-gray-900">{{ number_format($stats['month_sales']) }}</div>
+            <div class="min-w-0">
+                <div class="text-lg md:text-2xl font-bold text-gray-900 truncate">{{ number_format($stats['month_sales']) }}</div>
                 <div class="text-xs text-gray-500 mt-0.5">This Month (Rs.)</div>
             </div>
         </div>
 
-        <div class="stat-card">
-            <div class="stat-icon bg-red-50">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3 md:p-6 flex items-start gap-3">
+            <div class="stat-icon bg-red-50 shrink-0">
                 <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
             </div>
-            <div>
-                <div class="text-2xl font-bold text-gray-900">{{ $stats['low_stock'] }}</div>
+            <div class="min-w-0">
+                <div class="text-lg md:text-2xl font-bold text-gray-900">{{ $stats['low_stock'] }}</div>
                 <div class="text-xs text-gray-500 mt-0.5">Low Stock Items</div>
                 <div class="text-xs">
                     <a href="{{ route('admin.inventory.low_stock') }}" class="text-red-600 hover:underline">View</a>
@@ -54,22 +54,22 @@
             </div>
         </div>
 
-        <div class="stat-card">
-            <div class="stat-icon bg-purple-50">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3 md:p-6 flex items-start gap-3">
+            <div class="stat-icon bg-purple-50 shrink-0">
                 <i class="fas fa-users text-purple-600 text-xl"></i>
             </div>
-            <div>
-                <div class="text-2xl font-bold text-gray-900">{{ $stats['total_customers'] }}</div>
+            <div class="min-w-0">
+                <div class="text-lg md:text-2xl font-bold text-gray-900">{{ $stats['total_customers'] }}</div>
                 <div class="text-xs text-gray-500 mt-0.5">Total Customers</div>
             </div>
         </div>
 
-        <div class="stat-card">
-            <div class="stat-icon bg-orange-50">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3 md:p-6 flex items-start gap-3">
+            <div class="stat-icon bg-orange-50 shrink-0">
                 <i class="fas fa-hand-holding-usd text-orange-600 text-xl"></i>
             </div>
-            <div>
-                <div class="text-2xl font-bold text-gray-900">{{ number_format($stats['outstanding_khata']) }}</div>
+            <div class="min-w-0">
+                <div class="text-lg md:text-2xl font-bold text-gray-900 truncate">{{ number_format($stats['outstanding_khata']) }}</div>
                 <div class="text-xs text-gray-500 mt-0.5">Outstanding Khata (Rs.)</div>
                 <div class="text-xs">
                     <a href="{{ route('admin.reports.accounts') }}" class="text-orange-600 hover:underline">View all</a>
@@ -77,21 +77,21 @@
             </div>
         </div>
 
-        <div class="stat-card">
-            <div class="stat-icon bg-pink-50">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3 md:p-6 flex items-start gap-3">
+            <div class="stat-icon bg-pink-50 shrink-0">
                 <i class="fas fa-receipt text-pink-600 text-xl"></i>
             </div>
-            <div>
-                <div class="text-2xl font-bold text-gray-900">{{ number_format($stats['today_expenses']) }}</div>
+            <div class="min-w-0">
+                <div class="text-lg md:text-2xl font-bold text-gray-900 truncate">{{ number_format($stats['today_expenses']) }}</div>
                 <div class="text-xs text-gray-500 mt-0.5">Today's Expenses (Rs.)</div>
             </div>
         </div>
 
-        <div class="stat-card">
-            <div class="stat-icon bg-cyan-50">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3 md:p-6 flex items-start gap-3">
+            <div class="stat-icon bg-cyan-50 shrink-0">
                 <i class="fas fa-cash-register text-cyan-600 text-xl"></i>
             </div>
-            <div>
+            <div class="min-w-0">
                 <a href="{{ route('pos.index') }}" class="btn-primary btn-sm">Open POS</a>
                 <div class="text-xs text-gray-500 mt-1">Point of Sale</div>
             </div>
@@ -152,7 +152,40 @@
             <h3 class="font-semibold text-gray-800">Recent Orders</h3>
             <a href="{{ route('admin.orders.index') }}" class="btn-outline btn-sm">View All</a>
         </div>
-        <div class="overflow-x-auto">
+
+        {{-- Mobile card view (hidden on md+) --}}
+        <div class="md:hidden divide-y divide-gray-100">
+            @forelse($recentOrders as $order)
+            <div class="px-4 py-3">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="font-mono text-xs text-gray-500">{{ $order->order_number }}</span>
+                    <span class="badge
+                        @if($order->status === 'delivered') bg-green-100 text-green-700
+                        @elseif($order->status === 'cancelled') bg-red-100 text-red-700
+                        @elseif($order->status === 'shipped') bg-purple-100 text-purple-700
+                        @else bg-blue-100 text-blue-700
+                        @endif">
+                        {{ ucfirst($order->status) }}
+                    </span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="min-w-0 flex-1 mr-3">
+                        <div class="text-sm font-medium text-gray-800 truncate">{{ $order->customer_name }}</div>
+                        <div class="text-xs text-gray-400">{{ $order->created_at->format('d M, H:i') }}</div>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <div class="text-sm font-bold text-gray-900">Rs. {{ number_format($order->total) }}</div>
+                        <a href="{{ route('admin.orders.show', $order) }}" class="text-xs text-primary-600 hover:underline">View →</a>
+                    </div>
+                </div>
+            </div>
+            @empty
+            <div class="px-4 py-8 text-center text-sm text-gray-400">No orders yet.</div>
+            @endforelse
+        </div>
+
+        {{-- Desktop table view (hidden on mobile) --}}
+        <div class="hidden md:block overflow-x-auto">
             <table class="table-auto w-full">
                 <thead>
                     <tr>
