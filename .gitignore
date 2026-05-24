@@ -82,3 +82,4 @@ docker-compose.override.yml
 *.log
 *.cache
 *.tmp
+/public/build.zip
