@@ -117,7 +117,13 @@ class PurchaseController extends Controller
                 $after  = $before + $row['quantity'];
 
                 $product->increment('stock_quantity', $row['quantity']);
-                $product->update(['cost_price' => $row['unit_cost']]);
+
+                $updates = ['cost_price' => $row['unit_cost']];
+                // Auto-clear dismissal if restocked above threshold
+                if ($after > $product->low_stock_threshold && $product->low_stock_dismissed) {
+                    $updates['low_stock_dismissed'] = false;
+                }
+                $product->update($updates);
 
                 StockMovement::create([
                     'product_id'      => $product->id,
