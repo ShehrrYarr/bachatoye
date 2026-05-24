@@ -25,7 +25,9 @@ class ReturnOrder extends Model
     {
         static::creating(function (ReturnOrder $return) {
             if (!$return->return_number) {
-                $return->return_number = 'RET-' . strtoupper(uniqid());
+                $max  = (int) static::max('id');
+                $next = str_pad($max + 1, 4, '0', STR_PAD_LEFT);
+                $return->return_number = 'RET-' . $next;
             }
         });
     }
