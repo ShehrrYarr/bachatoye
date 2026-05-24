@@ -18,35 +18,8 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-10"
          x-data="{ activeImg: 0, total: {{ $product->images->count() ?: 1 }}, zooming: false }">
 
-        {{-- ===== LEFT: Media (Videos first, then Images) ===== --}}
+        {{-- ===== LEFT: Media (Images first, then Videos) ===== --}}
         <div class="space-y-3">
-
-            {{-- Videos (shown first) --}}
-            @if($product->videos->count())
-            <div class="space-y-3">
-                @foreach($product->videos as $video)
-                <div class="rounded-2xl overflow-hidden border border-gray-200 bg-black">
-                    @if($video->type === 'upload')
-                        <video controls preload="metadata" class="w-full"
-                               @if($video->thumbnail) poster="{{ asset('storage/'.$video->thumbnail) }}" @endif>
-                            <source src="{{ asset('storage/'.$video->path) }}">
-                        </video>
-                    @else
-                        <div class="relative w-full" style="aspect-ratio: 16/9;">
-                            <iframe src="{{ $video->embed_url }}"
-                                    class="absolute inset-0 w-full h-full"
-                                    allowfullscreen
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                    loading="lazy"></iframe>
-                        </div>
-                    @endif
-                    @if($video->title)
-                    <div class="px-3 py-2 text-xs text-gray-300 bg-gray-900">{{ $video->title }}</div>
-                    @endif
-                </div>
-                @endforeach
-            </div>
-            @endif
 
             {{-- Image gallery: vertical thumbnails + main view --}}
             @if($product->images->count())
@@ -115,6 +88,33 @@
                 <img src="{{ asset('images/product-placeholder.png') }}"
                      alt="{{ $product->name }}"
                      class="absolute inset-0 w-full h-full object-contain p-8 opacity-40">
+            </div>
+            @endif
+
+            {{-- Videos (shown below images) --}}
+            @if($product->videos->count())
+            <div class="space-y-3">
+                @foreach($product->videos as $video)
+                <div class="rounded-2xl overflow-hidden border border-gray-200 bg-black">
+                    @if($video->type === 'upload')
+                        <video controls preload="metadata" class="w-full"
+                               @if($video->thumbnail) poster="{{ asset('storage/'.$video->thumbnail) }}" @endif>
+                            <source src="{{ asset('storage/'.$video->path) }}">
+                        </video>
+                    @else
+                        <div class="relative w-full" style="aspect-ratio: 16/9;">
+                            <iframe src="{{ $video->embed_url }}"
+                                    class="absolute inset-0 w-full h-full"
+                                    allowfullscreen
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    loading="lazy"></iframe>
+                        </div>
+                    @endif
+                    @if($video->title)
+                    <div class="px-3 py-2 text-xs text-gray-300 bg-gray-900">{{ $video->title }}</div>
+                    @endif
+                </div>
+                @endforeach
             </div>
             @endif
 
