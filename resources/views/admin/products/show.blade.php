@@ -287,6 +287,31 @@
             </dl>
         </div>
 
+        @if($product->colors->count())
+        <div class="card p-5">
+            <h2 class="font-semibold text-gray-800 mb-3">Colors</h2>
+            <div class="space-y-2">
+                @foreach($product->colors as $color)
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-5 h-5 rounded-full border border-gray-300 shrink-0"
+                             style="{{ $color->hex_code ? 'background:'.$color->hex_code : 'background:#e5e7eb' }}"></div>
+                        <span class="text-sm font-medium text-gray-700">{{ $color->name }}</span>
+                    </div>
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full
+                        {{ $color->stock_quantity <= 0 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700' }}">
+                        {{ $color->stock_quantity }} units
+                    </span>
+                </div>
+                @endforeach
+                <div class="border-t border-gray-100 pt-2 flex justify-between text-xs text-gray-500">
+                    <span>Total stock</span>
+                    <span class="font-semibold text-gray-800">{{ $product->colors->sum('stock_quantity') }} units</span>
+                </div>
+            </div>
+        </div>
+        @endif
+
         @if($product->socialLinks->count())
         <div class="card p-5">
             <h2 class="font-semibold text-gray-800 mb-3">Social Links</h2>

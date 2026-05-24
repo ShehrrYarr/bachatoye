@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Ecom;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Models\ProductColor;
 use Illuminate\Http\Request;
 
 class CartController extends Controller
@@ -38,22 +39,44 @@ class CartController extends Controller
         $request->validate([
             'product_id' => 'required|exists:products,id',
             'quantity'   => 'required|integer|min:1|max:100',
+            'color_id'   => 'nullable|exists:product_colors,id',
         ]);
 
-        $product = Product::active()->inStock()->findOrFail($request->product_id);
+        $product = Product::active()->inStock()->with('colors')->findOrFail($request->product_id);
+
+        // Resolve color selection
+        $color     = null;
+        $colorName = null;
+
+        if ($product->colors->isNotEmpty()) {
+            if ($request->filled('color_id')) {
+                $color = $product->colors->find($request->color_id);
+            }
+            if (!$color) {
+                return back()->withErrors(['color' => 'Please select a color before adding to cart.']);
+            }
+            if ($color->stock_quantity <= 0) {
+                return back()->withErrors(['color' => "Sorry, {$color->name} is out of stock."]);
+            }
+            $colorName = $color->name;
+        }
 
         $cart = $this->cart();
-        $key  = "product_{$product->id}";
+        $key  = $color ? "product_{$product->id}_color_{$color->id}" : "product_{$product->id}";
 
         $currentQty = $cart[$key]['quantity'] ?? 0;
         $newQty     = $currentQty + $request->quantity;
 
-        if ($product->track_inventory && $newQty > $product->stock_quantity) {
+        if ($color && $newQty > $color->stock_quantity) {
+            $newQty = $color->stock_quantity;
+        } elseif (!$color && $product->track_inventory && $newQty > $product->stock_quantity) {
             $newQty = $product->stock_quantity;
         }
 
         $cart[$key] = [
             'product_id' => $product->id,
+            'color_id'   => $color?->id,
+            'color_name' => $colorName,
             'quantity'   => $newQty,
             'price'      => $product->getDiscountedPrice(),
         ];
@@ -114,6 +137,8 @@ class CartController extends Controller
             return [
                 'row_id'     => $rowId,
                 'product'    => $product,
+                'color_id'   => $item['color_id'] ?? null,
+                'color_name' => $item['color_name'] ?? null,
                 'quantity'   => $item['quantity'],
                 'price'      => $item['price'],
                 'line_total' => $item['price'] * $item['quantity'],

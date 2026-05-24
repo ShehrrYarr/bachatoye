@@ -192,6 +192,55 @@
                 </div>
             </div>
 
+            {{-- Colors --}}
+            @php
+                $existingColors = $product->colors->map(fn($c) => [
+                    'id'             => $c->id,
+                    'name'           => $c->name,
+                    'hex_code'       => $c->hex_code ?? '',
+                    'stock_quantity' => $c->stock_quantity,
+                ])->values()->toArray();
+            @endphp
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="font-semibold text-gray-800">Colors <span class="text-xs text-gray-400 font-normal">(optional)</span></h2>
+                </div>
+                <div class="card-body space-y-3"
+                     x-data="{ colors: {{ json_encode($existingColors ?: []) }} }">
+                    <p class="text-xs text-gray-500">Each color tracks its own stock. Removing a color here will delete it permanently.</p>
+
+                    <template x-for="(color, i) in colors" :key="color.id || ('new_' + i)">
+                        <div class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                            <input type="hidden" :name="`colors[${i}][id]`" :value="color.id || ''">
+                            {{-- Swatch preview --}}
+                            <div class="w-8 h-8 rounded-full border border-gray-300 shrink-0 transition-colors"
+                                 :style="color.hex_code ? `background:${color.hex_code}` : 'background:#e5e7eb'"></div>
+                            {{-- Name --}}
+                            <input type="text" :name="`colors[${i}][name]`" x-model="color.name"
+                                   placeholder="Color name (e.g. Red)" class="form-input flex-1 text-sm" required>
+                            {{-- Hex code --}}
+                            <input type="text" :name="`colors[${i}][hex_code]`" x-model="color.hex_code"
+                                   placeholder="#FF0000" maxlength="7"
+                                   class="form-input w-24 text-sm font-mono text-center">
+                            {{-- Stock --}}
+                            <div class="shrink-0">
+                                <label class="text-xs text-gray-400 block text-center mb-0.5">Stock</label>
+                                <input type="number" :name="`colors[${i}][stock_quantity]`" x-model="color.stock_quantity"
+                                       min="0" class="form-input w-20 text-sm text-center">
+                            </div>
+                            {{-- Remove --}}
+                            <button type="button" @click="colors.splice(i, 1)"
+                                    class="btn-danger btn-sm shrink-0"><i class="fas fa-times"></i></button>
+                        </div>
+                    </template>
+
+                    <button type="button" @click="colors.push({ id: '', name: '', hex_code: '', stock_quantity: 0 })"
+                            class="btn-outline btn-sm">
+                        <i class="fas fa-plus mr-1"></i> Add Color
+                    </button>
+                </div>
+            </div>
+
             {{-- Social links --}}
             <div class="card">
                 <div class="card-header"><h2 class="font-semibold text-gray-800">Social Links</h2></div>

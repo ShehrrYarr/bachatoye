@@ -63,6 +63,11 @@ class Product extends Model
         return $this->hasMany(ProductSocialLink::class);
     }
 
+    public function colors()
+    {
+        return $this->hasMany(ProductColor::class)->orderBy('sort_order');
+    }
+
     public function stockMovements()
     {
         return $this->hasMany(StockMovement::class);

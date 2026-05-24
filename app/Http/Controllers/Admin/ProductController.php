@@ -7,6 +7,7 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Deal;
 use App\Models\Product;
+use App\Models\ProductColor;
 use App\Models\ProductImage;
 use App\Models\ProductSocialLink;
 use App\Models\ProductVideo;
@@ -119,19 +120,20 @@ class ProductController extends Controller
         }
 
         $this->saveSocialLinks($product, $request);
+        $this->saveColors($product, $request);
 
         return redirect()->route('admin.products.show', $product)->with('success', 'Product created successfully.');
     }
 
     public function show(Product $product)
     {
-        $product->load(['images', 'videos', 'socialLinks', 'category', 'brand']);
+        $product->load(['images', 'videos', 'socialLinks', 'colors', 'category', 'brand']);
         return view('admin.products.show', compact('product'));
     }
 
     public function edit(Product $product)
     {
-        $product->load(['images', 'videos', 'socialLinks']);
+        $product->load(['images', 'videos', 'socialLinks', 'colors']);
         $categories = Category::active()->get();
         $brands     = Brand::all();
         return view('admin.products.edit', compact('product', 'categories', 'brands'));
@@ -206,6 +208,7 @@ class ProductController extends Controller
         }
 
         $this->saveSocialLinks($product, $request);
+        $this->saveColors($product, $request);
 
         return redirect()->route('admin.products.show', $product)->with('success', 'Product updated.');
     }
@@ -311,6 +314,38 @@ class ProductController extends Controller
             if ($url && in_array($platform, $allowed)) {
                 $product->socialLinks()->create(['platform' => $platform, 'url' => $url]);
             }
+        }
+    }
+
+    private function saveColors(Product $product, Request $request): void
+    {
+        $submitted    = collect($request->input('colors', []));
+        $submittedIds = $submitted->pluck('id')->filter()->map(fn($id) => (int) $id);
+
+        // Delete colors removed from the form
+        $product->colors()->whereNotIn('id', $submittedIds)->delete();
+
+        foreach ($submitted as $i => $colorData) {
+            $name = trim($colorData['name'] ?? '');
+            if (!$name) continue;
+
+            $data = [
+                'name'           => $name,
+                'hex_code'       => trim($colorData['hex_code'] ?? '') ?: null,
+                'stock_quantity' => max(0, (int) ($colorData['stock_quantity'] ?? 0)),
+                'sort_order'     => $i,
+            ];
+
+            if (!empty($colorData['id'])) {
+                $product->colors()->where('id', (int) $colorData['id'])->update($data);
+            } else {
+                $product->colors()->create($data);
+            }
+        }
+
+        // Keep product.stock_quantity in sync with total color stock (if colors exist)
+        if ($product->colors()->count() > 0) {
+            $product->update(['stock_quantity' => $product->colors()->sum('stock_quantity')]);
         }
     }
 

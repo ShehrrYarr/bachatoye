@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AccountLedger;
 use App\Models\Customer;
 use App\Models\Order;
+use App\Models\ProductColor;
 use App\Models\OrderItem;
 use App\Models\PosSession;
 use App\Models\Product;
@@ -128,7 +129,7 @@ class PosController extends Controller
             ->where(fn($query) => $query->where('name', 'like', "%{$q}%")
                                         ->orWhere('barcode', 'like', "%{$q}%")
                                         ->orWhere('sku', 'like', "%{$q}%"))
-            ->with('images')
+            ->with(['images', 'colors'])
             ->limit(15)
             ->get()
             ->map(fn($p) => [
@@ -139,6 +140,12 @@ class PosController extends Controller
                 'cost_price' => $p->cost_price,
                 'stock'      => $p->stock_quantity,
                 'image'      => $p->primary_image_url,
+                'colors'     => $p->colors->map(fn($c) => [
+                    'id'             => $c->id,
+                    'name'           => $c->name,
+                    'hex_code'       => $c->hex_code,
+                    'stock_quantity' => $c->stock_quantity,
+                ])->values(),
             ]);
 
         return response()->json($products);
@@ -166,6 +173,12 @@ class PosController extends Controller
             'cost_price' => $product->cost_price,
             'stock'      => $product->stock_quantity,
             'image'      => $product->primary_image_url,
+            'colors'     => $product->colors->map(fn($c) => [
+                'id'             => $c->id,
+                'name'           => $c->name,
+                'hex_code'       => $c->hex_code,
+                'stock_quantity' => $c->stock_quantity,
+            ])->values(),
         ]);
     }
 
@@ -198,6 +211,7 @@ class PosController extends Controller
             'items.*.product_id'  => 'required|exists:products,id',
             'items.*.quantity'    => 'required|integer|min:1',
             'items.*.unit_price'  => 'required|numeric|min:0',
+            'items.*.color_id'    => 'nullable|exists:product_colors,id',
             'payment_method'      => 'required|in:cash,bank_transfer,khata,partial,split',
             'amount_paid'         => 'nullable|numeric|min:0',
             'cash_amount'         => 'nullable|numeric|min:0',
@@ -217,7 +231,19 @@ class PosController extends Controller
             foreach ($request->items as $item) {
                 $product = Product::lockForUpdate()->find($item['product_id']);
 
-                if ($product->track_inventory && $product->stock_quantity < $item['quantity']) {
+                // Resolve color (if specified)
+                $color     = null;
+                $colorName = null;
+                if (!empty($item['color_id'])) {
+                    $color = ProductColor::lockForUpdate()->find($item['color_id']);
+                    if ($color) {
+                        $colorName = $color->name;
+                        if ($color->stock_quantity < $item['quantity']) {
+                            DB::rollBack();
+                            return response()->json(['error' => "Insufficient stock for: {$product->name} ({$color->name})"], 422);
+                        }
+                    }
+                } elseif ($product->track_inventory && $product->stock_quantity < $item['quantity']) {
                     DB::rollBack();
                     return response()->json(['error' => "Insufficient stock for: {$product->name}"], 422);
                 }
@@ -227,6 +253,8 @@ class PosController extends Controller
 
                 $orderItems[] = [
                     'product'    => $product,
+                    'color'      => $color,
+                    'color_name' => $colorName,
                     'qty'        => $item['quantity'],
                     'price'      => $item['unit_price'],
                     'line_total' => $lineTotal,
@@ -284,17 +312,21 @@ class PosController extends Controller
 
             foreach ($orderItems as $item) {
                 OrderItem::create([
-                    'order_id'      => $order->id,
-                    'product_id'    => $item['product']->id,
-                    'product_name'  => $item['product']->name,
+                    'order_id'        => $order->id,
+                    'product_id'      => $item['product']->id,
+                    'product_name'    => $item['product']->name,
+                    'color_name'      => $item['color_name'],
                     'product_barcode' => $item['product']->barcode,
-                    'unit_price'    => $item['price'],
-                    'cost_price'    => $item['product']->cost_price,
-                    'quantity'      => $item['qty'],
-                    'line_total'    => $item['line_total'],
+                    'unit_price'      => $item['price'],
+                    'cost_price'      => $item['product']->cost_price,
+                    'quantity'        => $item['qty'],
+                    'line_total'      => $item['line_total'],
                 ]);
 
-                // Decrement stock
+                // Decrement color stock (if applicable) and product total stock
+                if ($item['color']) {
+                    $item['color']->decrement('stock_quantity', $item['qty']);
+                }
                 $before = $item['product']->stock_quantity;
                 $item['product']->decrement('stock_quantity', $item['qty']);
 

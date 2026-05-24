@@ -768,6 +768,35 @@
     </div>
 </div>
 
+{{-- Color Picker Modal --}}
+<div x-show="colorPickerProduct" x-transition class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-2xl p-6 w-80" @click.outside="colorPickerProduct = null">
+        <h3 class="font-bold text-gray-900 text-base mb-1" x-text="colorPickerProduct?.name"></h3>
+        <p class="text-xs text-gray-500 mb-4">Select a color to add to cart:</p>
+        <div class="space-y-2">
+            <template x-for="color in colorPickerProduct?.colors || []" :key="color.id">
+                <button type="button"
+                        @click="selectColorAndAdd(color)"
+                        :disabled="color.stock_quantity <= 0"
+                        class="w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all"
+                        :class="color.stock_quantity > 0
+                            ? 'border-gray-300 hover:border-primary-400 hover:bg-primary-50 cursor-pointer'
+                            : 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'">
+                    <div class="flex items-center gap-3">
+                        <div class="w-6 h-6 rounded-full border border-gray-300 shrink-0"
+                             :style="color.hex_code ? `background:${color.hex_code}` : 'background:#e5e7eb'"></div>
+                        <span class="text-sm font-medium text-gray-800" x-text="color.name"></span>
+                    </div>
+                    <span class="text-xs font-semibold"
+                          :class="color.stock_quantity > 0 ? 'text-green-600' : 'text-red-400'"
+                          x-text="color.stock_quantity > 0 ? color.stock_quantity + ' left' : 'Out of stock'"></span>
+                </button>
+            </template>
+        </div>
+        <button @click="colorPickerProduct = null" class="btn-outline w-full mt-4 justify-center text-sm">Cancel</button>
+    </div>
+</div>
+
 {{-- New Customer Modal --}}
 <div x-show="showNewCustomer" x-transition class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
     <div class="bg-white rounded-2xl shadow-2xl p-6 w-96" @click.outside="showNewCustomer = false">
@@ -814,6 +843,7 @@ function posApp() {
         orderNotes: '',
         processingOrder: false,
         showCostPrice: false,
+        colorPickerProduct: null,
 
         // Customer
         customerSearch: '',
@@ -869,18 +899,39 @@ function posApp() {
 
         addToCart(product) {
             if (product.stock <= 0) return;
-            const existing = this.cart.find(i => i.product_id === product.id);
+            // If product has colors, show color picker first
+            if (product.colors && product.colors.length > 0) {
+                this.colorPickerProduct = product;
+                return;
+            }
+            this.doAddToCart(product, null, null, product.stock);
+        },
+
+        selectColorAndAdd(color) {
+            const product = this.colorPickerProduct;
+            this.colorPickerProduct = null;
+            if (!product || color.stock_quantity <= 0) return;
+            this.doAddToCart(product, color.id, color.name, color.stock_quantity);
+        },
+
+        doAddToCart(product, colorId, colorName, maxStock) {
+            const cartKey  = colorId ? `${product.id}_c${colorId}` : `${product.id}`;
+            const existing = this.cart.find(i => i._key === cartKey);
             if (existing) {
-                if (existing.quantity < product.stock) existing.quantity++;
+                if (existing.quantity < maxStock) existing.quantity++;
             } else {
+                const label = product.name + (colorName ? ` — ${colorName}` : '');
                 this.cart.push({
+                    _key:       cartKey,
                     product_id: product.id,
-                    name: product.name,
-                    image: product.image,
-                    price: parseFloat(product.price),
+                    color_id:   colorId || null,
+                    color_name: colorName || null,
+                    name:       label,
+                    image:      product.image,
+                    price:      parseFloat(product.price),
                     cost_price: parseFloat(product.cost_price) || 0,
-                    quantity: 1,
-                    stock: product.stock,
+                    quantity:   1,
+                    stock:      maxStock,
                 });
             }
             this.recalculate();
@@ -1001,7 +1052,7 @@ function posApp() {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
                     body: JSON.stringify({
-                        items: this.cart.map(i => ({ product_id: i.product_id, quantity: i.quantity, unit_price: i.price })),
+                        items: this.cart.map(i => ({ product_id: i.product_id, quantity: i.quantity, unit_price: i.price, color_id: i.color_id || null })),
                         discount: this.discount,
                         payment_method: this.paymentMethod,
                         amount_paid: this.paymentMethod === 'partial' ? this.partialAmountPaid : null,

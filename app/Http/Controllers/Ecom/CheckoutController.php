@@ -81,14 +81,15 @@ class CheckoutController extends Controller
 
             foreach ($items as $item) {
                 OrderItem::create([
-                    'order_id'       => $order->id,
-                    'product_id'     => $item['product']->id,
-                    'product_name'   => $item['product']->name,
+                    'order_id'        => $order->id,
+                    'product_id'      => $item['product']->id,
+                    'product_name'    => $item['product']->name,
+                    'color_name'      => $item['color_name'] ?? null,
                     'product_barcode' => $item['product']->barcode,
-                    'unit_price'     => $item['price'],
-                    'cost_price'     => $item['product']->cost_price,
-                    'quantity'       => $item['quantity'],
-                    'line_total'     => $item['line_total'],
+                    'unit_price'      => $item['price'],
+                    'cost_price'      => $item['product']->cost_price,
+                    'quantity'        => $item['quantity'],
+                    'line_total'      => $item['line_total'],
                 ]);
                 // Stock is deducted when order status changes to "Delivered" in OrderController
             }
@@ -129,6 +130,8 @@ class CheckoutController extends Controller
             if (!$product) return null;
             return [
                 'product'    => $product,
+                'color_id'   => $item['color_id'] ?? null,
+                'color_name' => $item['color_name'] ?? null,
                 'quantity'   => $item['quantity'],
                 'price'      => $item['price'],
                 'line_total' => $item['price'] * $item['quantity'],

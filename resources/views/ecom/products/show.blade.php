@@ -176,9 +176,61 @@
 
             {{-- Add to cart --}}
             @if($product->isInStock())
-            <form method="POST" action="{{ route('cart.add') }}" class="mb-5">
+            @php $productColors = $product->colors; @endphp
+            <form method="POST" action="{{ route('cart.add') }}" class="mb-5"
+                  x-data="{
+                      selectedColorId: null,
+                      selectedColorName: '',
+                      selectedColorStock: 0,
+                      hasColors: {{ $productColors->count() > 0 ? 'true' : 'false' }},
+                      canAdd() { return !this.hasColors || this.selectedColorId !== null; }
+                  }">
                 @csrf
                 <input type="hidden" name="product_id" value="{{ $product->id }}">
+                <input type="hidden" name="color_id" :value="selectedColorId">
+
+                {{-- Color selector --}}
+                @if($productColors->count())
+                <div class="mb-5">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="text-sm font-semibold text-gray-700">Color:</span>
+                        <span class="text-sm text-gray-500" x-text="selectedColorName || 'Select a color'"></span>
+                        <span x-show="selectedColorStock > 0" class="text-xs text-gray-400"
+                              x-text="`(${selectedColorStock} left)`"></span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach($productColors as $color)
+                        @if($color->stock_quantity > 0)
+                        <button type="button"
+                                @click="selectedColorId = {{ $color->id }}; selectedColorName = '{{ $color->name }}'; selectedColorStock = {{ $color->stock_quantity }}"
+                                :class="selectedColorId === {{ $color->id }}
+                                    ? 'ring-2 ring-primary-500 ring-offset-2 border-primary-400'
+                                    : 'ring-1 ring-gray-300 hover:ring-gray-400'"
+                                class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all bg-white border">
+                            @if($color->hex_code)
+                            <span class="inline-block w-4 h-4 rounded-full border border-gray-200 shrink-0"
+                                  style="background: {{ $color->hex_code }}"></span>
+                            @endif
+                            {{ $color->name }}
+                        </button>
+                        @else
+                        <div class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-gray-200 bg-gray-50 text-gray-400 line-through cursor-not-allowed">
+                            @if($color->hex_code)
+                            <span class="inline-block w-4 h-4 rounded-full border border-gray-200 opacity-40 shrink-0"
+                                  style="background: {{ $color->hex_code }}"></span>
+                            @endif
+                            {{ $color->name }}
+                        </div>
+                        @endif
+                        @endforeach
+                    </div>
+                    <p x-show="hasColors && !selectedColorId"
+                       class="text-xs text-red-500 mt-2 font-medium">
+                        Please select a color to continue.
+                    </p>
+                </div>
+                @endif
+
                 <div class="flex items-center gap-3 mb-4">
                     <label class="text-sm font-medium text-gray-700">Qty:</label>
                     <div class="flex items-center border border-gray-300 rounded-xl overflow-hidden">
@@ -190,11 +242,12 @@
                     </div>
                 </div>
                 <div class="flex gap-3">
-                    <button type="submit" class="flex-1 btn-primary btn-lg justify-center">
+                    <button type="submit" :disabled="!canAdd()"
+                            class="flex-1 btn-primary btn-lg justify-center disabled:opacity-50 disabled:cursor-not-allowed">
                         <i class="fas fa-cart-plus mr-2"></i> Add to Cart
                     </button>
-                    <button type="submit" name="buy_now" value="1"
-                            class="flex-1 btn-lg justify-center font-semibold text-white"
+                    <button type="submit" name="buy_now" value="1" :disabled="!canAdd()"
+                            class="flex-1 btn-lg justify-center font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
                             style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); border-radius: 0.75rem; display:inline-flex; align-items:center; gap:0.4rem;">
                         <i class="fas fa-bolt"></i> Buy Now
                     </button>
