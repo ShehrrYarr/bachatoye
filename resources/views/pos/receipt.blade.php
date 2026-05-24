@@ -168,11 +168,9 @@
 
     {{-- Barcode --}}
     @if($order->order_number)
-    <div class="center" style="margin: 4px 0;">
-        <div style="font-size: 10px; letter-spacing: 3px; font-family: monospace;">
-            *{{ str_replace(['ORD-', '-'], '', $order->order_number) }}*
-        </div>
-        <div style="font-size: 10px;">{{ $order->order_number }}</div>
+    <div class="center" style="margin: 6px 0 2px;">
+        <svg id="receiptBarcode" style="max-width:100%;display:block;margin:0 auto;"></svg>
+        <div style="font-size: 10px; margin-top: 2px; letter-spacing: 1px;">{{ $order->order_number }}</div>
     </div>
     <div class="divider"></div>
     @endif
@@ -195,7 +193,19 @@
         </button>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
     <script>
+        // Render barcode
+        JsBarcode('#receiptBarcode', '{{ $order->order_number }}', {
+            format:       'CODE128',
+            lineColor:    '#000000',
+            background:   '#ffffff',
+            width:        2,
+            height:       55,
+            displayValue: false,
+            margin:       0,
+        });
+
         // Auto-print when opened in a popup
         if (window.opener) {
             window.addEventListener('load', () => window.print());
