@@ -117,6 +117,73 @@
 </section>
 @endif
 
+{{-- Hot Deals Slider --}}
+@if($dealProductChunks->count())
+@php $totalSlides = $dealProductChunks->count(); @endphp
+<section class="max-w-7xl mx-auto px-4 mt-12"
+         x-data="{ slide: 0, total: {{ $totalSlides }} }">
+
+    {{-- Section header --}}
+    <div class="flex items-center justify-between mb-5">
+        <div class="flex items-center gap-3">
+            <div class="w-1 h-7 bg-gradient-to-b from-red-500 to-pink-600 rounded-full"></div>
+            <div>
+                <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    <i class="fas fa-fire text-red-500"></i> Hot Deals
+                </h2>
+                <p class="text-sm text-gray-500">Best prices, limited time</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            {{-- Prev / Next --}}
+            @if($totalSlides > 1)
+            <div class="flex gap-2">
+                <button @click="slide = (slide - 1 + total) % total"
+                        class="w-9 h-9 rounded-full border border-gray-300 hover:border-red-400 hover:bg-red-50 flex items-center justify-center text-gray-600 hover:text-red-600 transition-all">
+                    <i class="fas fa-chevron-left text-xs"></i>
+                </button>
+                <button @click="slide = (slide + 1) % total"
+                        class="w-9 h-9 rounded-full border border-gray-300 hover:border-red-400 hover:bg-red-50 flex items-center justify-center text-gray-600 hover:text-red-600 transition-all">
+                    <i class="fas fa-chevron-right text-xs"></i>
+                </button>
+            </div>
+            @endif
+            <a href="{{ route('deals.index') }}" class="text-sm text-primary-600 hover:underline font-medium">View All</a>
+        </div>
+    </div>
+
+    {{-- Slides --}}
+    <div class="relative overflow-hidden">
+        @foreach($dealProductChunks as $slideIndex => $chunk)
+        <div x-show="slide === {{ $slideIndex }}"
+             x-transition:enter="transition-all duration-400 ease-out"
+             x-transition:enter-start="opacity-0 translate-x-8"
+             x-transition:enter-end="opacity-100 translate-x-0"
+             x-transition:leave="transition-all duration-200 ease-in"
+             x-transition:leave-start="opacity-100 translate-x-0"
+             x-transition:leave-end="opacity-0 -translate-x-8"
+             class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            @foreach($chunk as $product)
+                @include('ecom.partials.product-card', ['product' => $product])
+            @endforeach
+        </div>
+        @endforeach
+    </div>
+
+    {{-- Dot indicators --}}
+    @if($totalSlides > 1)
+    <div class="flex justify-center gap-2 mt-5">
+        @for($d = 0; $d < $totalSlides; $d++)
+        <button @click="slide = {{ $d }}"
+                :class="slide === {{ $d }} ? 'bg-red-500 w-6' : 'bg-gray-300 hover:bg-gray-400 w-2'"
+                class="h-2 rounded-full transition-all duration-300"></button>
+        @endfor
+    </div>
+    @endif
+
+</section>
+@endif
+
 {{-- Featured Products --}}
 @if($featuredProducts->count())
 <section class="max-w-7xl mx-auto px-4 mt-12">

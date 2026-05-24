@@ -19,9 +19,18 @@ class HomeController extends Controller
         $newArrivals    = Product::active()->inStock()->with(['images', 'category'])->latest()->take(8)->get();
         $activeDeals    = Deal::active()->take(4)->get();
 
+        $dealProductChunks = Product::active()->inStock()
+            ->whereHas('deals', fn($q) => $q->where('is_active', true)
+                ->where(fn($q2) => $q2->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
+                ->where(fn($q2) => $q2->whereNull('ends_at')->orWhere('ends_at', '>=', now()))
+            )
+            ->with(['images', 'category', 'deals'])
+            ->get()
+            ->chunk(6);
+
         return view('ecom.home', compact(
             'heroBanners', 'promoBanners', 'categories',
-            'featuredProducts', 'newArrivals', 'activeDeals'
+            'featuredProducts', 'newArrivals', 'activeDeals', 'dealProductChunks'
         ));
     }
 }
