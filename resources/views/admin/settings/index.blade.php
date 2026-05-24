@@ -176,12 +176,14 @@
                 {{-- Hidden checkbox for form submission --}}
                 <input type="checkbox" name="exchange_{{ $section->id }}" value="1" class="sr-only" x-model="on">
 
-                {{-- Visual toggle --}}
-                <div class="relative ml-4 shrink-0 cursor-pointer w-11 h-6 rounded-full transition-colors duration-200"
-                     :class="on ? 'bg-primary-600' : 'bg-gray-300'"
+                {{-- Visual toggle — use :style so colors render regardless of Tailwind compilation --}}
+                <div class="relative ml-4 shrink-0 cursor-pointer rounded-full"
+                     style="width:44px;height:24px;transition:background-color 0.2s;"
+                     :style="{ backgroundColor: on ? '#e11d48' : '#d1d5db' }"
                      @click="on = !on">
-                    <div class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200"
-                         :class="on ? 'translate-x-5' : 'translate-x-0'"></div>
+                    <div class="absolute bg-white rounded-full shadow-sm"
+                         style="top:2px;left:2px;width:20px;height:20px;transition:transform 0.2s;"
+                         :style="{ transform: on ? 'translateX(20px)' : 'translateX(0)' }"></div>
                 </div>
             </div>
             @empty
