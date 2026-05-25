@@ -23,8 +23,9 @@ class SectionController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'       => 'required|string|max:100|unique:sections',
-            'sort_order' => 'nullable|integer|min:0',
+            'name'             => 'required|string|max:100|unique:sections',
+            'sort_order'       => 'nullable|integer|min:0',
+            'barcode_prefix'   => 'nullable|string|max:10|alpha_num|unique:sections,barcode_prefix',
         ]);
 
         $data['slug']       = Str::slug($data['name']);
@@ -44,8 +45,9 @@ class SectionController extends Controller
     public function update(Request $request, Section $section)
     {
         $data = $request->validate([
-            'name'       => 'required|string|max:100|unique:sections,name,' . $section->id,
-            'sort_order' => 'nullable|integer|min:0',
+            'name'             => 'required|string|max:100|unique:sections,name,' . $section->id,
+            'sort_order'       => 'nullable|integer|min:0',
+            'barcode_prefix'   => 'nullable|string|max:10|alpha_num|unique:sections,barcode_prefix,' . $section->id,
         ]);
 
         $data['slug']       = Str::slug($data['name']);

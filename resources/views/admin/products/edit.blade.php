@@ -351,7 +351,9 @@ function productEditForm() {
         trackInventory: {{ old('track_inventory', $product->track_inventory) ? 'true' : 'false' }},
         async generateBarcode() {
             try {
-                const res = await fetch('/admin/products/generate-barcode');
+                const categoryId = document.querySelector('[name="category_id"]')?.value || '';
+                const url = '/admin/products/generate-barcode' + (categoryId ? '?category_id=' + categoryId : '');
+                const res = await fetch(url);
                 const data = await res.json();
                 document.getElementById('barcode').value = data.barcode;
             } catch(e) {}

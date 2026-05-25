@@ -19,6 +19,15 @@
                 @error('name') <p class="form-error">{{ $message }}</p> @enderror
             </div>
             <div>
+                <label class="form-label">Barcode Prefix <span class="text-gray-400 font-normal text-xs">(optional)</span></label>
+                <input type="text" name="barcode_prefix" value="{{ old('barcode_prefix', $section->barcode_prefix) }}"
+                       class="form-input w-40 font-mono uppercase @error('barcode_prefix') border-red-500 @enderror"
+                       placeholder="e.g. MOB" maxlength="10"
+                       oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')">
+                @error('barcode_prefix') <p class="form-error">{{ $message }}</p> @enderror
+                <p class="form-hint">Alphanumeric, max 10 chars. Leave blank to use the global numeric sequence.</p>
+            </div>
+            <div>
                 <label class="form-label">Sort Order</label>
                 <input type="number" name="sort_order" value="{{ old('sort_order', $section->sort_order) }}"
                        min="0" class="form-input w-32">

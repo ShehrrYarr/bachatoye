@@ -19,6 +19,7 @@
             <tr>
                 <th>Section Name</th>
                 <th>Slug</th>
+                <th>Barcode Prefix</th>
                 <th>Categories</th>
                 <th>Sort Order</th>
                 <th class="text-right">Actions</th>
@@ -29,6 +30,13 @@
             <tr>
                 <td class="font-semibold text-gray-800">{{ $section->name }}</td>
                 <td class="font-mono text-xs text-gray-400">{{ $section->slug }}</td>
+                <td>
+                    @if($section->barcode_prefix)
+                        <span class="font-mono text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">{{ $section->barcode_prefix }}-####</span>
+                    @else
+                        <span class="text-xs text-gray-400">Global sequence</span>
+                    @endif
+                </td>
                 <td>
                     <span class="badge bg-blue-100 text-blue-700">{{ $section->categories_count }} categories</span>
                 </td>
@@ -48,7 +56,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="5" class="text-center py-10 text-gray-400">
+                <td colspan="6" class="text-center py-10 text-gray-400">
                     <i class="fas fa-layer-group text-4xl mb-2"></i>
                     <p>No sections yet. Create your first section.</p>
                 </td>
