@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\Section;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
@@ -18,6 +19,15 @@ class ProductController extends Controller
             $q = $request->q;
             $query->where(fn($sq) => $sq->where('name', 'like', "%{$q}%")
                                         ->orWhere('short_description', 'like', "%{$q}%"));
+        }
+
+        // Section filter — used by "View All" links on per-section new arrivals
+        if ($request->filled('section')) {
+            $section = Section::where('slug', $request->section)->first();
+            if ($section) {
+                $catIds = Category::active()->where('section_id', $section->id)->pluck('id');
+                $query->whereIn('category_id', $catIds);
+            }
         }
 
         if ($request->filled('category')) {

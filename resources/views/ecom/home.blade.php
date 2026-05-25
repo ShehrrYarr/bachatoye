@@ -423,23 +423,43 @@ window._catData = @js(
 </section>
 @endif
 
-{{-- New Arrivals --}}
-@if($newArrivals->count())
-<section class="max-w-7xl mx-auto px-4 mt-12 mb-8">
+{{-- New Arrivals — one row per section --}}
+@php
+    $sectionAccents = [
+        'from-primary-500 to-primary-700',
+        'from-emerald-500 to-teal-600',
+        'from-amber-500 to-orange-600',
+        'from-rose-500 to-pink-600',
+        'from-violet-500 to-purple-700',
+    ];
+@endphp
+
+@foreach($sectionNewArrivals as $i => $data)
+<section class="max-w-7xl mx-auto px-4 mt-12 {{ $loop->last ? 'mb-8' : '' }}">
     <div class="flex items-center justify-between mb-5">
-        <div>
-            <h2 class="text-xl font-bold text-gray-900">New Arrivals</h2>
-            <p class="text-sm text-gray-500">Just landed in store</p>
+        <div class="flex items-center gap-3">
+            {{-- Accent bar — cycles through palette --}}
+            <div class="w-1 h-8 bg-gradient-to-b {{ $sectionAccents[$i % count($sectionAccents)] }} rounded-full"></div>
+            <div>
+                <h2 class="text-xl font-bold text-gray-900">
+                    New in {{ $data['section']->name }}
+                </h2>
+                <p class="text-sm text-gray-500">Latest arrivals — {{ $data['section']->name }}</p>
+            </div>
         </div>
-        <a href="{{ route('products.index', ['sort' => 'newest']) }}" class="text-sm text-primary-600 hover:underline font-medium">View All</a>
+        <a href="{{ route('products.index', ['section' => $data['section']->slug, 'sort' => 'newest']) }}"
+           class="text-sm text-primary-600 hover:underline font-medium">
+            View All <i class="fas fa-arrow-right text-xs ml-1"></i>
+        </a>
     </div>
+
     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-        @foreach($newArrivals as $product)
+        @foreach($data['products'] as $product)
             @include('ecom.partials.product-card', ['product' => $product])
         @endforeach
     </div>
 </section>
-@endif
+@endforeach
 
 {{-- Trust badges --}}
 <section class="bg-white border-t border-gray-100 mt-12">
