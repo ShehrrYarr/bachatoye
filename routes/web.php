@@ -189,6 +189,16 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('settings/logo', [Admin\SettingController::class, 'uploadLogo'])->name('settings.logo');
     Route::post('settings/account', [Admin\SettingController::class, 'updateAccount'])->name('settings.account');
     Route::post('settings/sections', [Admin\SettingController::class, 'updateSectionPermissions'])->name('settings.sections');
+
+    // Run pending migrations from the browser (admin only)
+    Route::get('run-migrations', function () {
+        $before = \Illuminate\Support\Facades\DB::table('migrations')->pluck('migration')->toArray();
+        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        $output = \Illuminate\Support\Facades\Artisan::output();
+        $after  = \Illuminate\Support\Facades\DB::table('migrations')->pluck('migration')->toArray();
+        $ran    = array_values(array_diff($after, $before));
+        return view('admin.run-migrations', compact('output', 'ran'));
+    })->name('run_migrations');
 });
 
 /*
