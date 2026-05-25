@@ -72,10 +72,10 @@
                     @foreach($posChart as $day)
                         <div class="flex-1 flex flex-col items-center gap-1">
                             @if($day['total'] > 0)
-                            <div class="text-xs text-gray-500" style="font-size:9px;">{{ number_format($day['total'] / 1000, 1) }}k</div>
+                            <div class="text-gray-500" style="font-size:9px;">{{ number_format($day['total'] / 1000, 1) }}k</div>
                             @endif
-                            <div class="w-full bg-purple-500 hover:bg-purple-600 rounded-t-sm transition-all"
-                                 style="height: {{ max(4, ($day['total'] / $posMax) * 100) }}px"
+                            <div class="w-full rounded-t-sm transition-all"
+                                 style="height:{{ max(4, ($day['total'] / $posMax) * 100) }}px; background:#7c3aed;"
                                  title="Rs. {{ number_format($day['total']) }}"></div>
                             <div class="text-gray-400" style="font-size:9px;">{{ $day['date'] }}</div>
                         </div>
@@ -98,10 +98,10 @@
                     @foreach($ecomChart as $day)
                         <div class="flex-1 flex flex-col items-center gap-1">
                             @if($day['total'] > 0)
-                            <div class="text-xs text-gray-500" style="font-size:9px;">{{ number_format($day['total'] / 1000, 1) }}k</div>
+                            <div class="text-gray-500" style="font-size:9px;">{{ number_format($day['total'] / 1000, 1) }}k</div>
                             @endif
-                            <div class="w-full bg-primary-500 hover:bg-primary-600 rounded-t-sm transition-all"
-                                 style="height: {{ max(4, ($day['total'] / $ecomMax) * 100) }}px"
+                            <div class="w-full rounded-t-sm transition-all"
+                                 style="height:{{ max(4, ($day['total'] / $ecomMax) * 100) }}px; background:#e11d48;"
                                  title="Rs. {{ number_format($day['total']) }}"></div>
                             <div class="text-gray-400" style="font-size:9px;">{{ $day['date'] }}</div>
                         </div>
