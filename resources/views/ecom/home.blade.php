@@ -218,79 +218,80 @@ function heroBanner(total, interval) {
         @endforeach
     </div>
 
-    {{-- ── Subcategory Modal ─────────────────────────────────────────────── --}}
-    <div x-show="modal"
-         x-cloak
-         @keydown.escape.window="modal = false"
-         class="fixed inset-0 z-50 flex items-center justify-center p-4"
-         style="display:none">
-
-        {{-- Backdrop --}}
-        <div class="absolute inset-0" @click="modal = false"
-             style="background:rgba(0,0,0,0.55)"></div>
-
-        {{-- Card --}}
+    {{-- ── Subcategory Modal (teleported to <body> so position:fixed works correctly) --}}
+    <template x-teleport="body">
         <div x-show="modal"
-             x-transition:enter="transition ease-out duration-200"
-             x-transition:enter-start="opacity-0 translate-y-3 scale-95"
-             x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-             x-transition:leave="transition ease-in duration-150"
-             x-transition:leave-start="opacity-100 scale-100"
-             x-transition:leave-end="opacity-0 scale-95"
-             class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+             x-cloak
+             @keydown.escape.window="modal = false"
+             class="fixed inset-0 z-50 flex items-center justify-center p-4">
 
-            {{-- Header --}}
-            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <div>
-                    <h3 class="font-bold text-gray-900 text-base" x-text="parentName"></h3>
-                    <p class="text-xs text-gray-500 mt-0.5">Select a sub-category to browse</p>
-                </div>
-                <button @click="modal = false"
-                        class="w-8 h-8 rounded-full flex items-center justify-center transition-colors shrink-0"
-                        style="background:#f3f4f6">
-                    <i class="fas fa-times text-gray-500 text-sm"></i>
-                </button>
-            </div>
+            {{-- Backdrop --}}
+            <div class="absolute inset-0" @click="modal = false"
+                 style="background:rgba(0,0,0,0.55)"></div>
 
-            <div class="p-5 space-y-3 max-h-[70vh] overflow-y-auto">
+            {{-- Card --}}
+            <div x-show="modal"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 translate-y-3 scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden z-10">
 
-                {{-- "All in [Category]" row --}}
-                <a :href="'/category/' + parentSlug"
-                   class="flex items-center gap-3 p-3 rounded-xl border-2 transition-all group"
-                   style="border-color:#c4b5fd; background:#f5f3ff">
-                    <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-                         style="background:#7c3aed">
-                        <i class="fas fa-th-large text-white text-sm"></i>
+                {{-- Header --}}
+                <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                    <div>
+                        <h3 class="font-bold text-gray-900 text-base" x-text="parentName"></h3>
+                        <p class="text-xs text-gray-500 mt-0.5">Select a sub-category to browse</p>
                     </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="font-semibold text-sm" style="color:#6d28d9"
-                             x-text="'All in ' + parentName"></div>
-                        <div class="text-xs" style="color:#8b5cf6">View all products in this category</div>
-                    </div>
-                    <i class="fas fa-chevron-right text-xs" style="color:#a78bfa"></i>
-                </a>
-
-                {{-- Sub-category grid --}}
-                <div class="grid grid-cols-2 gap-2">
-                    <template x-for="sub in subs" :key="sub.slug">
-                        <a :href="'/category/' + sub.slug"
-                           class="flex items-center gap-2 p-3 rounded-xl border border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-all">
-                            <img :src="sub.image_url" :alt="sub.name"
-                                 class="w-9 h-9 object-cover rounded-lg bg-gray-100 shrink-0"
-                                 onerror="this.src='/images/category-placeholder.png'">
-                            <div class="min-w-0">
-                                <div class="text-xs font-semibold text-gray-800 leading-tight truncate"
-                                     x-text="sub.name"></div>
-                                <div class="text-xs text-gray-400"
-                                     x-text="sub.count + ' items'"></div>
-                            </div>
-                        </a>
-                    </template>
+                    <button @click="modal = false"
+                            class="w-8 h-8 rounded-full flex items-center justify-center transition-colors shrink-0"
+                            style="background:#f3f4f6">
+                        <i class="fas fa-times text-gray-500 text-sm"></i>
+                    </button>
                 </div>
 
+                <div class="p-5 space-y-3 max-h-[70vh] overflow-y-auto">
+
+                    {{-- "All in [Category]" row --}}
+                    <a :href="'/category/' + parentSlug"
+                       class="flex items-center gap-3 p-3 rounded-xl border-2 transition-all"
+                       style="border-color:#c4b5fd; background:#f5f3ff">
+                        <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                             style="background:#7c3aed">
+                            <i class="fas fa-th-large text-white text-sm"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="font-semibold text-sm" style="color:#6d28d9"
+                                 x-text="'All in ' + parentName"></div>
+                            <div class="text-xs" style="color:#8b5cf6">View all products in this category</div>
+                        </div>
+                        <i class="fas fa-chevron-right text-xs" style="color:#a78bfa"></i>
+                    </a>
+
+                    {{-- Sub-category grid --}}
+                    <div class="grid grid-cols-2 gap-2">
+                        <template x-for="sub in subs" :key="sub.slug">
+                            <a :href="'/category/' + sub.slug"
+                               class="flex items-center gap-2 p-3 rounded-xl border border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-all">
+                                <img :src="sub.image_url" :alt="sub.name"
+                                     class="w-9 h-9 object-cover rounded-lg bg-gray-100 shrink-0"
+                                     onerror="this.src='/images/category-placeholder.png'">
+                                <div class="min-w-0">
+                                    <div class="text-xs font-semibold text-gray-800 leading-tight truncate"
+                                         x-text="sub.name"></div>
+                                    <div class="text-xs text-gray-400"
+                                         x-text="sub.count + ' items'"></div>
+                                </div>
+                            </a>
+                        </template>
+                    </div>
+
+                </div>
             </div>
         </div>
-    </div>
+    </template>
 
 </section>
 
