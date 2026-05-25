@@ -19,10 +19,6 @@ class DashboardController extends Controller
                                         ->sum('total'),
             'today_orders'      => Order::whereDate('created_at', today())->count(),
             'pending_orders'    => Order::where('status', 'pending')->count(),
-            'low_stock'         => Product::active()->where('track_inventory', true)
-                                           ->where('low_stock_dismissed', false)
-                                           ->whereColumn('stock_quantity', '<=', 'low_stock_threshold')
-                                           ->count(),
             'total_customers'   => Customer::count(),
             'outstanding_khata' => abs(Customer::where('credit_balance', '<', 0)->sum('credit_balance')),
             'month_sales'       => Order::whereMonth('created_at', now()->month)

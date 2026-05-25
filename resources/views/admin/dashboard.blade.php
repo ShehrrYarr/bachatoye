@@ -6,7 +6,7 @@
 <div class="space-y-6">
 
     {{-- Stat Cards --}}
-    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3 md:p-6 flex items-start gap-3">
             <div class="stat-icon bg-blue-50 shrink-0">
                 <i class="fas fa-shopping-bag text-blue-600 text-xl"></i>
@@ -31,20 +31,7 @@
             </div>
         </div>
 
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3 md:p-6 flex items-start gap-3">
-            <div class="stat-icon bg-red-50 shrink-0">
-                <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
-            </div>
-            <div class="min-w-0">
-                <div class="text-lg md:text-2xl font-bold text-gray-900">{{ $stats['low_stock'] }}</div>
-                <div class="text-xs text-gray-500 mt-0.5">Low Stock Items</div>
-                <div class="text-xs">
-                    <a href="{{ route('admin.inventory.low_stock') }}" class="text-red-600 hover:underline">View</a>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3 md:p-6 flex items-start gap-3">
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3 md:p-6 flex items-start gap-3">
             <div class="stat-icon bg-orange-50 shrink-0">
                 <i class="fas fa-hand-holding-usd text-orange-600 text-xl"></i>
             </div>
