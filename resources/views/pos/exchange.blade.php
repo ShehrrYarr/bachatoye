@@ -330,6 +330,8 @@ function exchangeApp() {
             return this.selectedItem !== null && this.newCart.length > 0;
         },
 
+        // ── Helpers ──────────────────────────────────────────────────────────
+
         async findOrder() {
             if (!this.orderSearch.trim()) return;
             this.searching = true;
@@ -356,9 +358,11 @@ function exchangeApp() {
         },
 
         selectItem(item) {
-            this.selectedItem = item;
-            this.returnQty    = item.quantity;
-            this.exchangeValue = parseFloat(item.unit_price) * item.quantity;
+            // Spread into a plain object to break Alpine.js Proxy entanglement
+            // with the x-for scope — prevents the loop from re-rendering incorrectly.
+            this.selectedItem  = { ...item };
+            this.returnQty     = parseInt(item.quantity) || 1;
+            this.exchangeValue = parseFloat(item.unit_price) * (parseInt(item.quantity) || 1);
             this.recalculate();
         },
 
