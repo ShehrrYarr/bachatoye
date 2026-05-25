@@ -61,7 +61,7 @@ class PosExchangeController extends Controller
             $originalOrder  = Order::with('items')->find($request->original_order_id);
             $returnOrderItem = OrderItem::find($request->return_item_id);
 
-            if (!$returnOrderItem || $returnOrderItem->order_id !== $originalOrder->id) {
+            if (!$returnOrderItem || (int)$returnOrderItem->order_id !== (int)$originalOrder->id) {
                 DB::rollBack();
                 return response()->json(['error' => 'Invalid order item for this order.'], 422);
             }
