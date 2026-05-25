@@ -279,6 +279,13 @@
                         <span class="text-sm font-medium text-gray-700">Featured product</span>
                     </label>
                     <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="show_in_ecom" value="1" {{ old('show_in_ecom', true) ? 'checked' : '' }}
+                               class="w-4 h-4 text-primary-600 rounded">
+                        <span class="text-sm font-medium text-gray-700">Show on website
+                            <span class="block text-xs font-normal text-gray-400">Uncheck to make this product POS-only (hidden from the online store)</span>
+                        </span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" name="is_new_arrival" value="1" {{ old('is_new_arrival') ? 'checked' : '' }}
                                class="w-4 h-4 text-primary-600 rounded">
                         <span class="text-sm font-medium text-gray-700">New Arrival</span>

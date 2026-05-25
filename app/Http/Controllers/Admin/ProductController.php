@@ -74,6 +74,7 @@ class ProductController extends Controller
             'sku'                 => 'nullable|string|max:100|unique:products',
             'is_active'           => 'boolean',
             'is_featured'         => 'boolean',
+            'show_in_ecom'        => 'boolean',
             'track_inventory'     => 'boolean',
             'images'              => 'nullable|array',
             'images.*'            => 'image|max:5120',
@@ -83,6 +84,7 @@ class ProductController extends Controller
 
         $data['is_active']       = $request->boolean('is_active');
         $data['is_featured']     = $request->boolean('is_featured');
+        $data['show_in_ecom']    = $request->boolean('show_in_ecom', true);
         $data['track_inventory'] = $request->boolean('track_inventory', true);
 
         // Generate barcode if not provided
@@ -167,6 +169,7 @@ class ProductController extends Controller
             'sku'                 => 'nullable|string|max:100|unique:products,sku,' . $product->id,
             'is_active'           => 'boolean',
             'is_featured'         => 'boolean',
+            'show_in_ecom'        => 'boolean',
             'track_inventory'     => 'boolean',
             'images'              => 'nullable|array',
             'images.*'            => 'image|max:5120',
@@ -176,6 +179,7 @@ class ProductController extends Controller
 
         $data['is_active']       = $request->boolean('is_active');
         $data['is_featured']     = $request->boolean('is_featured');
+        $data['show_in_ecom']    = $request->boolean('show_in_ecom', true);
         $data['track_inventory'] = $request->boolean('track_inventory', true);
 
         // Strip non-model fields before updating

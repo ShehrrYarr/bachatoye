@@ -13,7 +13,7 @@ class Product extends Model
         'name', 'slug', 'sku', 'barcode', 'short_description', 'description',
         'price', 'cost_price', 'compare_price', 'stock_quantity',
         'low_stock_threshold', 'low_stock_dismissed', 'category_id', 'subcategory_id', 'brand_id',
-        'is_active', 'is_featured', 'track_inventory',
+        'is_active', 'is_featured', 'show_in_ecom', 'track_inventory',
     ];
 
     protected function casts(): array
@@ -24,6 +24,7 @@ class Product extends Model
             'compare_price'        => 'decimal:2',
             'is_active'            => 'boolean',
             'is_featured'          => 'boolean',
+            'show_in_ecom'         => 'boolean',
             'track_inventory'      => 'boolean',
             'low_stock_dismissed'  => 'boolean',
         ];
@@ -124,6 +125,11 @@ class Product extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    public function scopeEcomVisible($query)
+    {
+        return $query->where('show_in_ecom', true);
     }
 
     public function scopeFeatured($query)

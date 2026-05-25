@@ -18,11 +18,11 @@ class HomeController extends Controller
                             ->withCount('products')
                             ->with(['children' => fn($q) => $q->active()->withCount('products')])
                             ->orderBy('sort_order')->take(8)->get();
-        $featuredProducts = Product::active()->inStock()->featured()->with(['images', 'category'])->take(8)->get();
-        $newArrivals    = Product::active()->inStock()->with(['images', 'category'])->latest()->take(8)->get();
+        $featuredProducts = Product::active()->inStock()->ecomVisible()->featured()->with(['images', 'category'])->take(8)->get();
+        $newArrivals    = Product::active()->inStock()->ecomVisible()->with(['images', 'category'])->latest()->take(8)->get();
         $activeDeals    = Deal::active()->take(4)->get();
 
-        $dealProductChunks = Product::active()->inStock()
+        $dealProductChunks = Product::active()->inStock()->ecomVisible()
             ->whereHas('deals', fn($q) => $q->where('is_active', true)
                 ->where(fn($q2) => $q2->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
                 ->where(fn($q2) => $q2->whereNull('ends_at')->orWhere('ends_at', '>=', now()))
