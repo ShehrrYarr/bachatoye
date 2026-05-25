@@ -27,6 +27,9 @@
 <a href="{{ route('admin.deals.index') }}" class="sidebar-link {{ $is('admin.deals') ? 'active' : '' }}">
     <i class="fas fa-percent"></i> Deals
 </a>
+<a href="{{ route('admin.coupons.index') }}" class="sidebar-link {{ $is('admin.coupons') ? 'active' : '' }}">
+    <i class="fas fa-ticket-alt"></i> Coupons
+</a>
 <a href="{{ route('admin.banners.index') }}" class="sidebar-link {{ $is('admin.banners') ? 'active' : '' }}">
     <i class="fas fa-image"></i> Banners
 </a>

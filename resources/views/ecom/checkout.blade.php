@@ -160,6 +160,14 @@
                                 <span>Rs. {{ number_format($deliveryCharge) }}</span>
                             @endif
                         </div>
+                        @if($couponDiscount > 0)
+                        <div class="flex justify-between text-green-700 font-medium bg-green-50 rounded-lg px-2 py-1.5">
+                            <span class="flex items-center gap-1">
+                                <i class="fas fa-ticket-alt text-xs"></i> {{ $couponCode }}
+                            </span>
+                            <span>– Rs. {{ number_format($couponDiscount) }}</span>
+                        </div>
+                        @endif
                         <div class="flex justify-between font-bold text-gray-900 text-base border-t border-gray-200 pt-2">
                             <span>Total</span>
                             <span class="text-primary-700">Rs. {{ number_format($total) }}</span>

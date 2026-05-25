@@ -24,9 +24,12 @@ class CheckoutController extends Controller
         $deliveryCharge = (float) Setting::get('delivery_charge', 150);
         $freeAbove      = (float) Setting::get('free_delivery_above', 5000);
         if ($subtotal >= $freeAbove) $deliveryCharge = 0;
-        $total = $subtotal + $deliveryCharge;
 
-        return view('ecom.checkout', compact('items', 'subtotal', 'deliveryCharge', 'total'));
+        $couponCode     = session('coupon_code');
+        $couponDiscount = (float) session('coupon_discount', 0);
+        $total = max(0, $subtotal + $deliveryCharge - $couponDiscount);
+
+        return view('ecom.checkout', compact('items', 'subtotal', 'deliveryCharge', 'couponCode', 'couponDiscount', 'total'));
     }
 
     public function store(Request $request)
@@ -49,7 +52,10 @@ class CheckoutController extends Controller
         $deliveryCharge = (float) Setting::get('delivery_charge', 150);
         $freeAbove      = (float) Setting::get('free_delivery_above', 5000);
         if ($subtotal >= $freeAbove) $deliveryCharge = 0;
-        $total = $subtotal + $deliveryCharge;
+
+        $couponId       = session('coupon_id');
+        $couponDiscount = (float) session('coupon_discount', 0);
+        $total          = max(0, $subtotal + $deliveryCharge - $couponDiscount);
 
         DB::beginTransaction();
         try {
@@ -64,19 +70,21 @@ class CheckoutController extends Controller
             }
 
             $order = Order::create([
-                'source'          => 'ecommerce',
-                'customer_id'     => $customer->id,
-                'customer_name'   => $data['name'],
-                'customer_phone'  => $data['phone'],
+                'source'           => 'ecommerce',
+                'customer_id'      => $customer->id,
+                'customer_name'    => $data['name'],
+                'customer_phone'   => $data['phone'],
                 'delivery_address' => $data['address'],
-                'city'            => $data['city'],
-                'delivery_notes'  => $data['notes'] ?? null,
-                'subtotal'        => $subtotal,
-                'delivery_charge' => $deliveryCharge,
-                'total'           => $total,
-                'payment_method'  => $data['payment_method'],
-                'payment_status'  => 'pending',
-                'status'          => 'pending',
+                'city'             => $data['city'],
+                'delivery_notes'   => $data['notes'] ?? null,
+                'subtotal'         => $subtotal,
+                'delivery_charge'  => $deliveryCharge,
+                'coupon_id'        => $couponId,
+                'coupon_discount'  => $couponDiscount,
+                'total'            => $total,
+                'payment_method'   => $data['payment_method'],
+                'payment_status'   => 'pending',
+                'status'           => 'pending',
             ]);
 
             foreach ($items as $item) {
@@ -95,7 +103,7 @@ class CheckoutController extends Controller
             }
 
             DB::commit();
-            session()->forget('cart');
+            session()->forget(['cart', 'coupon_id', 'coupon_code', 'coupon_name', 'coupon_discount']);
 
             return redirect()->route('checkout.success', $order->order_number);
 

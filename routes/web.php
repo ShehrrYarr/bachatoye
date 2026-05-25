@@ -26,6 +26,9 @@ Route::prefix('cart')->name('cart.')->group(function () {
     Route::patch('/update/{rowId}', [Ecom\CartController::class, 'update'])->name('update');
     Route::delete('/remove/{rowId}', [Ecom\CartController::class, 'remove'])->name('remove');
     Route::delete('/clear', [Ecom\CartController::class, 'clear'])->name('clear');
+    // Coupon
+    Route::post('/coupon', [Ecom\CouponController::class, 'apply'])->name('coupon.apply');
+    Route::delete('/coupon', [Ecom\CouponController::class, 'remove'])->name('coupon.remove');
 });
 
 // Checkout (guest only — no login required)
@@ -103,6 +106,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     // Deals
     Route::resource('deals', Admin\DealController::class);
     Route::patch('deals/{deal}/toggle', [Admin\DealController::class, 'toggle'])->name('deals.toggle');
+
+    // Coupons
+    Route::resource('coupons', Admin\CouponController::class);
+    Route::patch('coupons/{coupon}/toggle', [Admin\CouponController::class, 'toggle'])->name('coupons.toggle');
 
     // Orders
     Route::get('orders', [Admin\OrderController::class, 'index'])->name('orders.index');

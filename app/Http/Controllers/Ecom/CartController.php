@@ -29,9 +29,17 @@ class CartController extends Controller
         $freeAbove      = (float) \App\Models\Setting::get('free_delivery_above', 5000);
         if ($subtotal >= $freeAbove) $deliveryCharge = 0;
 
-        $total = $subtotal + $deliveryCharge;
+        // Coupon from session
+        $couponCode     = session('coupon_code');
+        $couponName     = session('coupon_name');
+        $couponDiscount = (float) session('coupon_discount', 0);
 
-        return view('ecom.cart', compact('items', 'subtotal', 'deliveryCharge', 'total'));
+        $total = max(0, $subtotal + $deliveryCharge - $couponDiscount);
+
+        return view('ecom.cart', compact(
+            'items', 'subtotal', 'deliveryCharge', 'total',
+            'couponCode', 'couponName', 'couponDiscount'
+        ));
     }
 
     public function add(Request $request)
@@ -122,6 +130,8 @@ class CartController extends Controller
     public function clear()
     {
         $this->saveCart([]);
+        // Also clear any applied coupon
+        session()->forget(['coupon_id', 'coupon_code', 'coupon_name', 'coupon_discount']);
         return back()->with('success', 'Cart cleared.');
     }
 

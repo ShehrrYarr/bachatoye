@@ -14,6 +14,7 @@ class Order extends Model
         'payment_method', 'payment_status', 'payment_proof', 'payment_notes',
         'notes', 'exchange_item_name', 'exchange_value',
         'status', 'tracking_number', 'served_by', 'deal_id',
+        'coupon_id', 'coupon_discount',
     ];
 
     protected function casts(): array
@@ -22,6 +23,7 @@ class Order extends Model
             'subtotal'        => 'decimal:2',
             'discount_amount' => 'decimal:2',
             'delivery_charge' => 'decimal:2',
+            'coupon_discount' => 'decimal:2',
             'total'           => 'decimal:2',
             'amount_paid'     => 'decimal:2',
             'cash_amount'     => 'decimal:2',
@@ -54,6 +56,11 @@ class Order extends Model
     public function deal()
     {
         return $this->belongsTo(Deal::class);
+    }
+
+    public function coupon()
+    {
+        return $this->belongsTo(Coupon::class);
     }
 
     public function items()

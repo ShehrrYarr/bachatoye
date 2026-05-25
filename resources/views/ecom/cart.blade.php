@@ -106,10 +106,59 @@
                         Add Rs. {{ number_format($freeAbove - $subtotal) }} more for free delivery
                     </div>
                     @endif
+
+                    @if($couponDiscount > 0)
+                    <div class="flex justify-between text-green-700 font-medium bg-green-50 rounded-lg px-3 py-2">
+                        <span class="flex items-center gap-1.5">
+                            <i class="fas fa-ticket-alt text-xs"></i>
+                            {{ $couponCode }}
+                        </span>
+                        <span>– Rs. {{ number_format($couponDiscount) }}</span>
+                    </div>
+                    @endif
+
                     <div class="border-t border-gray-200 pt-3 flex justify-between font-bold text-gray-900 text-base">
                         <span>Total</span>
                         <span class="text-primary-700">Rs. {{ number_format($total) }}</span>
                     </div>
+                </div>
+
+                {{-- Coupon box --}}
+                <div class="mt-4 border-t border-gray-100 pt-4">
+                    @if($couponCode)
+                        <div class="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-3 py-2.5">
+                            <div>
+                                <span class="text-xs font-bold text-green-700 uppercase tracking-widest font-mono">{{ $couponCode }}</span>
+                                <span class="text-xs text-green-600 ml-1.5">applied!</span>
+                            </div>
+                            <form method="POST" action="{{ route('cart.coupon.remove') }}">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="text-red-400 hover:text-red-600 text-xs font-medium transition-colors">
+                                    <i class="fas fa-times mr-1"></i>Remove
+                                </button>
+                            </form>
+                        </div>
+                    @else
+                        @error('coupon_code')
+                            <p class="text-red-500 text-xs mb-2">
+                                <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
+                            </p>
+                        @enderror
+                        <form method="POST" action="{{ route('cart.coupon.apply') }}" class="flex gap-2">
+                            @csrf
+                            <input type="text" name="coupon_code"
+                                   value="{{ old('coupon_code') }}"
+                                   placeholder="Coupon code"
+                                   class="flex-1 text-sm border border-gray-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono tracking-widest uppercase @error('coupon_code') border-red-400 @enderror">
+                            <button type="submit"
+                                    class="shrink-0 bg-gray-800 hover:bg-gray-900 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
+                                Apply
+                            </button>
+                        </form>
+                        <p class="text-xs text-gray-400 mt-1.5">
+                            <i class="fas fa-gift mr-1"></i>Have a thank-you coupon? Enter it here.
+                        </p>
+                    @endif
                 </div>
 
                 <a href="{{ route('checkout.index') }}" class="btn-primary btn-lg w-full justify-center mt-5">
