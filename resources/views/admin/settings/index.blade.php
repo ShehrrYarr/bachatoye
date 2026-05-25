@@ -89,6 +89,28 @@
             </div>
         </div>
 
+        {{-- Banner Slider --}}
+        <div class="card">
+            <div class="card-header"><h2 class="font-semibold text-gray-800">Banner Slider</h2></div>
+            <div class="card-body space-y-4">
+                <div>
+                    <label class="form-label">Auto-Slide Interval (seconds)</label>
+                    <div class="flex items-center gap-4">
+                        <input type="range" name="banner_slider_interval"
+                               min="2" max="15" step="1"
+                               value="{{ old('banner_slider_interval', \App\Models\Setting::get('banner_slider_interval', 5)) }}"
+                               class="w-48 accent-primary-600"
+                               oninput="document.getElementById('slider_interval_val').textContent = this.value">
+                        <span class="text-lg font-bold text-primary-600 w-12" id="slider_interval_val">
+                            {{ \App\Models\Setting::get('banner_slider_interval', 5) }}
+                        </span>
+                        <span class="text-sm text-gray-500">seconds per slide</span>
+                    </div>
+                    <p class="form-hint mt-2">Controls how long each banner is shown before auto-advancing (2 – 15 s)</p>
+                </div>
+            </div>
+        </div>
+
         {{-- Payment --}}
         <div class="card">
             <div class="card-header"><h2 class="font-semibold text-gray-800">Payment & Bank</h2></div>

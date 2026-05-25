@@ -5,42 +5,123 @@
 
 {{-- Hero Banner Slider --}}
 @if($heroBanners->count())
-<section class="relative overflow-hidden bg-gray-900" x-data="{ active: 0, total: {{ $heroBanners->count() }} }" x-init="setInterval(() => active = (active + 1) % total, 5000)">
-    @foreach($heroBanners as $i => $banner)
-    <div x-show="active === {{ $i }}" x-transition:enter="transition-opacity duration-700" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition-opacity duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-         class="relative w-full" style="min-height: 420px;">
-        <img src="{{ $banner->image_url }}" alt="{{ $banner->title }}" class="w-full object-cover" style="height: 420px;">
-        <div class="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent flex items-center">
-            <div class="max-w-7xl mx-auto px-4 w-full">
-                <div class="max-w-lg">
-                    @if($banner->title)
-                        <h1 class="text-3xl md:text-5xl font-extrabold text-white leading-tight mb-3">{{ $banner->title }}</h1>
-                    @endif
-                    @if($banner->subtitle)
-                        <p class="text-gray-200 text-lg mb-6">{{ $banner->subtitle }}</p>
-                    @endif
-                    @if($banner->link_url)
-                        <a href="{{ $banner->link_url }}" class="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold px-6 py-3 rounded-xl transition-colors shadow-lg">
-                            {{ $banner->button_text ?: 'Shop Now' }}
-                            <i class="fas fa-arrow-right"></i>
-                        </a>
-                    @endif
+@php $sliderInterval = max(2, (int)\App\Models\Setting::get('banner_slider_interval', 5)); @endphp
+<section class="relative bg-gray-900 select-none"
+         x-data="heroBanner({{ $heroBanners->count() }}, {{ $sliderInterval * 1000 }})"
+         x-init="init()"
+         @mouseenter="pause()"
+         @mouseleave="resume()">
+
+    {{-- ── Slides strip ─────────────────────────────────────────────────────── --}}
+    <div class="overflow-hidden">
+        <div class="flex"
+             :style="'transform:translateX(-' + (active * 100) + '%); transition:transform 750ms cubic-bezier(0.25,0.46,0.45,0.94)'">
+            @foreach($heroBanners as $banner)
+            <div class="relative shrink-0 w-full" style="min-width:100%; height:480px;">
+                <img src="{{ $banner->image_url }}" alt="{{ $banner->title ?? '' }}"
+                     class="w-full h-full object-cover">
+                <div class="absolute inset-0 flex items-center"
+                     style="background:linear-gradient(to right,rgba(0,0,0,.65) 0%,rgba(0,0,0,.25) 55%,transparent 100%)">
+                    <div class="max-w-7xl mx-auto px-6 w-full">
+                        <div class="max-w-lg">
+                            @if($banner->title)
+                            <h1 class="text-3xl md:text-5xl font-extrabold text-white leading-tight mb-3 drop-shadow-lg">
+                                {{ $banner->title }}
+                            </h1>
+                            @endif
+                            @if($banner->subtitle)
+                            <p class="text-gray-200 text-lg mb-6 drop-shadow">{{ $banner->subtitle }}</p>
+                            @endif
+                            @if($banner->link_url)
+                            <a href="{{ $banner->link_url }}"
+                               class="inline-flex items-center gap-2 text-white font-semibold px-6 py-3 rounded-xl transition-colors shadow-lg"
+                               style="background:#be123c">
+                                {{ $banner->button_text ?: 'Shop Now' }}
+                                <i class="fas fa-arrow-right"></i>
+                            </a>
+                            @endif
+                        </div>
+                    </div>
                 </div>
             </div>
+            @endforeach
         </div>
     </div>
-    @endforeach
 
-    {{-- Dots --}}
     @if($heroBanners->count() > 1)
-    <div class="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
+    {{-- ── Prev arrow ──────────────────────────────────────────────────────── --}}
+    <button @click="prev()"
+            class="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center text-white transition-all"
+            style="background:rgba(0,0,0,.35)" onmouseover="this.style.background='rgba(0,0,0,.65)'" onmouseout="this.style.background='rgba(0,0,0,.35)'">
+        <i class="fas fa-chevron-left text-sm"></i>
+    </button>
+
+    {{-- ── Next arrow ──────────────────────────────────────────────────────── --}}
+    <button @click="next()"
+            class="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center text-white transition-all"
+            style="background:rgba(0,0,0,.35)" onmouseover="this.style.background='rgba(0,0,0,.65)'" onmouseout="this.style.background='rgba(0,0,0,.35)'">
+        <i class="fas fa-chevron-right text-sm"></i>
+    </button>
+
+    {{-- ── Dots + timer ring ───────────────────────────────────────────────── --}}
+    <div class="absolute bottom-5 left-0 right-0 flex items-center justify-center gap-2 z-10">
         @foreach($heroBanners as $i => $banner)
-        <button @click="active = {{ $i }}" :class="active === {{ $i }} ? 'bg-white w-6' : 'bg-white/50 w-2'"
-                class="h-2 rounded-full transition-all duration-300"></button>
+        <button @click="goTo({{ $i }})"
+                class="rounded-full transition-all duration-300"
+                :style="active === {{ $i }}
+                    ? 'width:28px; height:6px; background:white;'
+                    : 'width:6px;  height:6px; background:rgba(255,255,255,0.45);'">
+        </button>
         @endforeach
     </div>
+
+    {{-- ── Progress bar ────────────────────────────────────────────────────── --}}
+    <div class="absolute bottom-0 left-0 right-0 z-10" style="height:3px; background:rgba(255,255,255,.2)">
+        <div class="h-full"
+             style="background:rgba(255,255,255,.75)"
+             :style="'width:' + progress + '%; transition: width ' + (progress > 0 ? interval + 'ms' : '0ms') + ' linear'">
+        </div>
+    </div>
     @endif
+
 </section>
+
+@push('scripts')
+<script>
+function heroBanner(total, interval) {
+    return {
+        active:   0,
+        total,
+        interval,
+        progress: 0,
+        _timer:   null,
+        _paused:  false,
+
+        init() {
+            if (this.total > 1) this._schedule();
+        },
+
+        _schedule() {
+            clearTimeout(this._timer);
+            // Instantly reset progress bar, then animate to 100 %
+            this.progress = 0;
+            this.$nextTick(() => requestAnimationFrame(() => { this.progress = 100; }));
+            this._timer = setTimeout(() => {
+                if (!this._paused) this.goTo((this.active + 1) % this.total);
+            }, this.interval);
+        },
+
+        goTo(i) { this.active = i; this._schedule(); },
+        prev()   { this.goTo((this.active - 1 + this.total) % this.total); },
+        next()   { this.goTo((this.active + 1) % this.total); },
+
+        pause()  { this._paused = true;  clearTimeout(this._timer); this.progress = 0; },
+        resume() { this._paused = false; this._schedule(); },
+    };
+}
+</script>
+@endpush
+
 @else
 {{-- Fallback hero if no banners --}}
 <section class="bg-gradient-to-br from-primary-600 to-primary-800 text-white py-20 px-4 text-center">
