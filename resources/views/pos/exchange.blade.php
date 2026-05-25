@@ -57,9 +57,9 @@
                     <div class="card-body space-y-3">
                         <template x-for="item in orderItems" :key="item.id">
                             <div class="flex items-center gap-3 p-3 border-2 rounded-xl cursor-pointer transition-all"
-                                 :class="selectedItem?.id === item.id
-                                     ? 'border-indigo-400 bg-indigo-50'
-                                     : 'border-gray-200 hover:border-gray-300'"
+                                 :style="selectedItem?.id === item.id
+                                     ? 'border-color:#818cf8; background-color:#eef2ff;'
+                                     : 'border-color:#e5e7eb;'"
                                  @click="selectItem(item)">
                                 <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors"
                                      :class="selectedItem?.id === item.id ? 'border-indigo-600 bg-indigo-600' : 'border-gray-300'">
@@ -279,8 +279,10 @@
                     {{-- Confirm Button --}}
                     <button @click="confirmExchange()"
                             :disabled="!canConfirm || processing"
-                            class="w-full justify-center font-semibold py-3 rounded-xl text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                            :class="canConfirm ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-400'">
+                            class="w-full justify-center font-semibold py-3 rounded-xl text-white transition-all"
+                            :style="canConfirm
+                                ? 'background-color:#4f46e5; cursor:pointer;'
+                                : 'background-color:#9ca3af; opacity:0.5; cursor:not-allowed;'">
                         <span x-show="!processing">
                             <i class="fas fa-sync-alt mr-2"></i> Confirm Exchange
                         </span>
