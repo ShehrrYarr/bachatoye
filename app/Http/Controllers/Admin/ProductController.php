@@ -65,7 +65,7 @@ class ProductController extends Controller
             'price'               => 'required|numeric|min:0',
             'cost_price'          => 'required|numeric|min:0',
             'compare_price'       => 'nullable|numeric|min:0',
-            'stock_quantity'      => 'required|integer|min:0',
+            'stock_quantity'      => 'nullable|integer|min:0',
             'low_stock_threshold' => 'required|integer|min:0',
             'category_id'         => 'nullable|exists:categories,id',
             'subcategory_id'      => 'nullable|exists:categories,id',
@@ -86,6 +86,7 @@ class ProductController extends Controller
         $data['is_featured']     = $request->boolean('is_featured');
         $data['show_in_ecom']    = $request->boolean('show_in_ecom', true);
         $data['track_inventory'] = $request->boolean('track_inventory', true);
+        $data['stock_quantity']  = $data['stock_quantity'] ?? 0;
 
         // Generate barcode if not provided
         if (empty($data['barcode'])) {
@@ -160,7 +161,7 @@ class ProductController extends Controller
             'price'               => 'required|numeric|min:0',
             'cost_price'          => 'required|numeric|min:0',
             'compare_price'       => 'nullable|numeric|min:0',
-            'stock_quantity'      => 'required|integer|min:0',
+            'stock_quantity'      => 'nullable|integer|min:0',
             'low_stock_threshold' => 'required|integer|min:0',
             'category_id'         => 'nullable|exists:categories,id',
             'subcategory_id'      => 'nullable|exists:categories,id',
