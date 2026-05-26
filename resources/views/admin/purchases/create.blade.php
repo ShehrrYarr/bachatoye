@@ -300,12 +300,12 @@
 <div x-data="purchaseCreateModal()"
      x-show="$store.quickCreate.open"
      x-transition.opacity
-     class="fixed inset-0 z-50 flex items-center justify-center p-4"
+     class="fixed inset-0 z-50 overflow-y-auto"
      style="display:none;">
 
     <div class="absolute inset-0 bg-black/50" @click="close()"></div>
 
-    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col z-10">
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-auto my-8 flex flex-col z-10">
 
         {{-- Header --}}
         <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 shrink-0">
@@ -317,8 +317,8 @@
             </button>
         </div>
 
-        {{-- Scrollable body --}}
-        <div class="overflow-y-auto flex-1 p-5 space-y-4 text-sm">
+        {{-- Body --}}
+        <div class="p-5 space-y-4 text-sm">
 
             {{-- ── Basic Info ── --}}
             <div class="space-y-3">
