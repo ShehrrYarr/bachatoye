@@ -100,15 +100,9 @@
                                x-model="trackInventory" class="w-4 h-4 text-primary-600 rounded">
                         <label for="track_inventory" class="text-sm font-medium text-gray-700 cursor-pointer">Track inventory</label>
                     </div>
-                    <div class="grid grid-cols-2 gap-4" x-show="trackInventory">
-                        <div>
-                            <label class="form-label">Stock Quantity</label>
-                            <input type="number" name="stock_quantity" value="{{ old('stock_quantity', $product->stock_quantity) }}" min="0" class="form-input">
-                        </div>
-                        <div>
-                            <label class="form-label">Low Stock Threshold</label>
-                            <input type="number" name="low_stock_threshold" value="{{ old('low_stock_threshold', $product->low_stock_threshold) }}" min="0" class="form-input">
-                        </div>
+                    <div x-show="trackInventory">
+                        <label class="form-label">Low Stock Threshold</label>
+                        <input type="number" name="low_stock_threshold" value="{{ old('low_stock_threshold', $product->low_stock_threshold) }}" min="0" class="form-input w-48">
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
@@ -203,10 +197,9 @@
             {{-- Colors --}}
             @php
                 $existingColors = $product->colors->map(fn($c) => [
-                    'id'             => $c->id,
-                    'name'           => $c->name,
-                    'hex_code'       => $c->hex_code ?? '',
-                    'stock_quantity' => $c->stock_quantity,
+                    'id'       => $c->id,
+                    'name'     => $c->name,
+                    'hex_code' => $c->hex_code ?? '',
                 ])->values()->toArray();
             @endphp
             <div class="card">
@@ -240,20 +233,13 @@
                             <input type="text" :name="`colors[${i}][name]`" x-model="color.name"
                                    placeholder="Color name (e.g. Red)" class="form-input flex-1 text-sm" required>
 
-                            {{-- Stock --}}
-                            <div class="shrink-0">
-                                <label class="text-xs text-gray-400 block text-center mb-0.5">Stock</label>
-                                <input type="number" :name="`colors[${i}][stock_quantity]`" x-model="color.stock_quantity"
-                                       min="0" class="form-input w-20 text-sm text-center">
-                            </div>
-
                             {{-- Remove --}}
                             <button type="button" @click="colors.splice(i, 1)"
                                     class="btn-danger btn-sm shrink-0"><i class="fas fa-times"></i></button>
                         </div>
                     </template>
 
-                    <button type="button" @click="colors.push({ id: '', name: '', hex_code: '', stock_quantity: 0 })"
+                    <button type="button" @click="colors.push({ id: '', name: '', hex_code: '' })"
                             class="btn-outline btn-sm">
                         <i class="fas fa-plus mr-1"></i> Add Color
                     </button>
