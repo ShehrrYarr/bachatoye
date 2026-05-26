@@ -281,13 +281,20 @@
 </form>
 
 {{-- ── Quick Create Product Modal ─────────────────────────────────────── --}}
-{{-- Pass categories+children as JSON for subcategory JS filtering --}}
+{{-- Build categories JSON in a PHP block to avoid Blade bracket-parsing issues --}}
+@php
+    $categoriesJson = json_encode($categories->map(function($c) {
+        return [
+            'id'       => $c->id,
+            'name'     => $c->name,
+            'children' => $c->children->map(function($s) {
+                return ['id' => $s->id, 'name' => $s->name];
+            })->values(),
+        ];
+    })->values());
+@endphp
 <script>
-    const _categoriesData = @json($categories->map(fn($c) => [
-        'id'       => $c->id,
-        'name'     => $c->name,
-        'children' => $c->children->map(fn($s) => ['id' => $s->id, 'name' => $s->name])->values(),
-    ])->values());
+    const _categoriesData = {!! $categoriesJson !!};
 </script>
 
 <div x-data="purchaseCreateModal()"
