@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Brand;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductColor;
 use App\Models\Purchase;
@@ -11,6 +13,7 @@ use App\Models\Vendor;
 use App\Models\VendorLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class PurchaseController extends Controller
 {
@@ -39,9 +42,56 @@ class PurchaseController extends Controller
 
     public function create()
     {
-        $vendors  = Vendor::orderBy('name')->get();
-        $products = Product::orderBy('name')->get(['id', 'name', 'cost_price', 'sku']);
-        return view('admin.purchases.create', compact('vendors', 'products'));
+        $vendors    = Vendor::orderBy('name')->get();
+        $products   = Product::orderBy('name')->get(['id', 'name', 'cost_price', 'sku']);
+        $categories = Category::active()->whereNull('parent_id')->orderBy('name')->get(['id', 'name']);
+        $brands     = Brand::orderBy('name')->get(['id', 'name']);
+        return view('admin.purchases.create', compact('vendors', 'products', 'categories', 'brands'));
+    }
+
+    public function quickCreateProduct(Request $request)
+    {
+        $data = $request->validate([
+            'name'                => 'required|string|max:255',
+            'category_id'         => 'nullable|exists:categories,id',
+            'brand_id'            => 'nullable|exists:brands,id',
+            'sku'                 => 'nullable|string|max:100|unique:products,sku',
+            'cost_price'          => 'required|numeric|min:0',
+            'price'               => 'required|numeric|min:0',
+            'low_stock_threshold' => 'nullable|integer|min:0',
+            'show_in_ecom'        => 'nullable|boolean',
+        ]);
+
+        // Generate a unique slug
+        $slug = Str::slug($data['name']);
+        $original = $slug;
+        $count = 1;
+        while (Product::where('slug', $slug)->exists()) {
+            $slug = $original . '-' . $count++;
+        }
+
+        $product = Product::create([
+            'name'                => $data['name'],
+            'slug'                => $slug,
+            'category_id'         => $data['category_id'] ?? null,
+            'brand_id'            => $data['brand_id'] ?? null,
+            'sku'                 => $data['sku'] ?? null,
+            'cost_price'          => $data['cost_price'],
+            'price'               => $data['price'],
+            'stock_quantity'      => 0,
+            'low_stock_threshold' => $data['low_stock_threshold'] ?? 5,
+            'track_inventory'     => true,
+            'is_active'           => true,
+            'show_in_ecom'        => $data['show_in_ecom'] ?? false,
+        ]);
+
+        return response()->json([
+            'id'         => $product->id,
+            'name'       => $product->name,
+            'sku'        => $product->sku,
+            'cost_price' => $product->cost_price,
+            'colors'     => [],
+        ]);
     }
 
     public function store(Request $request)

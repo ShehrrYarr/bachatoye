@@ -8,7 +8,8 @@
 </div>
 
 <form method="POST" action="{{ route('admin.purchases.store') }}"
-      x-data="purchaseForm()" @submit.prevent="submitForm">
+      x-data="purchaseForm()" @submit.prevent="submitForm"
+      @product-created.window="onProductCreated($event.detail)">
     @csrf
 
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -27,11 +28,15 @@
                                    placeholder="Search product by name or SKU..."
                                    class="form-input pl-9">
                             <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                            <div x-show="showDropdown && searchResults.length > 0"
-                                 class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-30 max-h-64 overflow-y-auto">
+
+                            {{-- Search dropdown --}}
+                            <div x-show="showDropdown && searchQuery.length >= 2"
+                                 class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-30 max-h-72 overflow-y-auto">
+
+                                {{-- Existing results --}}
                                 <template x-for="p in searchResults" :key="p.id">
                                     <button type="button" @click="addProduct(p)"
-                                            class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 text-left transition-colors">
+                                            class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 text-left transition-colors border-b border-gray-100 last:border-0">
                                         <div class="flex-1 min-w-0">
                                             <div class="text-sm font-medium text-gray-800 truncate" x-text="p.name"></div>
                                             <div class="text-xs text-gray-400" x-text="p.sku ? 'SKU: ' + p.sku : ''"></div>
@@ -45,6 +50,23 @@
                                         </div>
                                     </button>
                                 </template>
+
+                                {{-- No results message --}}
+                                <div x-show="searchResults.length === 0" class="px-4 py-2.5 text-xs text-gray-400 border-b border-gray-100">
+                                    No existing products found
+                                </div>
+
+                                {{-- Always show "Create new product" option --}}
+                                <button type="button" @click="openCreateModal()"
+                                        class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-green-50 text-left transition-colors text-green-700">
+                                    <div class="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                                        <i class="fas fa-plus text-green-600 text-xs"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-semibold">Create new product</div>
+                                        <div class="text-xs text-green-600" x-text="'Add \'' + searchQuery + '\' as a new product'"></div>
+                                    </div>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -258,8 +280,126 @@
 
 </form>
 
+{{-- ── Quick Create Product Modal ─────────────────────────────────────── --}}
+<div x-data="purchaseCreateModal()"
+     x-show="$store.quickCreate.open"
+     x-transition.opacity
+     class="fixed inset-0 z-50 flex items-center justify-center p-4"
+     style="display:none;">
+
+    {{-- Backdrop --}}
+    <div class="absolute inset-0 bg-black/50" @click="close()"></div>
+
+    {{-- Modal panel --}}
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto z-10">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-bold text-gray-900">
+                <i class="fas fa-plus-circle text-green-500 mr-2"></i>Create New Product
+            </h2>
+            <button type="button" @click="close()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+
+        <div class="p-6 space-y-4">
+
+            {{-- Name --}}
+            <div>
+                <label class="form-label">Product Name <span class="text-red-500">*</span></label>
+                <input type="text" x-model="form.name" class="form-input" placeholder="e.g. Samsung A55 Cover" required>
+                <p x-show="errors.name" x-text="errors.name" class="form-error mt-1"></p>
+            </div>
+
+            {{-- Category + Brand --}}
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="form-label">Category</label>
+                    <select x-model="form.category_id" class="form-select">
+                        <option value="">— None —</option>
+                        @foreach($categories as $cat)
+                        <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Brand</label>
+                    <select x-model="form.brand_id" class="form-select">
+                        <option value="">— None —</option>
+                        @foreach($brands as $brand)
+                        <option value="{{ $brand->id }}">{{ $brand->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            {{-- SKU --}}
+            <div>
+                <label class="form-label">SKU <span class="text-gray-400 font-normal">(optional)</span></label>
+                <input type="text" x-model="form.sku" class="form-input font-mono" placeholder="Leave blank to skip">
+                <p x-show="errors.sku" x-text="errors.sku" class="form-error mt-1"></p>
+            </div>
+
+            {{-- Cost + Selling Price --}}
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="form-label">Cost Price (Rs.) <span class="text-red-500">*</span></label>
+                    <input type="number" x-model.number="form.cost_price" min="0" step="0.01" class="form-input">
+                    <p class="form-hint">What you pay the vendor</p>
+                    <p x-show="errors.cost_price" x-text="errors.cost_price" class="form-error mt-1"></p>
+                </div>
+                <div>
+                    <label class="form-label">Selling Price (Rs.) <span class="text-red-500">*</span></label>
+                    <input type="number" x-model.number="form.price" min="0" step="0.01" class="form-input">
+                    <p class="form-hint">What you sell it for</p>
+                    <p x-show="errors.price" x-text="errors.price" class="form-error mt-1"></p>
+                </div>
+            </div>
+
+            {{-- Low stock + Show in ecom --}}
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="form-label">Low Stock Alert</label>
+                    <input type="number" x-model.number="form.low_stock_threshold" min="0" class="form-input">
+                </div>
+                <div class="flex flex-col justify-end pb-0.5">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" x-model="form.show_in_ecom" class="w-4 h-4 text-primary-600 rounded">
+                        <span class="text-sm font-medium text-gray-700">Show on website</span>
+                    </label>
+                    <p class="text-xs text-gray-400 mt-1 ml-6">Visible to customers online</p>
+                </div>
+            </div>
+
+            {{-- General error --}}
+            <p x-show="errors.general" x-text="errors.general" class="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2"></p>
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-200 flex gap-3 justify-end">
+            <button type="button" @click="close()" class="btn-outline">Cancel</button>
+            <button type="button" @click="save()" :disabled="saving"
+                    class="btn-primary" :class="saving ? 'opacity-60 cursor-wait' : ''">
+                <template x-if="saving">
+                    <i class="fas fa-spinner fa-spin mr-2"></i>
+                </template>
+                <template x-if="!saving">
+                    <i class="fas fa-check mr-2"></i>
+                </template>
+                <span x-text="saving ? 'Creating...' : 'Create & Add to Purchase'"></span>
+            </button>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script>
+// Shared store so the modal can talk to the purchase form
+document.addEventListener('alpine:init', () => {
+    Alpine.store('quickCreate', {
+        open: false,
+        prefillName: '',
+    });
+});
+
 function purchaseForm() {
     return {
         items: [],
@@ -277,6 +417,14 @@ function purchaseForm() {
             const res = await fetch(`/admin/api/products/search?q=${encodeURIComponent(this.searchQuery)}`);
             this.searchResults = await res.json();
             this.showDropdown = true;
+        },
+
+        openCreateModal() {
+            this.showDropdown = false;
+            this.$store.quickCreate.prefillName = this.searchQuery;
+            this.$store.quickCreate.open = true;
+            this.searchQuery = '';
+            this.searchResults = [];
         },
 
         addProduct(p) {
@@ -330,6 +478,11 @@ function purchaseForm() {
             const res  = await fetch(`/admin/api/vendors/${this.vendorId}/balance`);
             const data = await res.json();
             this.vendorBalance = data.balance;
+        },
+
+        // Called by the modal after a product is created — add it to the list
+        onProductCreated(p) {
+            this.addProduct(p);
         },
 
         submitForm() {
@@ -389,6 +542,99 @@ function purchaseForm() {
 
             this.$el.submit();
         }
+    };
+}
+
+function purchaseCreateModal() {
+    return {
+        saving: false,
+        form: {
+            name: '',
+            category_id: '',
+            brand_id: '',
+            sku: '',
+            cost_price: 0,
+            price: 0,
+            low_stock_threshold: 5,
+            show_in_ecom: false,
+        },
+        errors: {},
+
+        init() {
+            // Watch for the store opening and prefill name
+            this.$watch('$store.quickCreate.open', (val) => {
+                if (val) {
+                    this.errors = {};
+                    this.form = {
+                        name: this.$store.quickCreate.prefillName || '',
+                        category_id: '',
+                        brand_id: '',
+                        sku: '',
+                        cost_price: 0,
+                        price: 0,
+                        low_stock_threshold: 5,
+                        show_in_ecom: false,
+                    };
+                }
+            });
+        },
+
+        close() {
+            this.$store.quickCreate.open = false;
+        },
+
+        async save() {
+            this.errors = {};
+
+            if (!this.form.name.trim()) {
+                this.errors.name = 'Product name is required.';
+                return;
+            }
+            if (!this.form.cost_price || this.form.cost_price <= 0) {
+                this.errors.cost_price = 'Cost price is required.';
+                return;
+            }
+            if (!this.form.price || this.form.price <= 0) {
+                this.errors.price = 'Selling price is required.';
+                return;
+            }
+
+            this.saving = true;
+            try {
+                const res = await fetch('{{ route('admin.api.products.quick-create') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify(this.form),
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    // Laravel validation errors come as { errors: { field: [msg] } }
+                    if (data.errors) {
+                        Object.entries(data.errors).forEach(([key, msgs]) => {
+                            this.errors[key] = msgs[0];
+                        });
+                    } else {
+                        this.errors.general = data.message || 'Something went wrong.';
+                    }
+                    return;
+                }
+
+                // Dispatch event so purchaseForm picks up the new product
+                this.$dispatch('product-created', data);
+                this.close();
+
+            } catch (e) {
+                this.errors.general = 'Network error. Please try again.';
+            } finally {
+                this.saving = false;
+            }
+        },
     };
 }
 </script>

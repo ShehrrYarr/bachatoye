@@ -135,6 +135,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::resource('vendors', Admin\VendorController::class);
     Route::post('vendors/{vendor}/ledger', [Admin\VendorController::class, 'addLedgerEntry'])->name('vendors.ledger.add');
     Route::get('api/vendors/{vendor}/balance', fn(\App\Models\Vendor $vendor) => response()->json(['balance' => $vendor->balance]))->name('api.vendor.balance');
+    Route::post('api/products/quick-create', [Admin\PurchaseController::class, 'quickCreateProduct'])->name('api.products.quick-create');
     Route::get('api/products/search', function (\Illuminate\Http\Request $request) {
         $q = $request->input('q', '');
         if (strlen($q) < 2) return response()->json([]);
