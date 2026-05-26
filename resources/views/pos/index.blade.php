@@ -66,7 +66,7 @@
                     <div @click="addToCart(product)"
                          class="pos-product-tile"
                          :class="product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'">
-                        <div class="aspect-square bg-gray-100 rounded-lg overflow-hidden mb-2">
+                        <div class="h-20 bg-gray-100 rounded-lg overflow-hidden mb-2">
                             <img :src="product.image" :alt="product.name" class="w-full h-full object-cover">
                         </div>
                         <div class="text-xs font-semibold text-gray-800 leading-tight line-clamp-2 mb-1" x-text="product.name"></div>
