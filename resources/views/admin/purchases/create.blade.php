@@ -281,109 +281,231 @@
 </form>
 
 {{-- ── Quick Create Product Modal ─────────────────────────────────────── --}}
+{{-- Pass categories+children as JSON for subcategory JS filtering --}}
+<script>
+    const _categoriesData = @json($categories->map(fn($c) => [
+        'id'       => $c->id,
+        'name'     => $c->name,
+        'children' => $c->children->map(fn($s) => ['id' => $s->id, 'name' => $s->name])->values(),
+    ])->values());
+</script>
+
 <div x-data="purchaseCreateModal()"
      x-show="$store.quickCreate.open"
      x-transition.opacity
      class="fixed inset-0 z-50 flex items-center justify-center p-4"
      style="display:none;">
 
-    {{-- Backdrop --}}
     <div class="absolute inset-0 bg-black/50" @click="close()"></div>
 
-    {{-- Modal panel --}}
-    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto z-10">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-bold text-gray-900">
-                <i class="fas fa-plus-circle text-green-500 mr-2"></i>Create New Product
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col z-10">
+
+        {{-- Header --}}
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 shrink-0">
+            <h2 class="font-bold text-gray-900 flex items-center gap-2">
+                <i class="fas fa-plus-circle text-green-500"></i> Create New Product
             </h2>
-            <button type="button" @click="close()" class="text-gray-400 hover:text-gray-600 transition-colors">
-                <i class="fas fa-times text-lg"></i>
+            <button type="button" @click="close()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times"></i>
             </button>
         </div>
 
-        <div class="p-6 space-y-4">
+        {{-- Scrollable body --}}
+        <div class="overflow-y-auto flex-1 p-5 space-y-4 text-sm">
 
-            {{-- Name --}}
-            <div>
-                <label class="form-label">Product Name <span class="text-red-500">*</span></label>
-                <input type="text" x-model="form.name" class="form-input" placeholder="e.g. Samsung A55 Cover" required>
-                <p x-show="errors.name" x-text="errors.name" class="form-error mt-1"></p>
+            {{-- ── Basic Info ── --}}
+            <div class="space-y-3">
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Basic Info</p>
+
+                <div>
+                    <label class="form-label !text-xs">Name <span class="text-red-500">*</span></label>
+                    <input type="text" x-model="form.name" class="form-input !py-1.5 !text-sm"
+                           placeholder="e.g. Samsung A55 Back Cover">
+                    <p x-show="errors.name" x-text="errors.name" class="text-red-500 text-xs mt-0.5"></p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="form-label !text-xs">Category</label>
+                        <select x-model="form.category_id" @change="onCategoryChange()" class="form-select !py-1.5 !text-sm">
+                            <option value="">— None —</option>
+                            @foreach($categories as $cat)
+                            <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label !text-xs">Sub-category</label>
+                        <select x-model="form.subcategory_id" class="form-select !py-1.5 !text-sm"
+                                :disabled="subcategories.length === 0">
+                            <option value="">— None —</option>
+                            <template x-for="s in subcategories" :key="s.id">
+                                <option :value="s.id" x-text="s.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="form-label !text-xs">Brand</label>
+                        <select x-model="form.brand_id" class="form-select !py-1.5 !text-sm">
+                            <option value="">— None —</option>
+                            @foreach($brands as $brand)
+                            <option value="{{ $brand->id }}">{{ $brand->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label !text-xs">Short Description</label>
+                        <input type="text" x-model="form.short_description" class="form-input !py-1.5 !text-sm"
+                               placeholder="One line summary">
+                    </div>
+                </div>
             </div>
 
-            {{-- Category + Brand --}}
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="form-label">Category</label>
-                    <select x-model="form.category_id" class="form-select">
-                        <option value="">— None —</option>
-                        @foreach($categories as $cat)
-                        <option value="{{ $cat->id }}">{{ $cat->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="form-label">Brand</label>
-                    <select x-model="form.brand_id" class="form-select">
-                        <option value="">— None —</option>
-                        @foreach($brands as $brand)
-                        <option value="{{ $brand->id }}">{{ $brand->name }}</option>
-                        @endforeach
-                    </select>
+            <hr class="border-gray-100">
+
+            {{-- ── Pricing ── --}}
+            <div class="space-y-3">
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Pricing</p>
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="form-label !text-xs">Cost Price <span class="text-red-500">*</span></label>
+                        <input type="number" x-model.number="form.cost_price" min="0" step="0.01"
+                               class="form-input !py-1.5 !text-sm" placeholder="0">
+                        <p x-show="errors.cost_price" x-text="errors.cost_price" class="text-red-500 text-xs mt-0.5"></p>
+                    </div>
+                    <div>
+                        <label class="form-label !text-xs">Selling Price <span class="text-red-500">*</span></label>
+                        <input type="number" x-model.number="form.price" min="0" step="0.01"
+                               class="form-input !py-1.5 !text-sm" placeholder="0">
+                        <p x-show="errors.price" x-text="errors.price" class="text-red-500 text-xs mt-0.5"></p>
+                    </div>
+                    <div>
+                        <label class="form-label !text-xs">Compare at Price</label>
+                        <input type="number" x-model.number="form.compare_price" min="0" step="0.01"
+                               class="form-input !py-1.5 !text-sm" placeholder="0">
+                    </div>
                 </div>
             </div>
 
-            {{-- SKU --}}
-            <div>
-                <label class="form-label">SKU <span class="text-gray-400 font-normal">(optional)</span></label>
-                <input type="text" x-model="form.sku" class="form-input font-mono" placeholder="Leave blank to skip">
-                <p x-show="errors.sku" x-text="errors.sku" class="form-error mt-1"></p>
+            <hr class="border-gray-100">
+
+            {{-- ── Inventory ── --}}
+            <div class="space-y-3">
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Inventory</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="form-label !text-xs">Low Stock Alert</label>
+                        <input type="number" x-model.number="form.low_stock_threshold" min="0"
+                               class="form-input !py-1.5 !text-sm">
+                    </div>
+                    <div>
+                        <label class="form-label !text-xs">Barcode</label>
+                        <div class="flex gap-1.5">
+                            <input type="text" x-model="form.barcode"
+                                   class="form-input !py-1.5 !text-sm font-mono flex-1" placeholder="Auto-generate if blank">
+                            <button type="button" @click="generateBarcode()"
+                                    class="btn-outline btn-sm shrink-0 whitespace-nowrap !py-1.5">
+                                <i class="fas fa-magic"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" x-model="form.show_in_ecom" class="w-4 h-4 text-primary-600 rounded">
+                    <span class="text-sm text-gray-700 font-medium">Show on website</span>
+                </label>
             </div>
 
-            {{-- Cost + Selling Price --}}
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="form-label">Cost Price (Rs.) <span class="text-red-500">*</span></label>
-                    <input type="number" x-model.number="form.cost_price" min="0" step="0.01" class="form-input">
-                    <p class="form-hint">What you pay the vendor</p>
-                    <p x-show="errors.cost_price" x-text="errors.cost_price" class="form-error mt-1"></p>
+            <hr class="border-gray-100">
+
+            {{-- ── Colors ── --}}
+            <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Colors</p>
+                    <button type="button" @click="addColor()"
+                            class="text-xs text-primary-600 hover:text-primary-700 font-semibold flex items-center gap-1">
+                        <i class="fas fa-plus"></i> Add Color
+                    </button>
                 </div>
-                <div>
-                    <label class="form-label">Selling Price (Rs.) <span class="text-red-500">*</span></label>
-                    <input type="number" x-model.number="form.price" min="0" step="0.01" class="form-input">
-                    <p class="form-hint">What you sell it for</p>
-                    <p x-show="errors.price" x-text="errors.price" class="form-error mt-1"></p>
+
+                <div class="space-y-1.5">
+                    <template x-for="(color, i) in colors" :key="i">
+                        <div class="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+                            {{-- Color swatch picker --}}
+                            <label class="relative w-7 h-7 rounded-full cursor-pointer shrink-0 border-2 border-gray-300 shadow-sm overflow-hidden">
+                                <div class="absolute inset-0 rounded-full"
+                                     :style="{ backgroundColor: color.hex_code || '#e5e7eb' }"></div>
+                                <input type="color"
+                                       :value="color.hex_code || '#000000'"
+                                       @change="color.hex_code = $event.target.value"
+                                       class="absolute inset-0 opacity-0 w-full h-full cursor-pointer">
+                            </label>
+                            {{-- Hex badge --}}
+                            <span class="text-xs font-mono text-gray-400 w-14 shrink-0" x-text="color.hex_code || '—'"></span>
+                            {{-- Name --}}
+                            <input type="text" x-model="color.name" placeholder="Color name (e.g. Black)"
+                                   class="form-input !py-1 !text-sm flex-1">
+                            {{-- Remove --}}
+                            <button type="button" @click="colors.splice(i, 1)"
+                                    class="text-red-400 hover:text-red-600 shrink-0 px-1">
+                                <i class="fas fa-times text-xs"></i>
+                            </button>
+                        </div>
+                    </template>
+                    <p x-show="colors.length === 0" class="text-xs text-gray-400 italic">No colors added — leave empty for a single-variant product.</p>
                 </div>
             </div>
 
-            {{-- Low stock + Show in ecom --}}
-            <div class="grid grid-cols-2 gap-4">
+            <hr class="border-gray-100">
+
+            {{-- ── Media ── --}}
+            <div class="space-y-3">
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Media</p>
+
+                {{-- Images --}}
                 <div>
-                    <label class="form-label">Low Stock Alert</label>
-                    <input type="number" x-model.number="form.low_stock_threshold" min="0" class="form-input">
+                    <label class="form-label !text-xs">Images</label>
+                    <input type="file" multiple accept="image/*"
+                           @change="onImagesChange($event)"
+                           class="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 cursor-pointer">
+                    {{-- Previews --}}
+                    <div x-show="imagePreviews.length > 0" class="flex flex-wrap gap-2 mt-2">
+                        <template x-for="(src, i) in imagePreviews" :key="i">
+                            <div class="relative group w-14 h-14">
+                                <img :src="src" class="w-14 h-14 object-cover rounded-lg border border-gray-200">
+                                <button type="button" @click="removeImage(i)"
+                                        class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <i class="fas fa-times" style="font-size:9px;"></i>
+                                </button>
+                            </div>
+                        </template>
+                    </div>
                 </div>
-                <div class="flex flex-col justify-end pb-0.5">
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" x-model="form.show_in_ecom" class="w-4 h-4 text-primary-600 rounded">
-                        <span class="text-sm font-medium text-gray-700">Show on website</span>
-                    </label>
-                    <p class="text-xs text-gray-400 mt-1 ml-6">Visible to customers online</p>
+
+                {{-- Video --}}
+                <div>
+                    <label class="form-label !text-xs">Embed Video <span class="text-gray-400 font-normal">(YouTube/TikTok iframe or URL)</span></label>
+                    <input type="text" x-model="form.video_embed_url"
+                           class="form-input !py-1.5 !text-sm"
+                           placeholder="Paste iframe code or embed URL">
                 </div>
             </div>
 
             {{-- General error --}}
-            <p x-show="errors.general" x-text="errors.general" class="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2"></p>
+            <p x-show="errors.general" x-text="errors.general"
+               class="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2"></p>
         </div>
 
-        <div class="px-6 py-4 border-t border-gray-200 flex gap-3 justify-end">
-            <button type="button" @click="close()" class="btn-outline">Cancel</button>
+        {{-- Footer --}}
+        <div class="px-5 py-3 border-t border-gray-200 flex gap-3 justify-end shrink-0">
+            <button type="button" @click="close()" class="btn-outline btn-sm">Cancel</button>
             <button type="button" @click="save()" :disabled="saving"
-                    class="btn-primary" :class="saving ? 'opacity-60 cursor-wait' : ''">
-                <template x-if="saving">
-                    <i class="fas fa-spinner fa-spin mr-2"></i>
-                </template>
-                <template x-if="!saving">
-                    <i class="fas fa-check mr-2"></i>
-                </template>
+                    class="btn-primary btn-sm" :class="saving ? 'opacity-60 cursor-wait' : ''">
+                <i class="fas fa-spinner fa-spin mr-1.5" x-show="saving"></i>
+                <i class="fas fa-check mr-1.5" x-show="!saving"></i>
                 <span x-text="saving ? 'Creating...' : 'Create & Add to Purchase'"></span>
             </button>
         </div>
@@ -548,35 +670,79 @@ function purchaseForm() {
 function purchaseCreateModal() {
     return {
         saving: false,
+        colors: [],
+        imageFiles: [],
+        imagePreviews: [],
+        subcategories: [],
+        errors: {},
         form: {
             name: '',
             category_id: '',
+            subcategory_id: '',
             brand_id: '',
-            sku: '',
-            cost_price: 0,
-            price: 0,
+            short_description: '',
+            barcode: '',
+            cost_price: '',
+            price: '',
+            compare_price: '',
             low_stock_threshold: 5,
             show_in_ecom: false,
+            video_embed_url: '',
         },
-        errors: {},
 
         init() {
-            // Watch for the store opening and prefill name
             this.$watch('$store.quickCreate.open', (val) => {
-                if (val) {
-                    this.errors = {};
-                    this.form = {
-                        name: this.$store.quickCreate.prefillName || '',
-                        category_id: '',
-                        brand_id: '',
-                        sku: '',
-                        cost_price: 0,
-                        price: 0,
-                        low_stock_threshold: 5,
-                        show_in_ecom: false,
-                    };
-                }
+                if (val) this.reset();
             });
+        },
+
+        reset() {
+            this.errors        = {};
+            this.colors        = [];
+            this.imageFiles    = [];
+            this.imagePreviews = [];
+            this.subcategories = [];
+            this.form = {
+                name:                this.$store.quickCreate.prefillName || '',
+                category_id:         '',
+                subcategory_id:      '',
+                brand_id:            '',
+                short_description:   '',
+                barcode:             '',
+                cost_price:          '',
+                price:               '',
+                compare_price:       '',
+                low_stock_threshold: 5,
+                show_in_ecom:        false,
+                video_embed_url:     '',
+            };
+        },
+
+        onCategoryChange() {
+            this.form.subcategory_id = '';
+            const cat = _categoriesData.find(c => c.id == this.form.category_id);
+            this.subcategories = cat ? cat.children : [];
+        },
+
+        addColor() {
+            this.colors.push({ name: '', hex_code: '#3b82f6' });
+        },
+
+        onImagesChange(e) {
+            const files = Array.from(e.target.files);
+            this.imageFiles    = files;
+            this.imagePreviews = files.map(f => URL.createObjectURL(f));
+        },
+
+        removeImage(i) {
+            this.imagePreviews.splice(i, 1);
+            this.imageFiles.splice(i, 1);
+        },
+
+        async generateBarcode() {
+            const res  = await fetch('{{ route('admin.products.generate_barcode') }}');
+            const data = await res.json();
+            this.form.barcode = data.barcode;
         },
 
         close() {
@@ -585,39 +751,52 @@ function purchaseCreateModal() {
 
         async save() {
             this.errors = {};
-
-            if (!this.form.name.trim()) {
-                this.errors.name = 'Product name is required.';
-                return;
-            }
-            if (!this.form.cost_price || this.form.cost_price <= 0) {
-                this.errors.cost_price = 'Cost price is required.';
-                return;
-            }
-            if (!this.form.price || this.form.price <= 0) {
-                this.errors.price = 'Selling price is required.';
-                return;
-            }
+            if (!this.form.name.trim())    { this.errors.name       = 'Required'; return; }
+            if (!this.form.cost_price)     { this.errors.cost_price = 'Required'; return; }
+            if (!this.form.price)          { this.errors.price      = 'Required'; return; }
 
             this.saving = true;
             try {
+                // Use FormData so image files are included
+                const fd = new FormData();
+
+                // Scalar fields
+                const fields = [
+                    'name','category_id','subcategory_id','brand_id','short_description',
+                    'barcode','cost_price','price','compare_price','low_stock_threshold',
+                    'video_embed_url',
+                ];
+                fields.forEach(k => {
+                    if (this.form[k] !== '' && this.form[k] !== null && this.form[k] !== undefined) {
+                        fd.append(k, this.form[k]);
+                    }
+                });
+                fd.append('show_in_ecom', this.form.show_in_ecom ? '1' : '0');
+
+                // Images
+                this.imageFiles.forEach(f => fd.append('images[]', f));
+
+                // Colors (only rows with a name)
+                this.colors.filter(c => c.name.trim()).forEach((c, i) => {
+                    fd.append(`colors[${i}][name]`,     c.name);
+                    fd.append(`colors[${i}][hex_code]`, c.hex_code || '');
+                });
+
                 const res = await fetch('{{ route('admin.api.products.quick-create') }}', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json',
+                        'Accept':       'application/json',
                     },
-                    body: JSON.stringify(this.form),
+                    body: fd,
                 });
 
                 const data = await res.json();
 
                 if (!res.ok) {
-                    // Laravel validation errors come as { errors: { field: [msg] } }
                     if (data.errors) {
-                        Object.entries(data.errors).forEach(([key, msgs]) => {
-                            this.errors[key] = msgs[0];
+                        Object.entries(data.errors).forEach(([k, msgs]) => {
+                            this.errors[k] = msgs[0];
                         });
                     } else {
                         this.errors.general = data.message || 'Something went wrong.';
@@ -625,7 +804,7 @@ function purchaseCreateModal() {
                     return;
                 }
 
-                // Dispatch event so purchaseForm picks up the new product
+                // Hand off to purchaseForm to add to the list
                 this.$dispatch('product-created', data);
                 this.close();
 

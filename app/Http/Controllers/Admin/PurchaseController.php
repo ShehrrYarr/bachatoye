@@ -44,7 +44,9 @@ class PurchaseController extends Controller
     {
         $vendors    = Vendor::orderBy('name')->get();
         $products   = Product::orderBy('name')->get(['id', 'name', 'cost_price', 'sku']);
-        $categories = Category::active()->whereNull('parent_id')->orderBy('name')->get(['id', 'name']);
+        $categories = Category::active()->whereNull('parent_id')
+            ->with(['children' => fn($q) => $q->active()->orderBy('name')->select('id', 'name', 'parent_id')])
+            ->orderBy('name')->get(['id', 'name']);
         $brands     = Brand::orderBy('name')->get(['id', 'name']);
         return view('admin.purchases.create', compact('vendors', 'products', 'categories', 'brands'));
     }
@@ -54,43 +56,97 @@ class PurchaseController extends Controller
         $data = $request->validate([
             'name'                => 'required|string|max:255',
             'category_id'         => 'nullable|exists:categories,id',
+            'subcategory_id'      => 'nullable|exists:categories,id',
             'brand_id'            => 'nullable|exists:brands,id',
-            'sku'                 => 'nullable|string|max:100|unique:products,sku',
+            'short_description'   => 'nullable|string|max:500',
+            'barcode'             => 'nullable|string|max:50|unique:products,barcode',
             'cost_price'          => 'required|numeric|min:0',
             'price'               => 'required|numeric|min:0',
+            'compare_price'       => 'nullable|numeric|min:0',
             'low_stock_threshold' => 'nullable|integer|min:0',
             'show_in_ecom'        => 'nullable|boolean',
+            'images.*'            => 'nullable|image|max:5120',
+            'video_embed_url'     => 'nullable|string',
+            'colors'              => 'nullable|array',
+            'colors.*.name'       => 'required_with:colors|string|max:100',
+            'colors.*.hex_code'   => 'nullable|string|max:7',
         ]);
 
-        // Generate a unique slug
+        // Generate unique slug
         $slug = Str::slug($data['name']);
-        $original = $slug;
-        $count = 1;
+        $base = $slug; $n = 1;
         while (Product::where('slug', $slug)->exists()) {
-            $slug = $original . '-' . $count++;
+            $slug = $base . '-' . $n++;
+        }
+
+        // Auto-generate barcode if blank
+        if (empty($data['barcode'])) {
+            do { $bc = '6' . str_pad(random_int(0, 999999999999), 12, '0', STR_PAD_LEFT); }
+            while (Product::where('barcode', $bc)->exists());
+            $data['barcode'] = $bc;
         }
 
         $product = Product::create([
             'name'                => $data['name'],
             'slug'                => $slug,
-            'category_id'         => $data['category_id'] ?? null,
+            'category_id'         => $data['subcategory_id'] ?? $data['category_id'] ?? null,
+            'subcategory_id'      => isset($data['subcategory_id']) ? ($data['category_id'] ?? null) : null,
             'brand_id'            => $data['brand_id'] ?? null,
-            'sku'                 => $data['sku'] ?? null,
+            'short_description'   => $data['short_description'] ?? null,
+            'barcode'             => $data['barcode'],
             'cost_price'          => $data['cost_price'],
             'price'               => $data['price'],
+            'compare_price'       => $data['compare_price'] ?? null,
             'stock_quantity'      => 0,
             'low_stock_threshold' => $data['low_stock_threshold'] ?? 5,
             'track_inventory'     => true,
             'is_active'           => true,
-            'show_in_ecom'        => $data['show_in_ecom'] ?? false,
+            'show_in_ecom'        => (bool) ($data['show_in_ecom'] ?? false),
         ]);
+
+        // Save images
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $i => $file) {
+                $product->images()->create([
+                    'path'       => $file->store('products', 'public'),
+                    'sort_order' => $i,
+                    'is_primary' => $i === 0,
+                ]);
+            }
+        }
+
+        // Save embed video
+        if (!empty($data['video_embed_url'])) {
+            $embed = trim($data['video_embed_url']);
+            if (str_contains($embed, '<iframe')) {
+                preg_match('/src=["\']([^"\']+)["\']/', $embed, $m);
+                $embed = $m[1] ?? $embed;
+            }
+            $product->videos()->create(['type' => 'embed', 'url' => $embed, 'sort_order' => 0]);
+        }
+
+        // Save colors
+        $createdColors = [];
+        if (!empty($data['colors'])) {
+            foreach ($data['colors'] as $i => $c) {
+                $name = trim($c['name'] ?? '');
+                if (!$name) continue;
+                $color = $product->colors()->create([
+                    'name'           => $name,
+                    'hex_code'       => $c['hex_code'] ?? null,
+                    'stock_quantity' => 0,
+                    'sort_order'     => $i,
+                ]);
+                $createdColors[] = ['id' => $color->id, 'name' => $color->name, 'hex_code' => $color->hex_code];
+            }
+        }
 
         return response()->json([
             'id'         => $product->id,
             'name'       => $product->name,
             'sku'        => $product->sku,
             'cost_price' => $product->cost_price,
-            'colors'     => [],
+            'colors'     => $createdColors,
         ]);
     }
 
