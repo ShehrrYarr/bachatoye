@@ -7,10 +7,14 @@
         <a href="{{ route('admin.customers.show', $customer) }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
         <h1 class="text-xl font-bold text-gray-900">Khata Ledger: {{ $customer->name }}</h1>
     </div>
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-3">
         <span class="text-sm {{ $customer->credit_balance < 0 ? 'text-red-600 font-bold' : 'text-green-600 font-bold' }}">
             Balance: Rs. {{ number_format($customer->credit_balance) }}
         </span>
+        <a href="{{ route('admin.customers.ledger.print', $customer) }}" target="_blank"
+           class="btn-outline btn-sm">
+            <i class="fas fa-file-pdf mr-1.5 text-red-500"></i> Print as PDF
+        </a>
     </div>
 </div>
 

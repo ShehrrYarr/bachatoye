@@ -128,6 +128,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     // Customers
     Route::resource('customers', Admin\CustomerController::class);
     Route::get('customers/{customer}/ledger', [Admin\CustomerController::class, 'ledger'])->name('customers.ledger');
+    Route::get('customers/{customer}/ledger/print', [Admin\CustomerController::class, 'ledgerPrint'])->name('customers.ledger.print');
     Route::post('customers/{customer}/ledger', [Admin\CustomerController::class, 'addLedgerEntry'])->name('customers.ledger.add');
 
     // Vendors & Purchases
@@ -225,6 +226,8 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
         ->middleware('permission:customers.view')->name('customers.index');
     Route::get('customers/{customer}/ledger', [Admin\CustomerController::class, 'ledger'])
         ->middleware('permission:accounts.view')->name('customers.ledger');
+    Route::get('customers/{customer}/ledger/print', [Admin\CustomerController::class, 'ledgerPrint'])
+        ->middleware('permission:accounts.view')->name('customers.ledger.print');
     Route::post('customers/{customer}/ledger', [Admin\CustomerController::class, 'addLedgerEntry'])
         ->middleware('permission:accounts.manage')->name('customers.ledger.add');
 

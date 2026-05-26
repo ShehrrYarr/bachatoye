@@ -111,6 +111,15 @@ class CustomerController extends Controller
         return view('admin.customers.ledger', compact('customer', 'entries'));
     }
 
+    public function ledgerPrint(Customer $customer)
+    {
+        $entries = $customer->ledgerEntries()->with('user')->oldest()->get();
+        $storeName = \App\Models\Setting::get('store_name', config('app.name'));
+        $storePhone = \App\Models\Setting::get('store_phone', '');
+        $storeAddress = \App\Models\Setting::get('store_address', '');
+        return view('admin.customers.ledger-print', compact('customer', 'entries', 'storeName', 'storePhone', 'storeAddress'));
+    }
+
     public function addLedgerEntry(Request $request, Customer $customer)
     {
         $data = $request->validate([
