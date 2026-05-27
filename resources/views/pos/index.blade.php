@@ -1028,7 +1028,7 @@ function posApp() {
             }
             this.total = Math.max(0, this.subtotal - this.discountAmount);
             if (this.paymentMethod === 'cash') {
-                this.cashReceived = Math.ceil(this.total / 100) * 100;
+                this.cashReceived = this.total;
             }
         },
 
