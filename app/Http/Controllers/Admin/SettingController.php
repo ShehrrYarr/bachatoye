@@ -25,6 +25,9 @@ class SettingController extends Controller
             'free_delivery_above' => Setting::get('free_delivery_above', 5000),
             'low_stock_threshold' => Setting::get('low_stock_threshold', 5),
             'logo'                => Setting::get('logo'),
+            'primary_color'       => Setting::get('primary_color',   '#e11d48'),
+            'secondary_color'     => Setting::get('secondary_color', '#be123c'),
+            'use_gradient'        => Setting::get('use_gradient',    '1'),
         ];
         $sections = Section::orderBy('sort_order')->orderBy('name')->get();
         return view('admin.settings.index', compact('settings', 'sections'));
@@ -61,6 +64,9 @@ class SettingController extends Controller
             'social_tiktok'       => 'nullable|url|max:255',
             'whatsapp_number'     => 'nullable|string|max:20',
             'logo'                => 'nullable|image|max:2048',
+            'primary_color'       => 'nullable|regex:/^#[0-9a-fA-F]{6}$/',
+            'secondary_color'     => 'nullable|regex:/^#[0-9a-fA-F]{6}$/',
+            'use_gradient'        => 'nullable|in:0,1',
         ]);
 
         // Handle logo upload
@@ -74,6 +80,9 @@ class SettingController extends Controller
         if ($request->boolean('remove_logo')) {
             Setting::set('logo', null);
         }
+
+        // Normalise gradient checkbox (unchecked = not sent = '0')
+        $data['use_gradient'] = $request->input('use_gradient', '0');
 
         Setting::setMany($data);
         return back()->with('success', 'Settings saved.');

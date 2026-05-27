@@ -26,7 +26,7 @@
     }
     .sidebar-link.active {
         @apply text-white shadow-sm;
-        background: linear-gradient(135deg, #f43f5e 0%, #be123c 100%);
+        background: var(--app-gradient, linear-gradient(135deg, #f43f5e 0%, #be123c 100%));
     }
 
     /* Card */
@@ -54,10 +54,10 @@
     }
     .btn-primary {
         @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 text-white focus:ring-primary-500 shadow-sm;
-        background: linear-gradient(135deg, #f43f5e 0%, #be123c 100%);
+        background: var(--app-gradient, linear-gradient(135deg, #f43f5e 0%, #be123c 100%));
     }
     .btn-primary:hover {
-        background: linear-gradient(135deg, #e11d48 0%, #9f1239 100%);
+        background: var(--app-gradient-hover, linear-gradient(135deg, #e11d48 0%, #9f1239 100%));
         @apply shadow-md;
     }
     .btn-secondary {

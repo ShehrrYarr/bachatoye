@@ -167,6 +167,147 @@
                 </div>
             </div>
         </div>
+
+        {{-- Colour Customization --}}
+        <div class="card xl:col-span-2"
+             x-data="{
+                 primary:   '{{ old('primary_color',   $settings['primary_color']   ?? '#e11d48') }}',
+                 secondary: '{{ old('secondary_color', $settings['secondary_color'] ?? '#be123c') }}',
+                 gradient:  {{ (old('use_gradient', $settings['use_gradient'] ?? '1') === '1') ? 'true' : 'false' }},
+                 get gradStyle() {
+                     return this.gradient
+                         ? `linear-gradient(135deg, ${this.primary} 0%, ${this.secondary} 100%)`
+                         : this.primary;
+                 },
+                 reset() {
+                     this.primary   = '#e11d48';
+                     this.secondary = '#be123c';
+                     this.gradient  = true;
+                 }
+             }">
+            <div class="card-header">
+                <h2 class="font-semibold text-gray-800">
+                    <i class="fas fa-palette mr-1.5 text-purple-500"></i> Colour Customization
+                </h2>
+                <button type="button" @click="reset()"
+                        class="btn-outline btn-sm text-gray-500 hover:text-red-600">
+                    <i class="fas fa-undo mr-1"></i> Reset to Default
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                    {{-- Left: controls --}}
+                    <div class="space-y-5">
+
+                        {{-- Primary colour --}}
+                        <div>
+                            <label class="form-label">Primary Colour</label>
+                            <p class="form-hint mb-2">Used on buttons, links, active sidebar items and highlights throughout the admin and store.</p>
+                            <div class="flex items-center gap-3">
+                                {{-- Colour picker updates `primary` via x-model; hidden input submits the value --}}
+                                <input type="color" x-model="primary"
+                                       class="h-10 w-16 rounded-lg border border-gray-300 cursor-pointer p-0.5">
+                                <input type="text" x-model="primary"
+                                       pattern="^#[0-9a-fA-F]{6}$"
+                                       placeholder="#e11d48"
+                                       class="form-input w-32 font-mono text-sm uppercase">
+                            </div>
+                            <input type="hidden" name="primary_color" :value="primary">
+                        </div>
+
+                        {{-- Secondary colour (visible only when gradient is on) --}}
+                        <div x-show="gradient" x-transition>
+                            <label class="form-label">Secondary Colour <span class="text-xs text-gray-400">(gradient end)</span></label>
+                            <p class="form-hint mb-2">The gradient fades from primary to this colour on buttons, headers, and the store topbar/footer.</p>
+                            <div class="flex items-center gap-3">
+                                <input type="color" x-model="secondary"
+                                       class="h-10 w-16 rounded-lg border border-gray-300 cursor-pointer p-0.5">
+                                <input type="text" x-model="secondary"
+                                       pattern="^#[0-9a-fA-F]{6}$"
+                                       placeholder="#be123c"
+                                       class="form-input w-32 font-mono text-sm uppercase">
+                            </div>
+                        </div>
+                        {{-- Single hidden input always submits secondary_color --}}
+                        <input type="hidden" name="secondary_color" :value="secondary">
+
+                        {{-- Gradient toggle --}}
+                        <div class="flex items-center gap-3">
+                            <div class="relative cursor-pointer rounded-full shrink-0"
+                                 style="width:44px;height:24px;transition:background-color 0.2s"
+                                 :style="{ backgroundColor: gradient ? 'var(--app-primary, #e11d48)' : '#d1d5db' }"
+                                 @click="gradient = !gradient">
+                                <div class="absolute bg-white rounded-full shadow-sm"
+                                     style="top:2px;left:2px;width:20px;height:20px;transition:transform 0.2s"
+                                     :style="{ transform: gradient ? 'translateX(20px)' : 'translateX(0)' }"></div>
+                            </div>
+                            <div>
+                                <div class="text-sm font-medium text-gray-700">Use Gradient</div>
+                                <div class="text-xs text-gray-400">Blend primary → secondary on buttons &amp; headers</div>
+                            </div>
+                        </div>
+                        {{-- Hidden checkbox value --}}
+                        <input type="hidden" name="use_gradient" :value="gradient ? '1' : '0'">
+                    </div>
+
+                    {{-- Right: live preview --}}
+                    <div>
+                        <label class="form-label mb-3">Live Preview</label>
+                        <div class="rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+
+                            {{-- Preview sidebar header --}}
+                            <div class="flex items-center gap-2.5 px-4 py-3 text-white text-sm font-semibold"
+                                 :style="{ background: gradStyle }">
+                                <div class="w-6 h-6 bg-white/20 rounded flex items-center justify-center">
+                                    <i class="fas fa-mobile-alt text-white text-xs"></i>
+                                </div>
+                                <span>Admin Panel</span>
+                            </div>
+
+                            {{-- Preview body --}}
+                            <div class="bg-gray-50 p-4 space-y-3">
+                                {{-- Active nav item --}}
+                                <div class="flex items-center gap-2 text-xs text-white rounded-lg px-3 py-2 font-medium"
+                                     :style="{ background: gradStyle }">
+                                    <i class="fas fa-tachometer-alt"></i>
+                                    <span>Dashboard</span>
+                                </div>
+
+                                {{-- Primary button --}}
+                                <div>
+                                    <div class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white shadow-sm cursor-default"
+                                         :style="{ background: gradStyle }">
+                                        <i class="fas fa-save"></i> Save Settings
+                                    </div>
+                                </div>
+
+                                {{-- Colour swatches --}}
+                                <div class="flex items-center gap-2">
+                                    <div class="w-6 h-6 rounded-full border border-white shadow"
+                                         :style="{ background: primary }"></div>
+                                    <div class="text-xs text-gray-500" x-text="primary"></div>
+                                    <template x-if="gradient">
+                                        <div class="flex items-center gap-2">
+                                            <i class="fas fa-arrow-right text-gray-300 text-xs"></i>
+                                            <div class="w-6 h-6 rounded-full border border-white shadow"
+                                                 :style="{ background: secondary }"></div>
+                                            <div class="text-xs text-gray-500" x-text="secondary"></div>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                {{-- Ecom topbar preview --}}
+                                <div class="rounded-lg overflow-hidden border border-gray-200 text-xs text-white text-center py-1.5"
+                                     :style="{ background: gradStyle }">
+                                    Store Topbar / Footer
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="flex gap-3 mt-6">

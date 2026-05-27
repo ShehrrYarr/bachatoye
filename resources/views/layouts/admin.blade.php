@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Admin') — {{ \App\Models\Setting::get('shop_name', 'MobileHub') }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('layouts.partials.color-vars')
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -33,7 +34,7 @@
                 (sidebarOpen ? 'width:256px;min-width:256px;' : 'width:0;min-width:0;border-right-width:0;')"
     >
         {{-- Logo --}}
-        <div class="flex items-center gap-3 px-5 py-5" style="background: linear-gradient(135deg, #f43f5e 0%, #be123c 100%)">
+        <div class="flex items-center gap-3 px-5 py-5" style="background: var(--app-gradient, linear-gradient(135deg, #f43f5e 0%, #be123c 100%))">
             @if(\App\Models\Setting::get('logo'))
                 <img src="{{ asset('storage/' . \App\Models\Setting::get('logo')) }}" class="h-8 w-auto" alt="Logo">
             @else
@@ -43,7 +44,7 @@
             @endif
             <div>
                 <div class="font-bold text-white text-sm leading-tight">{{ \App\Models\Setting::get('shop_name', 'MobileHub') }}</div>
-                <div class="text-xs text-red-200">{{ auth()->user()->isAdmin() ? 'Admin Panel' : 'Salesman Panel' }}</div>
+                <div class="text-xs text-white/60">{{ auth()->user()->isAdmin() ? 'Admin Panel' : 'Salesman Panel' }}</div>
             </div>
         </div>
 
@@ -80,7 +81,7 @@
     <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
 
         {{-- Topbar --}}
-        <header class="bg-white flex items-center gap-3 px-4 md:px-6 py-3 shrink-0" style="border-bottom: 2px solid transparent; border-image: linear-gradient(135deg, #f43f5e, #be123c) 1">
+        <header class="bg-white flex items-center gap-3 px-4 md:px-6 py-3 shrink-0" style="border-bottom: 2px solid transparent; border-image: linear-gradient(135deg, var(--app-primary, #f43f5e), var(--app-secondary, #be123c)) 1">
             <button @click="sidebarOpen = !sidebarOpen" class="text-gray-500 hover:text-gray-800 transition-colors shrink-0">
                 <i class="fas fa-bars"></i>
             </button>

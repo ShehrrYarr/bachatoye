@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', \App\Models\Setting::get('shop_name', 'MobileHub')) — @yield('meta-title', \App\Models\Setting::get('shop_tagline', 'Your One-Stop Mobile Store'))</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('layouts.partials.color-vars')
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700,800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -25,7 +26,7 @@
 <body class="bg-gray-50 font-sans antialiased" x-data="{ mobileMenuOpen: false, searchOpen: false }">
 
 {{-- Top bar --}}
-<div class="text-white text-xs py-2 hidden sm:block" style="background: linear-gradient(135deg, #be123c 0%, #881337 100%)">
+<div class="text-white text-xs py-2 hidden sm:block" style="background: var(--app-gradient, linear-gradient(135deg, #be123c 0%, #881337 100%))">
     <div class="max-w-7xl mx-auto px-4 flex items-center justify-between">
         <span><i class="fas fa-phone-alt mr-1"></i>{{ \App\Models\Setting::get('shop_phone', '03001234567') }}</span>
         <span>Free delivery on orders over Rs. {{ number_format(\App\Models\Setting::get('free_delivery_above', 5000)) }}</span>
@@ -155,7 +156,7 @@
 </main>
 
 {{-- Footer --}}
-<footer class="mt-16 text-gray-200" style="background: linear-gradient(160deg, #881337 0%, #be123c 50%, #9f1239 100%)">
+<footer class="mt-16 text-gray-200" style="background: var(--app-gradient, linear-gradient(160deg, #881337 0%, #be123c 50%, #9f1239 100%))">
     <div class="max-w-7xl mx-auto px-4 py-12">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div class="md:col-span-2">
