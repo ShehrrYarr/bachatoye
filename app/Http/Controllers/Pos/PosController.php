@@ -144,9 +144,18 @@ class PosController extends Controller
 
         $products = Product::active()->inStock()
             ->when($allowedCategoryIds !== null, fn($query) => $query->whereIn('category_id', $allowedCategoryIds))
-            ->where(fn($query) => $query->where('name', 'like', "%{$q}%")
-                                        ->orWhere('barcode', 'like', "%{$q}%")
-                                        ->orWhere('sku', 'like', "%{$q}%"))
+            ->where(fn($query) => $query
+                ->where('name', 'like', "%{$q}%")
+                ->orWhere('barcode', 'like', "%{$q}%")
+                ->orWhere('sku', 'like', "%{$q}%")
+                // Search purchase notes (IMEI numbers stored there)
+                ->orWhereIn('id', fn($sub) => $sub
+                    ->select('purchase_items.product_id')
+                    ->from('purchase_items')
+                    ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
+                    ->where('purchases.notes', 'like', "%{$q}%")
+                )
+            )
             ->with(['images', 'colors', 'category.section'])
             ->limit(15)
             ->get()
