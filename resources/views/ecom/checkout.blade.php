@@ -147,6 +147,43 @@
                         @endforeach
                     </div>
 
+                    {{-- Coupon code --}}
+                    <div class="mb-4 border border-gray-200 rounded-xl p-3">
+                        @if($couponCode)
+                            <div class="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                                <div>
+                                    <i class="fas fa-ticket-alt text-green-600 text-xs mr-1"></i>
+                                    <span class="text-xs font-bold text-green-700 uppercase tracking-widest font-mono">{{ $couponCode }}</span>
+                                    <span class="text-xs text-green-600 ml-1">applied!</span>
+                                </div>
+                                <form method="POST" action="{{ route('cart.coupon.remove') }}">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="text-red-400 hover:text-red-600 text-xs font-medium transition-colors">
+                                        <i class="fas fa-times mr-1"></i>Remove
+                                    </button>
+                                </form>
+                            </div>
+                        @else
+                            @error('coupon_code')
+                                <p class="text-red-500 text-xs mb-2"><i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p>
+                            @enderror
+                            <form method="POST" action="{{ route('cart.coupon.apply') }}" class="flex gap-2">
+                                @csrf
+                                <input type="text" name="coupon_code"
+                                       value="{{ old('coupon_code') }}"
+                                       placeholder="Coupon code"
+                                       class="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono tracking-widest uppercase @error('coupon_code') border-red-400 @enderror">
+                                <button type="submit"
+                                        class="shrink-0 bg-gray-800 hover:bg-gray-900 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+                                    Apply
+                                </button>
+                            </form>
+                            <p class="text-xs text-gray-400 mt-1.5">
+                                <i class="fas fa-gift mr-1"></i>Have a coupon code? Enter it here.
+                            </p>
+                        @endif
+                    </div>
+
                     <div class="border-t border-gray-200 pt-3 space-y-2 text-sm">
                         <div class="flex justify-between text-gray-600">
                             <span>Subtotal</span>
