@@ -198,8 +198,23 @@
         <div class="border-t border-gray-200 px-3 py-2 space-y-2">
             {{-- Discount --}}
             <div class="flex items-center gap-2">
-                <label class="text-xs text-gray-500 shrink-0">Discount (Rs.):</label>
-                <input type="number" x-model.number="discount" @change="recalculate()" min="0"
+                <label class="text-xs text-gray-500 shrink-0">Discount:</label>
+                {{-- Type toggle --}}
+                <div class="flex rounded-lg border border-gray-300 overflow-hidden shrink-0">
+                    <button type="button" @click="discountType = 'flat'; recalculate()"
+                            class="px-2 py-1 text-xs font-semibold transition-colors"
+                            :class="discountType === 'flat' ? 'bg-primary-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'">
+                        Rs.
+                    </button>
+                    <button type="button" @click="discountType = 'percent'; recalculate()"
+                            class="px-2 py-1 text-xs font-semibold transition-colors border-l border-gray-300"
+                            :class="discountType === 'percent' ? 'bg-primary-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'">
+                        %
+                    </button>
+                </div>
+                <input type="number" x-model.number="discountValue" @input="recalculate()" min="0"
+                       :max="discountType === 'percent' ? 100 : undefined"
+                       :placeholder="discountType === 'percent' ? '0–100' : '0'"
                        class="flex-1 text-xs border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500">
             </div>
 
@@ -209,9 +224,11 @@
                     <span>Subtotal</span>
                     <span x-text="`Rs. ${subtotal.toLocaleString()}`"></span>
                 </div>
-                <div class="flex justify-between text-xs" x-show="discount > 0">
-                    <span class="text-red-500">Discount</span>
-                    <span class="text-red-500" x-text="`– Rs. ${discount.toLocaleString()}`"></span>
+                <div class="flex justify-between text-xs" x-show="discountAmount > 0">
+                    <span class="text-red-500">
+                        Discount<span x-show="discountType === 'percent'" x-text="` (${discountValue}%)`"></span>
+                    </span>
+                    <span class="text-red-500" x-text="`– Rs. ${discountAmount.toLocaleString()}`"></span>
                 </div>
 
                 <div class="flex justify-between font-bold text-sm text-gray-900 pt-0.5 border-t border-gray-100">
@@ -850,7 +867,9 @@ function posApp() {
         searchQuery: '',
         displayProducts: [],
         loading: false,
-        discount: 0,
+        discountType: 'flat',
+        discountValue: 0,
+        discountAmount: 0,
         subtotal: 0,
         total: 0,
         paymentMethod: 'cash',
@@ -989,7 +1008,9 @@ function posApp() {
         clearCart() {
             if (this.cart.length === 0) return;
             this.cart = [];
-            this.discount = 0;
+            this.discountType  = 'flat';
+            this.discountValue  = 0;
+            this.discountAmount = 0;
             this.cashReceived = 0;
             this.splitCash = 0;
             this.splitBank = 0;
@@ -999,7 +1020,13 @@ function posApp() {
 
         recalculate() {
             this.subtotal = this.cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
-            this.total = Math.max(0, this.subtotal - this.discount);
+            if (this.discountType === 'percent') {
+                const pct = Math.min(100, Math.max(0, this.discountValue || 0));
+                this.discountAmount = Math.round(this.subtotal * pct / 100);
+            } else {
+                this.discountAmount = Math.max(0, this.discountValue || 0);
+            }
+            this.total = Math.max(0, this.subtotal - this.discountAmount);
             if (this.paymentMethod === 'cash') {
                 this.cashReceived = Math.ceil(this.total / 100) * 100;
             }
@@ -1074,7 +1101,7 @@ function posApp() {
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
                     body: JSON.stringify({
                         items: this.cart.map(i => ({ product_id: i.product_id, quantity: i.quantity, unit_price: i.price, color_id: i.color_id || null })),
-                        discount: this.discount,
+                        discount: this.discountAmount,
                         payment_method: this.paymentMethod,
                         amount_paid: this.paymentMethod === 'partial' ? this.partialAmountPaid : null,
                         cash_amount: this.paymentMethod === 'split' ? this.splitCash : null,
