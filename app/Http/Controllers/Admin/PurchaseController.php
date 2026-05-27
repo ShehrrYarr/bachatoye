@@ -11,6 +11,7 @@ use App\Models\Purchase;
 use App\Models\StockMovement;
 use App\Models\Vendor;
 use App\Models\VendorLedger;
+use App\Services\BarcodeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -79,11 +80,10 @@ class PurchaseController extends Controller
             $slug = $base . '-' . $n++;
         }
 
-        // Auto-generate barcode if blank
+        // Auto-generate barcode using section prefix (same logic as the product create form)
         if (empty($data['barcode'])) {
-            do { $bc = '6' . str_pad(random_int(0, 999999999999), 12, '0', STR_PAD_LEFT); }
-            while (Product::where('barcode', $bc)->exists());
-            $data['barcode'] = $bc;
+            $catId = $data['subcategory_id'] ?? $data['category_id'] ?? null;
+            $data['barcode'] = BarcodeService::generate($catId ? (int) $catId : null);
         }
 
         $product = Product::create([

@@ -11,6 +11,7 @@ use App\Models\ProductColor;
 use App\Models\ProductImage;
 use App\Models\ProductSocialLink;
 use App\Models\ProductVideo;
+use App\Services\BarcodeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -90,7 +91,7 @@ class ProductController extends Controller
 
         // Generate barcode if not provided
         if (empty($data['barcode'])) {
-            $data['barcode'] = $this->generateSequentialBarcode($data['category_id'] ?? null);
+            $data['barcode'] = BarcodeService::generate($data['category_id'] ?? null);
         }
 
         $product = Product::create(\Arr::except($data, ['images', 'video_embed_url', 'video_file']));
@@ -368,43 +369,11 @@ class ProductController extends Controller
     public function generateBarcodeAjax(Request $request): \Illuminate\Http\JsonResponse
     {
         $categoryId = $request->query('category_id') ? (int) $request->query('category_id') : null;
-        return response()->json(['barcode' => $this->generateSequentialBarcode($categoryId)]);
+        return response()->json(['barcode' => BarcodeService::generate($categoryId)]);
     }
 
     public function printBarcode(Product $product)
     {
         return view('admin.products.print-barcode', compact('product'));
-    }
-
-    private function generateSequentialBarcode(?int $categoryId = null): string
-    {
-        // Resolve section prefix via category → section relationship
-        $prefix = null;
-        if ($categoryId) {
-            $category = Category::with('section')->find($categoryId);
-            if ($category && $category->section && $category->section->barcode_prefix) {
-                $prefix = strtoupper(trim($category->section->barcode_prefix));
-            }
-        }
-
-        if ($prefix) {
-            // Find the highest number already used for this prefix (e.g. MOB-0042 → 42)
-            $pattern = $prefix . '-%';
-            $max = Product::whereNotNull('barcode')
-                          ->where('barcode', 'like', $pattern)
-                          ->get()
-                          ->map(fn($p) => (int) substr($p->barcode, strlen($prefix) + 1))
-                          ->max();
-            $next = ($max ?? 0) + 1;
-            return $prefix . '-' . str_pad($next, 4, '0', STR_PAD_LEFT);
-        }
-
-        // Global fallback — highest purely-numeric barcode
-        $max = Product::whereNotNull('barcode')
-                      ->whereRaw("barcode REGEXP '^[0-9]+$'")
-                      ->max(DB::raw('CAST(barcode AS UNSIGNED)'));
-
-        $next = ($max ?? 0) + 1;
-        return str_pad($next, 5, '0', STR_PAD_LEFT);
     }
 }
