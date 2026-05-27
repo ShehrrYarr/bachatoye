@@ -81,16 +81,18 @@ class PurchaseController extends Controller
         }
 
         // Auto-generate barcode using section prefix (same logic as the product create form)
+        // Use parent category_id for prefix lookup — sections live on parent categories
         if (empty($data['barcode'])) {
-            $catId = $data['subcategory_id'] ?? $data['category_id'] ?? null;
-            $data['barcode'] = BarcodeService::generate($catId ? (int) $catId : null);
+            $data['barcode'] = BarcodeService::generate(
+                isset($data['category_id']) ? (int) $data['category_id'] : null
+            );
         }
 
         $product = Product::create([
             'name'                => $data['name'],
             'slug'                => $slug,
-            'category_id'         => $data['subcategory_id'] ?? $data['category_id'] ?? null,
-            'subcategory_id'      => isset($data['subcategory_id']) ? ($data['category_id'] ?? null) : null,
+            'category_id'         => $data['category_id'] ?? null,
+            'subcategory_id'      => $data['subcategory_id'] ?? null,
             'brand_id'            => $data['brand_id'] ?? null,
             'short_description'   => $data['short_description'] ?? null,
             'barcode'             => $data['barcode'],
