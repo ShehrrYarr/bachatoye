@@ -92,7 +92,7 @@ class DashboardController extends Controller
             'total_cash'   => $posCash + $khataCash,
             'total_bank'   => $posBank + $khataBank,
             'grand_total'  => $posCash + $posBank + $khataTotal,
-            'store_name'   => Setting::get('store_name', config('app.name')),
+            'store_name'   => Setting::get('shop_name', config('app.name')),
             'date'         => today()->format('d M Y'),
         ];
 
@@ -127,8 +127,8 @@ class DashboardController extends Controller
             'total_cash'  => $posCash + $khataEntries->where('payment_method', 'cash')->sum('amount'),
             'total_bank'  => $posBank + $khataEntries->where('payment_method', 'bank_transfer')->sum('amount'),
             'grand_total' => $posOrders->sum('total') + $khataEntries->sum('amount'),
-            'store_name'  => Setting::get('store_name', config('app.name')),
-            'store_phone' => Setting::get('store_phone', ''),
+            'store_name'  => Setting::get('shop_name', config('app.name')),
+            'store_phone' => Setting::get('shop_phone', ''),
             'date'        => today()->format('d M Y'),
         ];
 

@@ -114,9 +114,9 @@ class CustomerController extends Controller
     public function ledgerPrint(Customer $customer)
     {
         $entries = $customer->ledgerEntries()->with('user')->oldest()->get();
-        $storeName = \App\Models\Setting::get('store_name', config('app.name'));
-        $storePhone = \App\Models\Setting::get('store_phone', '');
-        $storeAddress = \App\Models\Setting::get('store_address', '');
+        $storeName = \App\Models\Setting::get('shop_name', config('app.name'));
+        $storePhone = \App\Models\Setting::get('shop_phone', '');
+        $storeAddress = \App\Models\Setting::get('shop_address', '');
         return view('admin.customers.ledger-print', compact('customer', 'entries', 'storeName', 'storePhone', 'storeAddress'));
     }
 
