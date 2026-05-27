@@ -7,7 +7,8 @@
 
     {{-- Stat Cards --}}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3 md:p-6 flex items-start gap-3">
+        <a href="{{ route('admin.reports.sales', ['period' => 'today', 'source' => 'pos']) }}"
+           class="bg-white rounded-xl border border-gray-200 shadow-sm p-3 md:p-6 flex items-start gap-3 hover:border-blue-300 hover:shadow-md transition-all">
             <div class="stat-icon bg-blue-50 shrink-0">
                 <i class="fas fa-shopping-bag text-blue-600 text-xl"></i>
             </div>
@@ -16,7 +17,7 @@
                 <div class="text-xs text-gray-500 mt-0.5">Today Sale (Rs.)</div>
                 <div class="text-xs text-gray-400 mt-1">{{ $stats['today_orders'] }} orders</div>
             </div>
-        </div>
+        </a>
 
         <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-3 md:p-6 flex items-start gap-3">
             <div class="stat-icon bg-yellow-50 shrink-0">
