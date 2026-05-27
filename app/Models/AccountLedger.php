@@ -9,7 +9,7 @@ class AccountLedger extends Model
     protected $table = 'accounts_ledger';
 
     protected $fillable = [
-        'customer_id', 'type', 'amount', 'balance_after',
+        'customer_id', 'type', 'payment_method', 'amount', 'balance_after',
         'description', 'reference', 'user_id',
     ];
 

@@ -123,10 +123,11 @@ class CustomerController extends Controller
     public function addLedgerEntry(Request $request, Customer $customer)
     {
         $data = $request->validate([
-            'type'        => 'required|in:debit,credit',
-            'amount'      => 'required|numeric|min:0.01',
-            'description' => 'required|string|max:255',
-            'reference'   => 'nullable|string|max:100',
+            'type'           => 'required|in:debit,credit',
+            'payment_method' => 'nullable|in:cash,bank_transfer',
+            'amount'         => 'required|numeric|min:0.01',
+            'description'    => 'required|string|max:255',
+            'reference'      => 'nullable|string|max:100',
         ]);
 
         DB::transaction(function () use ($data, $customer) {
@@ -134,13 +135,14 @@ class CustomerController extends Controller
             $newBal = $customer->credit_balance + $delta;
 
             AccountLedger::create([
-                'customer_id'   => $customer->id,
-                'type'          => $data['type'],
-                'amount'        => $data['amount'],
-                'balance_after' => $newBal,
-                'description'   => $data['description'],
-                'reference'     => $data['reference'] ?? null,
-                'user_id'       => Auth::id(),
+                'customer_id'    => $customer->id,
+                'type'           => $data['type'],
+                'payment_method' => $data['type'] === 'credit' ? ($data['payment_method'] ?? null) : null,
+                'amount'         => $data['amount'],
+                'balance_after'  => $newBal,
+                'description'    => $data['description'],
+                'reference'      => $data['reference'] ?? null,
+                'user_id'        => Auth::id(),
             ]);
 
             $customer->update(['credit_balance' => $newBal]);

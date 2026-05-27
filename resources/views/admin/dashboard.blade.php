@@ -112,7 +112,7 @@
         </div>
     </div>
 
-    {{-- Low Stock + Recent Orders --}}
+    {{-- Low Stock + Today's Report --}}
     <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
         {{-- Low Stock Alerts --}}
@@ -135,6 +135,77 @@
                 @empty
                     <div class="px-4 py-6 text-center text-sm text-gray-500">All stock levels are healthy.</div>
                 @endforelse
+            </div>
+        </div>
+
+        {{-- Today's Report --}}
+        <div class="card lg:col-span-3">
+            <div class="card-header">
+                <h3 class="font-semibold text-gray-800">
+                    Today's Report
+                    <span class="text-xs font-normal text-gray-400 ml-1">{{ now()->format('d M Y') }}</span>
+                </h3>
+                <a href="{{ route('admin.dashboard.today-report') }}" target="_blank"
+                   class="btn-outline btn-sm">
+                    <i class="fas fa-print mr-1.5 text-gray-500"></i> Print
+                </a>
+            </div>
+            <div class="p-4 space-y-3">
+
+                {{-- POS Sales --}}
+                <div class="bg-blue-50 rounded-xl p-3">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-sm font-semibold text-blue-800">
+                            <i class="fas fa-cash-register mr-1.5"></i>POS Sales
+                        </span>
+                        <span class="font-bold text-blue-900">Rs. {{ number_format($todayReport['pos_total']) }}</span>
+                    </div>
+                    <div class="flex gap-4 text-xs text-blue-700">
+                        <span><i class="fas fa-money-bill-wave mr-1"></i>Cash: Rs. {{ number_format($todayReport['pos_cash']) }}</span>
+                        <span><i class="fas fa-university mr-1"></i>Bank: Rs. {{ number_format($todayReport['pos_bank']) }}</span>
+                    </div>
+                </div>
+
+                {{-- Khata Received --}}
+                <div class="bg-green-50 rounded-xl p-3">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-sm font-semibold text-green-800">
+                            <i class="fas fa-hand-holding-usd mr-1.5"></i>Khata Received
+                        </span>
+                        <span class="font-bold text-green-900">Rs. {{ number_format($todayReport['khata_total']) }}</span>
+                    </div>
+                    <div class="flex gap-4 text-xs text-green-700">
+                        <span><i class="fas fa-money-bill-wave mr-1"></i>Cash: Rs. {{ number_format($todayReport['khata_cash']) }}</span>
+                        <span><i class="fas fa-university mr-1"></i>Bank: Rs. {{ number_format($todayReport['khata_bank']) }}</span>
+                        @if($todayReport['khata_other'] > 0)
+                        <span><i class="fas fa-question-circle mr-1"></i>Other: Rs. {{ number_format($todayReport['khata_other']) }}</span>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Expenses --}}
+                <div class="bg-red-50 rounded-xl p-3 flex justify-between items-center">
+                    <span class="text-sm font-semibold text-red-800">
+                        <i class="fas fa-receipt mr-1.5"></i>Expenses
+                    </span>
+                    <span class="font-bold text-red-900">Rs. {{ number_format($todayReport['expenses']) }}</span>
+                </div>
+
+                {{-- Divider + Grand totals --}}
+                <div class="border-t border-gray-200 pt-3 space-y-1.5">
+                    <div class="flex justify-between text-sm text-gray-600">
+                        <span><i class="fas fa-money-bill-wave text-green-500 mr-1.5"></i>Total Cash In</span>
+                        <span class="font-semibold">Rs. {{ number_format($todayReport['total_cash']) }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm text-gray-600">
+                        <span><i class="fas fa-university text-blue-500 mr-1.5"></i>Total Bank In</span>
+                        <span class="font-semibold">Rs. {{ number_format($todayReport['total_bank']) }}</span>
+                    </div>
+                    <div class="flex justify-between text-base font-bold text-gray-900 border-t border-gray-200 pt-2 mt-1">
+                        <span>Grand Total Received</span>
+                        <span class="text-primary-700">Rs. {{ number_format($todayReport['grand_total']) }}</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

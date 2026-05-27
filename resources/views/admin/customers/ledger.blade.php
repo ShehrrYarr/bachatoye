@@ -63,15 +63,34 @@
     <div>
         <div class="card p-5 sticky top-6">
             <h2 class="font-semibold text-gray-800 mb-4">Add Manual Entry</h2>
-            <form method="POST" action="{{ route('admin.customers.ledger.add', $customer) }}">
+            <form method="POST" action="{{ route('admin.customers.ledger.add', $customer) }}"
+                  x-data="{ entryType: 'debit' }">
                 @csrf
                 <div class="space-y-4">
                     <div>
                         <label class="form-label">Entry Type *</label>
-                        <select name="type" class="form-select" required>
+                        <select name="type" x-model="entryType" class="form-select" required>
                             <option value="debit">Debit (Customer owes more)</option>
                             <option value="credit">Credit (Customer paid / refund)</option>
                         </select>
+                    </div>
+
+                    {{-- Payment method — only shown for credit entries --}}
+                    <div x-show="entryType === 'credit'" x-transition>
+                        <label class="form-label">Paid Via</label>
+                        <div class="flex gap-2">
+                            <label class="flex-1 flex items-center justify-center gap-2 p-2 border-2 rounded-xl cursor-pointer transition-all has-[:checked]:border-green-500 has-[:checked]:bg-green-50 border-gray-200">
+                                <input type="radio" name="payment_method" value="cash" class="sr-only">
+                                <i class="fas fa-money-bill-wave text-green-600"></i>
+                                <span class="text-sm font-medium">Cash</span>
+                            </label>
+                            <label class="flex-1 flex items-center justify-center gap-2 p-2 border-2 rounded-xl cursor-pointer transition-all has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 border-gray-200">
+                                <input type="radio" name="payment_method" value="bank_transfer" class="sr-only">
+                                <i class="fas fa-university text-blue-600"></i>
+                                <span class="text-sm font-medium">Bank</span>
+                            </label>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">Optional — leave unselected if unknown</p>
                     </div>
                     <div>
                         <label class="form-label">Amount (Rs.) *</label>
