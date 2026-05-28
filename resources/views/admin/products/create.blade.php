@@ -271,6 +271,13 @@
                         </span>
                     </label>
                     <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="free_delivery" value="1" {{ old('free_delivery') ? 'checked' : '' }}
+                               class="w-4 h-4 text-green-600 rounded">
+                        <span class="text-sm font-medium text-gray-700">Free Delivery
+                            <span class="block text-xs font-normal text-gray-400">Delivery is free for orders containing this product, regardless of order total</span>
+                        </span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" name="is_new_arrival" value="1" {{ old('is_new_arrival') ? 'checked' : '' }}
                                class="w-4 h-4 text-primary-600 rounded">
                         <span class="text-sm font-medium text-gray-700">New Arrival</span>

@@ -25,9 +25,7 @@ class CartController extends Controller
         $items    = $this->hydrateCart($cart);
         $subtotal = collect($items)->sum('line_total');
 
-        $deliveryCharge = (float) \App\Models\Setting::get('delivery_charge', 150);
-        $freeAbove      = (float) \App\Models\Setting::get('free_delivery_above', 5000);
-        if ($subtotal >= $freeAbove) $deliveryCharge = 0;
+        $deliveryCharge = $this->resolveDelivery($items, $subtotal);
 
         // Coupon from session
         $couponCode     = session('coupon_code');
@@ -135,10 +133,26 @@ class CartController extends Controller
         return back()->with('success', 'Cart cleared.');
     }
 
+    private function resolveDelivery(array $items, float $subtotal): float
+    {
+        $charge    = (float) \App\Models\Setting::get('delivery_charge', 150);
+        $freeAbove = (float) \App\Models\Setting::get('free_delivery_above', 5000);
+
+        if ($subtotal >= $freeAbove) return 0;
+
+        foreach ($items as $item) {
+            $product = $item['product'];
+            if ($product->free_delivery) return 0;
+            if ($product->category && $product->category->free_delivery) return 0;
+        }
+
+        return $charge;
+    }
+
     private function hydrateCart(array $cart): array
     {
         $productIds = array_column($cart, 'product_id');
-        $products   = Product::whereIn('id', $productIds)->with('images')->get()->keyBy('id');
+        $products   = Product::whereIn('id', $productIds)->with(['images', 'category'])->get()->keyBy('id');
 
         return collect($cart)->map(function ($item, $rowId) use ($products) {
             $product = $products[$item['product_id']] ?? null;

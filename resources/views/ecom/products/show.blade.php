@@ -159,7 +159,7 @@
             @endif
 
             {{-- Stock status --}}
-            <div class="flex items-center gap-2 mb-5">
+            <div class="flex items-center flex-wrap gap-2 mb-5">
                 @if($product->isInStock())
                     <span class="inline-flex items-center gap-1.5 text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-lg text-sm font-medium">
                         <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> In Stock
@@ -170,6 +170,11 @@
                 @else
                     <span class="inline-flex items-center gap-1.5 text-red-700 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg text-sm font-medium">
                         <span class="w-2 h-2 bg-red-500 rounded-full"></span> Out of Stock
+                    </span>
+                @endif
+                @if($product->free_delivery || $product->category?->free_delivery)
+                    <span class="inline-flex items-center gap-1.5 text-white bg-green-500 px-3 py-1.5 rounded-lg text-sm font-semibold shadow-sm">
+                        <i class="fas fa-truck text-xs"></i> Free Delivery
                     </span>
                 @endif
             </div>
@@ -263,8 +268,12 @@
             <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-5 space-y-2 text-sm">
                 <div class="flex items-center gap-2 text-blue-800">
                     <i class="fas fa-truck text-blue-500 w-4 shrink-0"></i>
-                    <span><strong>Delivery:</strong> Rs. {{ number_format(\App\Models\Setting::get('delivery_charge', 150)) }}
-                        — Free above Rs. {{ number_format(\App\Models\Setting::get('free_delivery_above', 5000)) }}</span>
+                    @if($product->free_delivery || $product->category?->free_delivery)
+                        <span><strong>Delivery:</strong> <span class="text-green-700 font-semibold">FREE</span> — this product ships free!</span>
+                    @else
+                        <span><strong>Delivery:</strong> Rs. {{ number_format(\App\Models\Setting::get('delivery_charge', 150)) }}
+                            — Free above Rs. {{ number_format(\App\Models\Setting::get('free_delivery_above', 5000)) }}</span>
+                    @endif
                 </div>
                 <div class="flex items-center gap-2 text-blue-800">
                     <i class="fas fa-undo text-blue-500 w-4 shrink-0"></i>

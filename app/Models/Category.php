@@ -9,11 +9,14 @@ class Category extends Model
 {
     use Sluggable;
 
-    protected $fillable = ['name', 'slug', 'parent_id', 'section_id', 'image', 'sort_order', 'is_active'];
+    protected $fillable = ['name', 'slug', 'parent_id', 'section_id', 'image', 'sort_order', 'is_active', 'free_delivery'];
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return [
+            'is_active'     => 'boolean',
+            'free_delivery' => 'boolean',
+        ];
     }
 
     public function sluggable(): array

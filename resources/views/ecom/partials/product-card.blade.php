@@ -19,6 +19,12 @@
             <span class="deal-badge">{{ $deal->badge_label }}</span>
         @endif
 
+        @if($product->free_delivery || $product->category?->free_delivery)
+            <span class="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold bg-green-500 text-white shadow">
+                <i class="fas fa-truck text-xs"></i> Free Delivery
+            </span>
+        @endif
+
         @if(!$product->isInStock())
             <div class="absolute inset-0 bg-black/40 flex items-center justify-center">
                 <span class="bg-black/70 text-white text-xs font-semibold px-3 py-1 rounded-full">Out of Stock</span>

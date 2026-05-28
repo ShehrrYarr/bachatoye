@@ -30,19 +30,21 @@ class CategoryController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'       => 'required|string|max:100',
-            'parent_id'  => 'nullable|exists:categories,id',
-            'section_id' => 'nullable|exists:sections,id',
-            'image'      => 'nullable|image|max:2048',
-            'sort_order' => 'integer',
-            'is_active'  => 'boolean',
+            'name'          => 'required|string|max:100',
+            'parent_id'     => 'nullable|exists:categories,id',
+            'section_id'    => 'nullable|exists:sections,id',
+            'image'         => 'nullable|image|max:2048',
+            'sort_order'    => 'integer',
+            'is_active'     => 'boolean',
+            'free_delivery' => 'boolean',
         ]);
 
         if ($request->hasFile('image')) {
             $data['image'] = $request->file('image')->store('categories', 'public');
         }
 
-        $data['is_active'] = $request->boolean('is_active', true);
+        $data['is_active']     = $request->boolean('is_active', true);
+        $data['free_delivery'] = $request->boolean('free_delivery');
         Category::create($data);
 
         return redirect()->route('admin.categories.index')->with('success', 'Category created.');
@@ -58,18 +60,20 @@ class CategoryController extends Controller
     public function update(Request $request, Category $category)
     {
         $data = $request->validate([
-            'name'       => 'required|string|max:100',
-            'parent_id'  => 'nullable|exists:categories,id',
-            'section_id' => 'nullable|exists:sections,id',
-            'sort_order' => 'integer',
-            'is_active'  => 'boolean',
+            'name'          => 'required|string|max:100',
+            'parent_id'     => 'nullable|exists:categories,id',
+            'section_id'    => 'nullable|exists:sections,id',
+            'sort_order'    => 'integer',
+            'is_active'     => 'boolean',
+            'free_delivery' => 'boolean',
         ]);
 
         if ($request->hasFile('image')) {
             $data['image'] = $request->file('image')->store('categories', 'public');
         }
 
-        $data['is_active'] = $request->boolean('is_active', true);
+        $data['is_active']     = $request->boolean('is_active', true);
+        $data['free_delivery'] = $request->boolean('free_delivery');
         $category->update($data);
 
         return redirect()->route('admin.categories.index')->with('success', 'Category updated.');

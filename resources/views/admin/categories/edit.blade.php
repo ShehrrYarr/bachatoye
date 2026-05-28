@@ -66,6 +66,13 @@
                 <input type="checkbox" name="is_active" id="is_active" value="1" {{ old('is_active', $category->is_active) ? 'checked' : '' }} class="w-4 h-4 text-primary-600 rounded">
                 <label for="is_active" class="text-sm font-medium text-gray-700 cursor-pointer">Active</label>
             </div>
+            <div class="flex items-center gap-2">
+                <input type="checkbox" name="free_delivery" id="free_delivery" value="1" {{ old('free_delivery', $category->free_delivery) ? 'checked' : '' }} class="w-4 h-4 text-green-600 rounded">
+                <label for="free_delivery" class="text-sm font-medium text-gray-700 cursor-pointer">
+                    Free Delivery
+                    <span class="block text-xs font-normal text-gray-400">All products in this category ship free, regardless of order total</span>
+                </label>
+            </div>
             <div class="flex gap-3 pt-2">
                 <button type="submit" class="btn-primary">Update Category</button>
                 <a href="{{ route('admin.categories.index') }}" class="btn-outline">Cancel</a>
