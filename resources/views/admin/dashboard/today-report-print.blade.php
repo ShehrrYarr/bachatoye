@@ -47,6 +47,12 @@
         .expense .section-title { color: #be123c; }
         .expense .section-total { color: #be123c; }
 
+        .returns { background: #fff7ed; border: 1px solid #fed7aa; }
+        .returns .section-title { color: #c2410c; }
+        .returns .section-total { color: #c2410c; }
+        .returns .breakdown { color: #ea580c; }
+        .dot-orange { background: #f97316; }
+
         /* Totals */
         .totals { border-top: 2px solid #1a1a1a; padding-top: 14px; margin-top: 4px; }
         .total-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; font-size: 13px; color: #374151; }
@@ -126,6 +132,20 @@
         </div>
     </div>
 
+    {{-- Returns --}}
+    <div class="section returns">
+        <div class="section-header">
+            <span class="section-title">&#8617; Returns (Refunded)</span>
+            <span class="section-total">– Rs. {{ number_format($todayReport['return_total']) }}</span>
+        </div>
+        @if($todayReport['return_total'] > 0)
+        <div class="breakdown">
+            <span><span class="dot dot-green"></span>Cash: Rs. {{ number_format($todayReport['return_cash']) }}</span>
+            <span><span class="dot dot-blue"></span>Bank Transfer: Rs. {{ number_format($todayReport['return_bank']) }}</span>
+        </div>
+        @endif
+    </div>
+
     {{-- Grand Totals --}}
     <div class="totals">
         <div class="total-row">
@@ -140,6 +160,12 @@
             <span>Total Expenses (Out)</span>
             <strong style="color:#be123c;">– Rs. {{ number_format($todayReport['expenses']) }}</strong>
         </div>
+        @if($todayReport['return_total'] > 0)
+        <div class="total-row">
+            <span>Total Returns (Out)</span>
+            <strong style="color:#c2410c;">– Rs. {{ number_format($todayReport['return_total']) }}</strong>
+        </div>
+        @endif
         <div class="total-row grand">
             <span>Grand Total Received</span>
             <span>Rs. {{ number_format($todayReport['grand_total']) }}</span>

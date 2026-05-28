@@ -191,6 +191,29 @@
                     <span class="font-bold text-red-900">Rs. {{ number_format($todayReport['expenses']) }}</span>
                 </div>
 
+                {{-- Returns --}}
+                @if($todayReport['return_total'] > 0)
+                <div class="bg-orange-50 rounded-xl p-3">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-sm font-semibold text-orange-800">
+                            <i class="fas fa-undo-alt mr-1.5"></i>Returns (Refunded)
+                        </span>
+                        <span class="font-bold text-orange-900">– Rs. {{ number_format($todayReport['return_total']) }}</span>
+                    </div>
+                    <div class="flex gap-4 text-xs text-orange-700">
+                        <span><i class="fas fa-money-bill-wave mr-1"></i>Cash: Rs. {{ number_format($todayReport['return_cash']) }}</span>
+                        <span><i class="fas fa-university mr-1"></i>Bank: Rs. {{ number_format($todayReport['return_bank']) }}</span>
+                    </div>
+                </div>
+                @else
+                <div class="bg-orange-50 rounded-xl p-3 flex justify-between items-center">
+                    <span class="text-sm font-semibold text-orange-800">
+                        <i class="fas fa-undo-alt mr-1.5"></i>Returns (Refunded)
+                    </span>
+                    <span class="font-bold text-orange-900">Rs. 0</span>
+                </div>
+                @endif
+
                 {{-- Divider + Grand totals --}}
                 <div class="border-t border-gray-200 pt-3 space-y-1.5">
                     <div class="flex justify-between text-sm text-gray-600">
