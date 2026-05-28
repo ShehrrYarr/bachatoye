@@ -20,14 +20,13 @@
     </div>
     @endif
 
-    <form method="POST" action="{{ route('checkout.store') }}" enctype="multipart/form-data"
-          x-data="{ paymentMethod: '{{ old('payment_method', 'cash') }}' }">
-        @csrf
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-            {{-- Left: Customer info + Payment --}}
-            <div class="lg:col-span-2 space-y-6">
+        {{-- Left: Customer info + Payment (this IS the checkout form) --}}
+        <form id="checkout-form" method="POST" action="{{ route('checkout.store') }}" enctype="multipart/form-data"
+              x-data="{ paymentMethod: '{{ old('payment_method', 'cash') }}' }"
+              class="lg:col-span-2 space-y-6">
+            @csrf
 
                 {{-- Customer Information --}}
                 <div class="card">
@@ -125,10 +124,11 @@
                         @error('payment_method') <p class="form-error">{{ $message }}</p> @enderror
                     </div>
                 </div>
-            </div>
 
-            {{-- Right: Order Summary --}}
-            <div>
+        </form>{{-- end #checkout-form --}}
+
+        {{-- Right: Order Summary (outside checkout form so coupon forms aren't nested) --}}
+        <div>
                 <div class="card p-5 sticky top-24">
                     <h2 class="font-bold text-gray-900 text-lg mb-4">Order Summary</h2>
 
@@ -211,7 +211,7 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="btn-primary btn-lg w-full justify-center mt-5">
+                    <button type="submit" form="checkout-form" class="btn-primary btn-lg w-full justify-center mt-5">
                         <i class="fas fa-check-circle mr-2"></i> Place Order
                     </button>
 
@@ -220,7 +220,6 @@
                     </a>
                 </div>
             </div>
-        </div>
-    </form>
+        </div>{{-- end grid --}}
 </div>
 @endsection
