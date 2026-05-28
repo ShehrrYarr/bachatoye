@@ -38,7 +38,6 @@
 # --- Public: compiled assets & symlink ---
 /public/storage
 /public/hot
-/public/build/
 
 # --- PHPUnit ---
 .phpunit.result.cache
