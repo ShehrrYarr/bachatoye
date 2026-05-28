@@ -167,15 +167,15 @@
                             @error('coupon_code')
                                 <p class="text-red-500 text-xs mb-2"><i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p>
                             @enderror
-                            <form method="POST" action="{{ route('cart.coupon.apply') }}" class="flex gap-2">
+                            <form method="POST" action="{{ route('cart.coupon.apply') }}">
                                 @csrf
                                 <input type="text" name="coupon_code"
                                        value="{{ old('coupon_code') }}"
                                        placeholder="Coupon code"
-                                       class="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono tracking-widest uppercase @error('coupon_code') border-red-400 @enderror">
+                                       class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono tracking-widest uppercase mb-2 @error('coupon_code') border-red-400 @enderror">
                                 <button type="submit"
-                                        class="shrink-0 bg-gray-800 hover:bg-gray-900 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-                                    Apply
+                                        class="w-full bg-gray-800 hover:bg-gray-900 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+                                    Apply Coupon
                                 </button>
                             </form>
                             <p class="text-xs text-gray-400 mt-1.5">
