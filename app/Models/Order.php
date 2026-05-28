@@ -10,7 +10,7 @@ class Order extends Model
         'order_number', 'source', 'customer_id', 'customer_name', 'customer_phone',
         'customer_email', 'delivery_address', 'city', 'delivery_notes',
         'subtotal', 'discount_amount', 'delivery_charge', 'total', 'amount_paid',
-        'cash_amount', 'bank_amount',
+        'cash_amount', 'bank_amount', 'bank_account_id',
         'payment_method', 'payment_status', 'payment_proof', 'payment_notes',
         'notes', 'exchange_item_name', 'exchange_value',
         'status', 'tracking_number', 'served_by', 'deal_id',
@@ -71,6 +71,11 @@ class Order extends Model
     public function returns()
     {
         return $this->hasMany(ReturnOrder::class);
+    }
+
+    public function bankAccount()
+    {
+        return $this->belongsTo(BankAccount::class);
     }
 
     public function getStatusBadgeAttribute(): string

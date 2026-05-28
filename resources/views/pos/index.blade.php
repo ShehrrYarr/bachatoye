@@ -268,6 +268,32 @@
                 </button>
             </div>
 
+            {{-- Bank account selector (shown for bank_transfer and split) --}}
+            @if($bankAccounts->count())
+            <div x-show="['bank_transfer','split'].includes(paymentMethod)" class="space-y-1">
+                <label class="text-xs font-semibold text-blue-700 block mb-1">
+                    <i class="fas fa-university mr-1"></i>Select Bank Account
+                </label>
+                <select x-model="bankAccountId"
+                        class="w-full text-sm border border-blue-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white font-medium">
+                    <option value="">— Choose bank account —</option>
+                    @foreach($bankAccounts as $bank)
+                    <option value="{{ $bank->id }}">{{ $bank->label }} ({{ $bank->bank_name }})</option>
+                    @endforeach
+                </select>
+                <p x-show="!bankAccountId && ['bank_transfer','split'].includes(paymentMethod)"
+                   class="text-xs text-orange-500 font-medium">
+                    <i class="fas fa-exclamation-triangle mr-1"></i>Please select a bank account.
+                </p>
+            </div>
+            @else
+            <div x-show="['bank_transfer','split'].includes(paymentMethod)"
+                 class="text-xs text-orange-600 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+                <i class="fas fa-exclamation-triangle mr-1"></i>
+                No bank accounts set up. <a href="{{ route('admin.bank-accounts.index') }}" target="_blank" class="underline font-semibold">Add one here</a>.
+            </div>
+            @endif
+
             {{-- Cash tendered (full cash payment) --}}
             <div x-show="paymentMethod === 'cash'" class="space-y-1">
                 <div class="flex items-center gap-2">
@@ -877,6 +903,7 @@ function posApp() {
         partialAmountPaid: 0,
         splitCash: 0,
         splitBank: 0,
+        bankAccountId: null,
         quickCash: [500, 1000, 2000, 5000],
         orderNotes: '',
         processingOrder: false,
@@ -1014,6 +1041,7 @@ function posApp() {
             this.cashReceived = 0;
             this.splitCash = 0;
             this.splitBank = 0;
+            this.bankAccountId = null;
             this.partialAmountPaid = 0;
             this.recalculate();
         },
@@ -1106,6 +1134,7 @@ function posApp() {
                         amount_paid: this.paymentMethod === 'partial' ? this.partialAmountPaid : null,
                         cash_amount: this.paymentMethod === 'split' ? this.splitCash : null,
                         bank_amount: this.paymentMethod === 'split' ? this.splitBank : null,
+                        bank_account_id: ['bank_transfer', 'split'].includes(this.paymentMethod) ? this.bankAccountId : null,
                         customer_id: this.selectedCustomer?.id || null,
                         notes: this.orderNotes || null,
                         cash_received: this.cashReceived,

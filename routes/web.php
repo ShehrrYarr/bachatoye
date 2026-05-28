@@ -89,6 +89,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::resource('categories', Admin\CategoryController::class);
     Route::resource('brands', Admin\BrandController::class);
 
+    // POS Bank Accounts
+    Route::resource('bank-accounts', Admin\BankAccountController::class)->except(['create', 'edit', 'show']);
+
     // Inventory
     Route::get('inventory', [Admin\InventoryController::class, 'index'])->name('inventory.index');
     Route::get('inventory/{product}/adjust', [Admin\InventoryController::class, 'adjustForm'])->name('inventory.adjust.form');

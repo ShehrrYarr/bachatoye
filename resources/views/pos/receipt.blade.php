@@ -129,7 +129,7 @@
             <span class="bold">Rs.{{ number_format($order->cash_amount) }}</span>
         </div>
         <div class="row">
-            <span>Bank Transfer</span>
+            <span>Bank{{ $order->bankAccount ? ' ('.$order->bankAccount->label.')' : '' }}</span>
             <span class="bold">Rs.{{ number_format($order->bank_amount) }}</span>
         </div>
         @else
@@ -137,7 +137,8 @@
             <span>Payment</span>
             <span class="bold">
                 @if($order->payment_method === 'cash') Cash
-                @elseif($order->payment_method === 'bank_transfer') Bank Transfer
+                @elseif($order->payment_method === 'bank_transfer')
+                    Bank Transfer{{ $order->bankAccount ? ' — '.$order->bankAccount->label : '' }}
                 @else Khata (Credit) @endif
             </span>
         </div>

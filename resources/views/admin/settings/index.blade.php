@@ -113,13 +113,19 @@
 
         {{-- Payment --}}
         <div class="card">
-            <div class="card-header"><h2 class="font-semibold text-gray-800">Payment & Bank</h2></div>
+            <div class="card-header">
+                <h2 class="font-semibold text-gray-800">Payment & Bank</h2>
+            </div>
             <div class="card-body space-y-4">
                 <div>
-                    <label class="form-label">Bank Account Details</label>
+                    <label class="form-label">Online Store Bank Account
+                        <span class="text-xs font-normal text-gray-400 ml-1">(ecommerce only)</span>
+                    </label>
                     <textarea name="bank_details" rows="4" class="form-textarea font-mono text-sm"
                               placeholder="Bank: HBL&#10;Account Title: MobileHub&#10;Account No: 0001-1234567&#10;IBAN: PK36HABB0000000123456702">{{ old('bank_details', \App\Models\Setting::get('bank_details')) }}</textarea>
-                    <p class="form-hint">Shown to customers on checkout when they select Bank Transfer</p>
+                    <p class="form-hint">Shown to customers on the online checkout when they select Bank Transfer. For POS bank accounts,
+                        <a href="{{ route('admin.bank-accounts.index') }}" class="text-primary-600 hover:underline font-medium">manage them here</a>.
+                    </p>
                 </div>
             </div>
         </div>

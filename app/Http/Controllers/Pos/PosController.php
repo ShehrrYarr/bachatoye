@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Pos;
 
 use App\Http\Controllers\Controller;
 use App\Models\AccountLedger;
+use App\Models\BankAccount;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\ProductColor;
@@ -95,10 +96,13 @@ class PosController extends Controller
             'total_collected' => $todayPaymentsList->sum('amount'),
         ];
 
+        $bankAccounts = BankAccount::active()->orderBy('sort_order')->orderBy('id')->get();
+
         return view('pos.index', compact(
             'session', 'categories', 'featuredProducts',
             'todaySales', 'todayReturns', 'todayPayments',
-            'todaySalesOrders', 'todayReturnsList', 'todayPaymentsList'
+            'todaySalesOrders', 'todayReturnsList', 'todayPaymentsList',
+            'bankAccounts'
         ));
     }
 
@@ -245,6 +249,7 @@ class PosController extends Controller
             'amount_paid'         => 'nullable|numeric|min:0',
             'cash_amount'         => 'nullable|numeric|min:0',
             'bank_amount'         => 'nullable|numeric|min:0',
+            'bank_account_id'     => 'nullable|exists:bank_accounts,id',
             'customer_id'         => 'nullable|exists:customers,id',
             'discount'            => 'nullable|numeric|min:0',
             'notes'               => 'nullable|string|max:500',
@@ -335,8 +340,11 @@ class PosController extends Controller
                 'amount_paid'     => $amountPaid,
                 'cash_amount'     => $cashAmount,
                 'bank_amount'     => $bankAmount,
-                'payment_method'  => $payMethod,
-                'payment_status'  => $payStatus,
+                'payment_method'   => $payMethod,
+                'payment_status'   => $payStatus,
+                'bank_account_id'  => in_array($payMethod, ['bank_transfer', 'split'])
+                                        ? $request->bank_account_id
+                                        : null,
                 'notes'              => $request->notes,
                 'exchange_item_name' => $request->exchange_item_name ?: null,
                 'exchange_value'     => $exchangeValue > 0 ? $exchangeValue : null,
@@ -423,7 +431,7 @@ class PosController extends Controller
 
     public function receipt(Order $order)
     {
-        $order->load(['items.product', 'servedBy']);
+        $order->load(['items.product', 'servedBy', 'bankAccount']);
         $settings = [
             'shop_name'    => Setting::get('shop_name', 'MobileHub'),
             'shop_phone'   => Setting::get('shop_phone'),
