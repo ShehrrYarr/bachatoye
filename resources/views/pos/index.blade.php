@@ -878,6 +878,18 @@
     </div>
 </div>
 
+@php
+$_posStats = [
+    'order_count'     => $todaySales->order_count ?? 0,
+    'total_revenue'   => $todaySales->total_revenue ?? 0,
+    'cash_total'      => $todaySales->cash_total ?? 0,
+    'bank_total'      => $todaySales->bank_total ?? 0,
+    'return_count'    => $todayReturns->return_count ?? 0,
+    'total_refunded'  => $todayReturns->total_refunded ?? 0,
+    'payment_count'   => $todayPayments->payment_count ?? 0,
+    'total_collected' => $todayPayments->total_collected ?? 0,
+];
+@endphp
 @push('scripts')
 <script>
 function posApp() {
@@ -1180,16 +1192,7 @@ function posStats() {
         showDailyModal: false,
         activeTab: 'sales',
 
-        stats: @json([
-            'order_count'     => $todaySales->order_count ?? 0,
-            'total_revenue'   => $todaySales->total_revenue ?? 0,
-            'cash_total'      => $todaySales->cash_total ?? 0,
-            'bank_total'      => $todaySales->bank_total ?? 0,
-            'return_count'    => $todayReturns->return_count ?? 0,
-            'total_refunded'  => $todayReturns->total_refunded ?? 0,
-            'payment_count'   => $todayPayments->payment_count ?? 0,
-            'total_collected' => $todayPayments->total_collected ?? 0,
-        ]),
+        stats: @json($_posStats),
 
         get netRevenue() {
             return this.stats.total_revenue - this.stats.total_refunded;
