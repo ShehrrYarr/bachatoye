@@ -15,14 +15,17 @@
                  loading="lazy">
         </a>
 
-        @if($deal)
-            <span class="deal-badge">{{ $deal->badge_label }}</span>
-        @endif
-
-        @if($product->free_delivery || $product->category?->free_delivery)
-            <span class="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold bg-green-500 text-white shadow">
-                <i class="fas fa-truck text-xs"></i> Free Delivery
-            </span>
+        @if($deal || $product->free_delivery || $product->category?->free_delivery)
+            <div class="absolute top-2 left-2 flex flex-col gap-1">
+                @if($deal)
+                    <span class="deal-badge">{{ $deal->badge_label }}</span>
+                @endif
+                @if($product->free_delivery || $product->category?->free_delivery)
+                    <span class="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-semibold bg-green-500 text-white leading-tight shadow">
+                        <i class="fas fa-truck"></i> Free Delivery
+                    </span>
+                @endif
+            </div>
         @endif
 
         @if(!$product->isInStock())
