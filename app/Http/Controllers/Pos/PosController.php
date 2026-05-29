@@ -106,6 +106,54 @@ class PosController extends Controller
         ));
     }
 
+    public function stats(): \Illuminate\Http\JsonResponse
+    {
+        $user    = Auth::user();
+        $isAdmin = $user->hasRole('admin');
+
+        $todaySalesOrders = Order::where('source', 'pos')
+            ->whereDate('created_at', today())
+            ->where('status', 'delivered')
+            ->when(!$isAdmin, fn($q) => $q->where('served_by', $user->id))
+            ->get(['payment_method', 'total', 'cash_amount', 'bank_amount', 'amount_paid']);
+
+        $cashTotal = $todaySalesOrders->sum(function ($o) {
+            return match ($o->payment_method) {
+                'cash'    => $o->total,
+                'split'   => $o->cash_amount ?? 0,
+                'partial' => $o->amount_paid ?? 0,
+                default   => 0,
+            };
+        });
+        $bankTotal = $todaySalesOrders->sum(function ($o) {
+            return match ($o->payment_method) {
+                'bank_transfer' => $o->total,
+                'split'         => $o->bank_amount ?? 0,
+                default         => 0,
+            };
+        });
+
+        $todayReturnsList = \App\Models\ReturnOrder::whereDate('created_at', today())
+            ->when(!$isAdmin, fn($q) => $q->where('processed_by', $user->id))
+            ->get(['refund_amount']);
+
+        $todayPaymentsList = \App\Models\AccountLedger::whereDate('created_at', today())
+            ->where('type', 'credit')
+            ->when(!$isAdmin, fn($q) => $q->where('user_id', $user->id))
+            ->get(['amount']);
+
+        return response()->json([
+            'order_count'     => $todaySalesOrders->count(),
+            'total_revenue'   => (float) $todaySalesOrders->sum('total'),
+            'cash_total'      => (float) $cashTotal,
+            'bank_total'      => (float) $bankTotal,
+            'return_count'    => $todayReturnsList->count(),
+            'total_refunded'  => (float) $todayReturnsList->sum('refund_amount'),
+            'payment_count'   => $todayPaymentsList->count(),
+            'total_collected' => (float) $todayPaymentsList->sum('amount'),
+        ]);
+    }
+
     public function openSession(Request $request)
     {
         $data = $request->validate(['opening_cash' => 'required|numeric|min:0']);

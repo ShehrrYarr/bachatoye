@@ -397,11 +397,8 @@
 </div>
 
 {{-- ===== DAILY SUMMARY BAR ===== --}}
-@php
-    $netRevenue = ($todaySales->total_revenue ?? 0) - ($todayReturns->total_refunded ?? 0);
-@endphp
 <div class="no-print fixed bottom-0 left-0 right-0 bg-gray-900 text-white z-40 border-t border-gray-700"
-     x-data="{ showDailyModal: false, activeTab: 'sales' }">
+     x-data="posStats()">
 
     {{-- Summary bar (clickable) --}}
     <div class="flex items-center gap-2 px-3 py-1.5 text-xs overflow-x-auto">
@@ -412,8 +409,8 @@
         <button @click="activeTab = 'sales'; showDailyModal = true"
                 class="flex items-center gap-1.5 bg-green-900/60 hover:bg-green-800 text-green-300 px-2.5 py-1 rounded-lg shrink-0 transition-colors">
             <i class="fas fa-shopping-cart"></i>
-            <span class="font-semibold">Rs. {{ number_format($todaySales->total_revenue ?? 0) }}</span>
-            <span class="text-green-500">{{ $todaySales->order_count ?? 0 }} orders</span>
+            <span class="font-semibold" x-text="'Rs. ' + fmt(stats.total_revenue)"></span>
+            <span class="text-green-500" x-text="stats.order_count + ' orders'"></span>
         </button>
 
         <div class="w-px h-4 bg-gray-700 shrink-0"></div>
@@ -422,7 +419,7 @@
         <div class="flex items-center gap-1.5 text-emerald-300 shrink-0">
             <i class="fas fa-money-bill-wave text-xs"></i>
             <span class="text-xs">Cash:</span>
-            <span class="font-semibold text-xs">Rs. {{ number_format($todaySales->cash_total ?? 0) }}</span>
+            <span class="font-semibold text-xs" x-text="'Rs. ' + fmt(stats.cash_total)"></span>
         </div>
 
         <div class="w-px h-4 bg-gray-700 shrink-0"></div>
@@ -431,7 +428,7 @@
         <div class="flex items-center gap-1.5 text-blue-300 shrink-0">
             <i class="fas fa-university text-xs"></i>
             <span class="text-xs">Bank:</span>
-            <span class="font-semibold text-xs">Rs. {{ number_format($todaySales->bank_total ?? 0) }}</span>
+            <span class="font-semibold text-xs" x-text="'Rs. ' + fmt(stats.bank_total)"></span>
         </div>
 
         <div class="w-px h-4 bg-gray-700 shrink-0"></div>
@@ -440,8 +437,8 @@
         <button @click="activeTab = 'returns'; showDailyModal = true"
                 class="flex items-center gap-1.5 bg-red-900/60 hover:bg-red-800 text-red-300 px-2.5 py-1 rounded-lg shrink-0 transition-colors">
             <i class="fas fa-undo"></i>
-            <span class="font-semibold">Rs. {{ number_format($todayReturns->total_refunded ?? 0) }}</span>
-            <span class="text-red-400">{{ $todayReturns->return_count ?? 0 }} returns</span>
+            <span class="font-semibold" x-text="'Rs. ' + fmt(stats.total_refunded)"></span>
+            <span class="text-red-400" x-text="stats.return_count + ' returns'"></span>
         </button>
 
         <div class="w-px h-4 bg-gray-700 shrink-0"></div>
@@ -450,19 +447,17 @@
         <button @click="activeTab = 'payments'; showDailyModal = true"
                 class="flex items-center gap-1.5 bg-yellow-900/60 hover:bg-yellow-800 text-yellow-300 px-2.5 py-1 rounded-lg shrink-0 transition-colors">
             <i class="fas fa-hand-holding-usd"></i>
-            <span class="font-semibold">Rs. {{ number_format($todayPayments->total_collected ?? 0) }}</span>
-            <span class="text-yellow-500">{{ $todayPayments->payment_count ?? 0 }} payments</span>
+            <span class="font-semibold" x-text="'Rs. ' + fmt(stats.total_collected)"></span>
+            <span class="text-yellow-500" x-text="stats.payment_count + ' payments'"></span>
         </button>
 
         <div class="w-px h-4 bg-gray-700 shrink-0"></div>
 
         {{-- Net --}}
         <div class="flex items-center gap-1.5 shrink-0">
-            <i class="fas fa-chart-line {{ $netRevenue >= 0 ? 'text-blue-400' : 'text-red-400' }}"></i>
+            <i class="fas fa-chart-line" :class="netRevenue >= 0 ? 'text-blue-400' : 'text-red-400'"></i>
             <span class="text-gray-400">Net:</span>
-            <span class="font-bold {{ $netRevenue >= 0 ? 'text-blue-400' : 'text-red-400' }}">
-                Rs. {{ number_format($netRevenue) }}
-            </span>
+            <span class="font-bold" :class="netRevenue >= 0 ? 'text-blue-400' : 'text-red-400'" x-text="'Rs. ' + fmt(netRevenue)"></span>
         </div>
 
         <div class="ml-auto shrink-0">
@@ -505,19 +500,19 @@
                         :class="activeTab === 'sales' ? 'border-b-2 border-primary-600 text-primary-700 font-semibold' : 'text-gray-500 hover:text-gray-700'"
                         class="py-2.5 px-4 text-sm transition-colors mr-2">
                     <i class="fas fa-shopping-cart mr-1.5"></i>
-                    Sales <span class="ml-1 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold">{{ $todaySales->order_count ?? 0 }}</span>
+                    Sales <span class="ml-1 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold" x-text="stats.order_count"></span>
                 </button>
                 <button @click="activeTab = 'returns'"
                         :class="activeTab === 'returns' ? 'border-b-2 border-red-500 text-red-600 font-semibold' : 'text-gray-500 hover:text-gray-700'"
                         class="py-2.5 px-4 text-sm transition-colors">
                     <i class="fas fa-undo mr-1.5"></i>
-                    Returns <span class="ml-1 text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full font-semibold">{{ $todayReturns->return_count ?? 0 }}</span>
+                    Returns <span class="ml-1 text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full font-semibold" x-text="stats.return_count"></span>
                 </button>
                 <button @click="activeTab = 'payments'"
                         :class="activeTab === 'payments' ? 'border-b-2 border-yellow-500 text-yellow-700 font-semibold' : 'text-gray-500 hover:text-gray-700'"
                         class="py-2.5 px-4 text-sm transition-colors">
                     <i class="fas fa-hand-holding-usd mr-1.5"></i>
-                    Payments <span class="ml-1 text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full font-semibold">{{ $todayPayments->payment_count ?? 0 }}</span>
+                    Payments <span class="ml-1 text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full font-semibold" x-text="stats.payment_count"></span>
                 </button>
             </div>
 
@@ -530,16 +525,15 @@
                     {{-- Sales totals summary --}}
                     <div class="grid grid-cols-3 gap-3 mb-4">
                         <div class="bg-green-50 border border-green-100 rounded-xl px-4 py-3 text-center">
-                            <div class="text-lg font-bold text-green-700">Rs. {{ number_format($todaySales->total_revenue ?? 0) }}</div>
+                            <div class="text-lg font-bold text-green-700" x-text="'Rs. ' + fmt(stats.total_revenue)"></div>
                             <div class="text-xs text-green-600">Total Sales</div>
                         </div>
                         <div class="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-center">
-                            <div class="text-lg font-bold text-blue-700">{{ $todaySales->order_count ?? 0 }}</div>
+                            <div class="text-lg font-bold text-blue-700" x-text="stats.order_count"></div>
                             <div class="text-xs text-blue-600">Orders</div>
                         </div>
                         <div class="bg-purple-50 border border-purple-100 rounded-xl px-4 py-3 text-center">
-                            @php $avgOrder = ($todaySales->order_count ?? 0) > 0 ? ($todaySales->total_revenue / $todaySales->order_count) : 0; @endphp
-                            <div class="text-lg font-bold text-purple-700">Rs. {{ number_format($avgOrder) }}</div>
+                            <div class="text-lg font-bold text-purple-700" x-text="'Rs. ' + fmt(stats.order_count > 0 ? Math.round(stats.total_revenue / stats.order_count) : 0)"></div>
                             <div class="text-xs text-purple-600">Avg. Order</div>
                         </div>
                     </div>
@@ -633,11 +627,11 @@
                     {{-- Returns totals --}}
                     <div class="grid grid-cols-2 gap-3 mb-4">
                         <div class="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-center">
-                            <div class="text-lg font-bold text-red-700">Rs. {{ number_format($todayReturns->total_refunded ?? 0) }}</div>
+                            <div class="text-lg font-bold text-red-700" x-text="'Rs. ' + fmt(stats.total_refunded)"></div>
                             <div class="text-xs text-red-600">Total Refunded</div>
                         </div>
                         <div class="bg-orange-50 border border-orange-100 rounded-xl px-4 py-3 text-center">
-                            <div class="text-lg font-bold text-orange-700">{{ $todayReturns->return_count ?? 0 }}</div>
+                            <div class="text-lg font-bold text-orange-700" x-text="stats.return_count"></div>
                             <div class="text-xs text-orange-600">Return Transactions</div>
                         </div>
                     </div>
@@ -720,11 +714,11 @@
                     {{-- Payments totals --}}
                     <div class="grid grid-cols-2 gap-3 mb-4">
                         <div class="bg-yellow-50 border border-yellow-100 rounded-xl px-4 py-3 text-center">
-                            <div class="text-lg font-bold text-yellow-700">Rs. {{ number_format($todayPayments->total_collected ?? 0) }}</div>
+                            <div class="text-lg font-bold text-yellow-700" x-text="'Rs. ' + fmt(stats.total_collected)"></div>
                             <div class="text-xs text-yellow-600">Collected Today</div>
                         </div>
                         <div class="bg-green-50 border border-green-100 rounded-xl px-4 py-3 text-center">
-                            <div class="text-lg font-bold text-green-700">{{ $todayPayments->payment_count ?? 0 }}</div>
+                            <div class="text-lg font-bold text-green-700" x-text="stats.payment_count"></div>
                             <div class="text-xs text-green-600">Transactions</div>
                         </div>
                     </div>
@@ -1149,6 +1143,8 @@ function posApp() {
                     this.orderNotes = '';
                     this.paymentMethod = 'cash';
                     window.open(`/pos/receipt/${data.order_id}`, '_blank', 'width=400,height=700');
+                    this.loadProducts();
+                    window.dispatchEvent(new CustomEvent('pos:order-placed'));
                 } else {
                     alert(data.message || 'Order failed. Please try again.');
                 }
@@ -1175,6 +1171,45 @@ function posApp() {
                 });
                 if (res.ok) { location.reload(); }
             } catch(e) {}
+        },
+    };
+}
+
+function posStats() {
+    return {
+        showDailyModal: false,
+        activeTab: 'sales',
+
+        stats: @json([
+            'order_count'     => $todaySales->order_count ?? 0,
+            'total_revenue'   => $todaySales->total_revenue ?? 0,
+            'cash_total'      => $todaySales->cash_total ?? 0,
+            'bank_total'      => $todaySales->bank_total ?? 0,
+            'return_count'    => $todayReturns->return_count ?? 0,
+            'total_refunded'  => $todayReturns->total_refunded ?? 0,
+            'payment_count'   => $todayPayments->payment_count ?? 0,
+            'total_collected' => $todayPayments->total_collected ?? 0,
+        ]),
+
+        get netRevenue() {
+            return this.stats.total_revenue - this.stats.total_refunded;
+        },
+
+        init() {
+            window.addEventListener('pos:order-placed', () => this.refresh());
+        },
+
+        async refresh() {
+            try {
+                const res = await fetch('/pos/stats');
+                if (res.ok) {
+                    this.stats = await res.json();
+                }
+            } catch(e) { console.error('Stats refresh failed', e); }
+        },
+
+        fmt(n) {
+            return Number(n || 0).toLocaleString();
         },
     };
 }
