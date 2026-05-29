@@ -31,6 +31,19 @@ class PosReturnController extends Controller
             return response()->json(['error' => 'Order not found.'], 404);
         }
 
+        if ($order->source === 'ecommerce' && $order->status !== 'delivered') {
+            $label = match($order->status) {
+                'pending'    => 'Pending',
+                'processing' => 'Processing',
+                'shipped'    => 'Shipped',
+                'cancelled'  => 'Cancelled',
+                default      => ucfirst($order->status),
+            };
+            return response()->json([
+                'error' => "This online order cannot be returned yet. Current status: {$label}. Returns are only allowed after the order has been delivered.",
+            ], 422);
+        }
+
         return response()->json($order->load(['items']));
     }
 
@@ -48,7 +61,14 @@ class PosReturnController extends Controller
 
         DB::beginTransaction();
         try {
-            $order   = Order::with('items')->find($request->order_id);
+            $order = Order::with('items')->find($request->order_id);
+
+            if ($order->source === 'ecommerce' && $order->status !== 'delivered') {
+                DB::rollBack();
+                return response()->json([
+                    'error' => 'Cannot process return: this online order has not been delivered yet.',
+                ], 422);
+            }
             $refund  = 0;
             $items   = [];
 
