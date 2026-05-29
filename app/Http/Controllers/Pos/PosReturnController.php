@@ -44,7 +44,28 @@ class PosReturnController extends Controller
             ], 422);
         }
 
-        return response()->json($order->load(['items']));
+        // Calculate already-returned quantities per order item
+        $returnedQtys = ReturnItem::whereIn('order_item_id', $order->items->pluck('id'))
+            ->whereHas('returnOrder', fn($q) => $q->where('order_id', $order->id)
+                ->whereIn('status', ['approved', 'completed']))
+            ->selectRaw('order_item_id, SUM(quantity) as total_returned')
+            ->groupBy('order_item_id')
+            ->pluck('total_returned', 'order_item_id');
+
+        // Annotate each item with returnable qty
+        $order->items->each(function ($item) use ($returnedQtys) {
+            $item->already_returned = (int) ($returnedQtys[$item->id] ?? 0);
+            $item->returnable_qty   = max(0, $item->quantity - $item->already_returned);
+        });
+
+        // Block if every item has been fully returned
+        if ($order->items->every(fn($i) => $i->returnable_qty === 0)) {
+            return response()->json([
+                'error' => 'This order has already been fully returned. No items are available for return.',
+            ], 422);
+        }
+
+        return response()->json($order);
     }
 
     public function process(Request $request)
@@ -69,6 +90,37 @@ class PosReturnController extends Controller
                     'error' => 'Cannot process return: this online order has not been delivered yet.',
                 ], 422);
             }
+
+            // Build already-returned qty map for this order
+            $returnedQtys = ReturnItem::whereIn('order_item_id', $order->items->pluck('id'))
+                ->whereHas('returnOrder', fn($q) => $q->where('order_id', $order->id)
+                    ->whereIn('status', ['approved', 'completed']))
+                ->selectRaw('order_item_id, SUM(quantity) as total_returned')
+                ->groupBy('order_item_id')
+                ->pluck('total_returned', 'order_item_id');
+
+            // Validate each requested return quantity against what's still returnable
+            foreach ($request->items as $ri) {
+                $orderItem      = $order->items->find($ri['order_item_id']);
+                if (!$orderItem) continue;
+                $alreadyReturned = (int) ($returnedQtys[$orderItem->id] ?? 0);
+                $returnableQty   = $orderItem->quantity - $alreadyReturned;
+
+                if ($returnableQty <= 0) {
+                    DB::rollBack();
+                    return response()->json([
+                        'error' => "\"{$orderItem->product_name}\" has already been fully returned.",
+                    ], 422);
+                }
+
+                if ($ri['quantity'] > $returnableQty) {
+                    DB::rollBack();
+                    return response()->json([
+                        'error' => "Cannot return {$ri['quantity']} of \"{$orderItem->product_name}\". "
+                                 . "Only {$returnableQty} unit(s) remaining (already returned: {$alreadyReturned}).",
+                    ], 422);
+                }
+            }
             $refund  = 0;
             $items   = [];
 
@@ -76,7 +128,8 @@ class PosReturnController extends Controller
                 $orderItem = $order->items->find($ri['order_item_id']);
                 if (!$orderItem) continue;
 
-                $qty       = min($ri['quantity'], $orderItem->quantity);
+                $alreadyRet = (int) ($returnedQtys[$orderItem->id] ?? 0);
+                $qty        = min($ri['quantity'], $orderItem->quantity - $alreadyRet);
                 $lineTotal = $orderItem->unit_price * $qty;
                 $refund   += $lineTotal;
 

@@ -65,19 +65,44 @@
                         <h3 class="font-semibold text-gray-700 text-sm mb-3">Select items to return:</h3>
                         <div class="space-y-3">
                             <template x-for="item in returnItems" :key="item.id">
-                                <div class="flex items-center gap-3 p-3 border border-gray-200 rounded-xl"
-                                     :class="item.selected ? 'border-primary-300 bg-primary-50' : ''">
-                                    <input type="checkbox" x-model="item.selected" @change="recalculate()"
-                                           class="w-4 h-4 text-primary-600 rounded">
+                                <div class="flex items-center gap-3 p-3 border rounded-xl transition-colors"
+                                     :class="item.returnable_qty === 0
+                                        ? 'border-gray-200 bg-gray-50 opacity-60'
+                                        : item.selected ? 'border-primary-300 bg-primary-50' : 'border-gray-200'">
+
+                                    {{-- Checkbox — disabled when fully returned --}}
+                                    <input type="checkbox" x-model="item.selected"
+                                           :disabled="item.returnable_qty === 0"
+                                           @change="recalculate()"
+                                           class="w-4 h-4 text-primary-600 rounded disabled:cursor-not-allowed">
+
                                     <div class="flex-1 min-w-0">
-                                        <div class="text-sm font-semibold text-gray-800" x-text="item.product_name"></div>
-                                        <div class="text-xs text-gray-500"
-                                             x-text="`Rs. ${Number(item.unit_price).toLocaleString()} × ${item.quantity} (ordered)`"></div>
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <span class="text-sm font-semibold text-gray-800" x-text="item.product_name"></span>
+                                            {{-- Fully returned badge --}}
+                                            <span x-show="item.returnable_qty === 0"
+                                                  class="text-xs font-semibold bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
+                                                Fully Returned
+                                            </span>
+                                            {{-- Partially returned badge --}}
+                                            <span x-show="item.already_returned > 0 && item.returnable_qty > 0"
+                                                  class="text-xs font-semibold bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full"
+                                                  x-text="`${item.already_returned} already returned`">
+                                            </span>
+                                        </div>
+                                        <div class="text-xs text-gray-500 mt-0.5">
+                                            <span x-text="`Rs. ${Number(item.unit_price).toLocaleString()} × ${item.quantity} ordered`"></span>
+                                            <span x-show="item.returnable_qty > 0 && item.returnable_qty < item.quantity"
+                                                  class="text-orange-600 font-medium"
+                                                  x-text="` — ${item.returnable_qty} returnable`"></span>
+                                        </div>
                                     </div>
-                                    <div x-show="item.selected" class="flex items-center gap-2">
-                                        <label class="text-xs text-gray-500">Return qty:</label>
+
+                                    {{-- Qty input — only when selected and returnable --}}
+                                    <div x-show="item.selected && item.returnable_qty > 0" class="flex items-center gap-2">
+                                        <label class="text-xs text-gray-500">Qty:</label>
                                         <input type="number" x-model.number="item.return_qty"
-                                               :max="item.quantity" min="1"
+                                               :max="item.returnable_qty" min="1"
                                                @change="recalculate()"
                                                class="w-16 text-center text-sm border border-gray-300 rounded-lg py-1 px-2 focus:outline-none focus:ring-1 focus:ring-primary-500">
                                         <span class="text-xs font-semibold text-primary-700"
@@ -185,7 +210,7 @@ function returnApp() {
                     this.returnItems = data.items.map(i => ({
                         ...i,
                         selected: false,
-                        return_qty: i.quantity,
+                        return_qty: i.returnable_qty,   // default to max returnable
                     }));
                 }
             } catch(e) { this.error = 'Failed to find order. Please try again.'; }
@@ -229,7 +254,8 @@ function returnApp() {
                     this.reason = '';
                     this.returnNotes = '';
                 } else {
-                    alert(data.message || 'Return failed. Please try again.');
+                    this.error = data.error || data.message || 'Return failed. Please try again.';
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
             } catch(e) { alert('Network error.'); }
             this.processingReturn = false;
