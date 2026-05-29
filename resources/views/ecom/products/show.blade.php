@@ -179,6 +179,32 @@
                 @endif
             </div>
 
+            {{-- Countdown timer (urgency) --}}
+            @if($product->isInStock())
+            <div x-data="countdownTimer({{ $product->id }})" class="mb-5">
+                <div class="flex items-center gap-3 rounded-xl px-4 py-3 border"
+                     style="background: linear-gradient(135deg, #fff1f2 0%, #fff7ed 100%); border-color: #fca5a5;">
+                    {{-- Pulsing fire icon --}}
+                    <div class="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center"
+                         style="background: linear-gradient(135deg, #ef4444, #f97316);">
+                        <i class="fas fa-fire text-white text-sm" style="animation: pulse 1.5s infinite;"></i>
+                    </div>
+                    {{-- Label --}}
+                    <div class="flex-1 min-w-0">
+                        <div class="text-xs font-bold uppercase tracking-wide" style="color:#dc2626;">
+                            ⚡ {{ $deal ? 'Deal' : 'Offer' }} ends in
+                        </div>
+                        <div class="text-xs text-gray-500 mt-0.5">Hurry! Price may go up soon</div>
+                    </div>
+                    {{-- Clock --}}
+                    <div class="shrink-0 text-center">
+                        <div class="font-mono font-extrabold text-xl leading-none" style="color:#dc2626;" x-text="display"></div>
+                        <div class="text-[10px] text-gray-400 uppercase tracking-widest mt-0.5">remaining</div>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             {{-- Add to cart --}}
             @if($product->isInStock())
             @php $productColors = $product->colors; @endphp
@@ -353,6 +379,43 @@ function adjustQty(delta) {
     const input = document.getElementById('qty');
     const max = parseInt(input.max) || 999;
     input.value = Math.min(max, Math.max(1, parseInt(input.value) + delta));
+}
+
+function countdownTimer(productId) {
+    return {
+        seconds: 0,
+        _interval: null,
+
+        init() {
+            // Seed from product ID + current hour so each product
+            // shows a different time and stays consistent within the hour
+            const hour = new Date().getHours();
+            const seed = ((productId * 17) + (hour * 31)) % 45;
+            this.seconds = (seed + 15) * 60; // 15–59 minutes
+
+            this._interval = setInterval(() => {
+                this.seconds--;
+                if (this.seconds <= 0) {
+                    // Reset to a new value (20–40 min) to keep urgency alive
+                    this.seconds = (Math.floor(Math.random() * 21) + 20) * 60;
+                }
+            }, 1000);
+        },
+
+        destroy() {
+            clearInterval(this._interval);
+        },
+
+        get display() {
+            const h = Math.floor(this.seconds / 3600);
+            const m = Math.floor((this.seconds % 3600) / 60);
+            const s = this.seconds % 60;
+            const pad = n => String(n).padStart(2, '0');
+            return h > 0
+                ? `${pad(h)}:${pad(m)}:${pad(s)}`
+                : `${pad(m)}:${pad(s)}`;
+        },
+    };
 }
 </script>
 @endpush
