@@ -17,9 +17,9 @@
         <div class="flex"
              :style="'transform:translateX(-' + (active * 100) + '%); transition:transform 750ms cubic-bezier(0.25,0.46,0.45,0.94)'">
             @foreach($heroBanners as $banner)
-            <div class="relative shrink-0 w-full" style="min-width:100%; height:480px;">
+            <div class="relative shrink-0 w-full min-w-full md:h-[480px]">
                 <img src="{{ $banner->image_url }}" alt="{{ $banner->title ?? '' }}"
-                     class="w-full h-full object-cover">
+                     class="block w-full h-auto md:h-full md:object-cover">
                 <div class="absolute inset-0 flex items-center"
                      style="background:linear-gradient(to right,rgba(0,0,0,.65) 0%,rgba(0,0,0,.25) 55%,transparent 100%)">
                     <div class="max-w-7xl mx-auto px-6 w-full">
