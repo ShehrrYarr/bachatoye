@@ -58,7 +58,10 @@ class SettingController extends Controller
             'free_delivery_above' => 'required|numeric|min:0',
             'low_stock_threshold'     => 'required|integer|min:1',
             'banner_slider_interval'   => 'required|integer|min:2|max:15',
-            'product_image_interval'  => 'required|integer|min:2|max:10',
+            'product_image_interval'     => 'required|integer|min:2|max:10',
+            'announcement_enabled'       => 'nullable|in:0,1',
+            'announcement_title'         => 'nullable|string|max:150',
+            'announcement_message'       => 'nullable|string|max:1000',
             'bank_details'            => 'nullable|string|max:1000',
             'social_facebook'     => 'nullable|url|max:255',
             'social_instagram'    => 'nullable|url|max:255',
@@ -82,8 +85,9 @@ class SettingController extends Controller
             Setting::set('logo', null);
         }
 
-        // Normalise gradient checkbox (unchecked = not sent = '0')
-        $data['use_gradient'] = $request->input('use_gradient', '0');
+        // Normalise checkboxes (unchecked = not sent = '0')
+        $data['use_gradient']          = $request->input('use_gradient', '0');
+        $data['announcement_enabled']  = $request->input('announcement_enabled', '0');
 
         Setting::setMany($data);
         return back()->with('success', 'Settings saved.');

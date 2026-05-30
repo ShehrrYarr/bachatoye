@@ -126,6 +126,41 @@
             </div>
         </div>
 
+        {{-- Announcement Popup --}}
+        <div class="card">
+            <div class="card-header">
+                <h2 class="font-semibold text-gray-800">Announcement Popup</h2>
+                <span class="text-xs text-gray-400">Shown to customers once per session when they visit the store</span>
+            </div>
+            <div class="card-body space-y-4">
+                {{-- Enable toggle --}}
+                <div class="flex items-center gap-3">
+                    <input type="hidden" name="announcement_enabled" value="0">
+                    <input type="checkbox" name="announcement_enabled" id="announcement_enabled" value="1"
+                           class="w-4 h-4 text-primary-600 rounded"
+                           {{ \App\Models\Setting::get('announcement_enabled', '0') == '1' ? 'checked' : '' }}>
+                    <label for="announcement_enabled" class="text-sm font-medium text-gray-700 cursor-pointer">
+                        Enable announcement popup
+                    </label>
+                </div>
+                {{-- Title --}}
+                <div>
+                    <label class="form-label">Announcement Title</label>
+                    <input type="text" name="announcement_title" class="form-input"
+                           placeholder="e.g. Important Notice ⚠️"
+                           value="{{ old('announcement_title', \App\Models\Setting::get('announcement_title', '')) }}">
+                    <p class="form-hint mt-1">Shown as the heading of the popup (supports emoji)</p>
+                </div>
+                {{-- Message --}}
+                <div>
+                    <label class="form-label">Announcement Message</label>
+                    <textarea name="announcement_message" rows="4" class="form-textarea"
+                              placeholder="Write your announcement here...">{{ old('announcement_message', \App\Models\Setting::get('announcement_message', '')) }}</textarea>
+                    <p class="form-hint mt-1">The message body shown to customers. Max 1000 characters.</p>
+                </div>
+            </div>
+        </div>
+
         {{-- Payment --}}
         <div class="card">
             <div class="card-header">

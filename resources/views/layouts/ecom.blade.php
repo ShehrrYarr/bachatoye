@@ -241,5 +241,90 @@ function liveSearch() {
 }
 </script>
 @stack('scripts')
+
+{{-- ===== ANNOUNCEMENT POPUP ===== --}}
+@php
+    $announcementEnabled = \App\Models\Setting::get('announcement_enabled', '0') == '1';
+    $announcementTitle   = \App\Models\Setting::get('announcement_title', '');
+    $announcementMessage = \App\Models\Setting::get('announcement_message', '');
+    $logoPath            = \App\Models\Setting::get('logo');
+    $shopName            = \App\Models\Setting::get('shop_name', 'MobileHub');
+@endphp
+@if($announcementEnabled && $announcementMessage)
+<div x-data="announcementPopup()"
+     x-init="init()"
+     x-show="visible"
+     x-cloak
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-200"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"
+     class="fixed inset-0 z-[200] flex items-center justify-center p-4"
+     style="background:rgba(0,0,0,0.55); backdrop-filter:blur(2px);"
+     @keydown.escape.window="close()">
+
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-auto relative"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 scale-90"
+         x-transition:enter-end="opacity-100 scale-100"
+         @click.outside="close()">
+
+        {{-- Close button --}}
+        <button @click="close()"
+                class="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors z-10">
+            <i class="fas fa-times text-base"></i>
+        </button>
+
+        <div class="px-7 py-8 text-center">
+            {{-- Logo --}}
+            <div class="mb-4">
+                @if($logoPath)
+                    <img src="{{ asset('storage/'.$logoPath) }}" alt="{{ $shopName }}" class="h-12 mx-auto object-contain">
+                @else
+                    <div class="text-lg font-extrabold text-primary-700">{{ $shopName }}</div>
+                @endif
+            </div>
+
+            {{-- Title --}}
+            @if($announcementTitle)
+            <h2 class="text-xl font-extrabold text-gray-900 mb-3">{{ $announcementTitle }}</h2>
+            @endif
+
+            {{-- Message --}}
+            <p class="text-gray-600 text-sm leading-relaxed">{{ $announcementMessage }}</p>
+
+            {{-- Dismiss button --}}
+            <button @click="close()"
+                    class="mt-6 w-full btn-primary justify-center py-2.5 text-sm">
+                Got it!
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function announcementPopup() {
+    return {
+        visible: false,
+        key: 'announcement_seen_{{ md5($announcementTitle . $announcementMessage) }}',
+
+        init() {
+            // Show only if not dismissed yet in this session
+            if (!sessionStorage.getItem(this.key)) {
+                // Small delay so the page loads first
+                setTimeout(() => { this.visible = true; }, 600);
+            }
+        },
+
+        close() {
+            this.visible = false;
+            sessionStorage.setItem(this.key, '1');
+        },
+    };
+}
+</script>
+@endif
 </body>
 </html>
