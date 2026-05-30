@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AccountLedger;
+use App\Models\BankAccount;
 use App\Models\Customer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -109,13 +110,14 @@ class CustomerController extends Controller
 
     public function ledger(Customer $customer)
     {
-        $entries = $customer->ledgerEntries()->with('user')->latest()->paginate(30);
-        return view('admin.customers.ledger', compact('customer', 'entries'));
+        $entries      = $customer->ledgerEntries()->with(['user', 'bankAccount'])->latest()->paginate(30);
+        $bankAccounts = BankAccount::active()->orderBy('sort_order')->get();
+        return view('admin.customers.ledger', compact('customer', 'entries', 'bankAccounts'));
     }
 
     public function ledgerPrint(Customer $customer)
     {
-        $entries = $customer->ledgerEntries()->with('user')->oldest()->get();
+        $entries = $customer->ledgerEntries()->with(['user', 'bankAccount'])->oldest()->get();
         $storeName = \App\Models\Setting::get('shop_name', config('app.name'));
         $storePhone = \App\Models\Setting::get('shop_phone', '');
         $storeAddress = \App\Models\Setting::get('shop_address', '');
@@ -125,26 +127,34 @@ class CustomerController extends Controller
     public function addLedgerEntry(Request $request, Customer $customer)
     {
         $data = $request->validate([
-            'type'           => 'required|in:debit,credit',
-            'payment_method' => 'nullable|in:cash,bank_transfer',
-            'amount'         => 'required|numeric|min:0.01',
-            'description'    => 'required|string|max:255',
-            'reference'      => 'nullable|string|max:100',
+            'type'            => 'required|in:debit,credit',
+            'payment_method'  => 'nullable|in:cash,bank_transfer',
+            'bank_account_id' => 'nullable|exists:bank_accounts,id',
+            'amount'          => 'required|numeric|min:0.01',
+            'description'     => 'required|string|max:255',
+            'reference'       => 'nullable|string|max:100',
         ]);
 
-        DB::transaction(function () use ($data, $customer) {
+        $isCredit       = $data['type'] === 'credit';
+        $paymentMethod  = $isCredit ? ($data['payment_method'] ?? null) : null;
+        $bankAccountId  = ($isCredit && $paymentMethod === 'bank_transfer')
+                            ? ($data['bank_account_id'] ?? null)
+                            : null;
+
+        DB::transaction(function () use ($data, $customer, $paymentMethod, $bankAccountId) {
             $delta  = $data['type'] === 'debit' ? -$data['amount'] : $data['amount'];
             $newBal = $customer->credit_balance + $delta;
 
             AccountLedger::create([
-                'customer_id'    => $customer->id,
-                'type'           => $data['type'],
-                'payment_method' => $data['type'] === 'credit' ? ($data['payment_method'] ?? null) : null,
-                'amount'         => $data['amount'],
-                'balance_after'  => $newBal,
-                'description'    => $data['description'],
-                'reference'      => $data['reference'] ?? null,
-                'user_id'        => Auth::id(),
+                'customer_id'     => $customer->id,
+                'type'            => $data['type'],
+                'payment_method'  => $paymentMethod,
+                'bank_account_id' => $bankAccountId,
+                'amount'          => $data['amount'],
+                'balance_after'   => $newBal,
+                'description'     => $data['description'],
+                'reference'       => $data['reference'] ?? null,
+                'user_id'         => Auth::id(),
             ]);
 
             $customer->update(['credit_balance' => $newBal]);

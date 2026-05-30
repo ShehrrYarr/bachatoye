@@ -116,12 +116,33 @@
             <span class="section-total">Rs. {{ number_format($todayReport['khata_total']) }}</span>
         </div>
         <div class="breakdown">
+            @if($todayReport['khata_cash'] > 0)
             <span><span class="dot dot-green"></span>Cash: Rs. {{ number_format($todayReport['khata_cash']) }}</span>
-            <span><span class="dot dot-blue"></span>Bank Transfer: Rs. {{ number_format($todayReport['khata_bank']) }}</span>
+            @endif
             @if($todayReport['khata_other'] > 0)
             <span>Other: Rs. {{ number_format($todayReport['khata_other']) }}</span>
             @endif
+            @foreach($todayReport['khata_by_bank'] as $b)
+            <span><span class="dot dot-blue"></span>{{ $b['label'] }}: Rs. {{ number_format($b['total']) }}</span>
+            @endforeach
+            @if($todayReport['khata_by_bank']->isEmpty() && $todayReport['khata_bank'] > 0)
+            <span><span class="dot dot-blue"></span>Bank Transfer: Rs. {{ number_format($todayReport['khata_bank']) }}</span>
+            @endif
         </div>
+        @if($todayReport['khata_by_bank']->isNotEmpty())
+        <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #bbf7d0;font-size:11px;color:#15803d;">
+            @foreach($todayReport['khata_by_bank'] as $b)
+            <div style="display:flex;justify-content:space-between;padding:2px 0;">
+                <span>
+                    {{ $b['bank_name'] }}
+                    @if($b['account_number']) · {{ $b['account_number'] }} @endif
+                    <span style="color:#9ca3af;">({{ $b['count'] }} {{ $b['count'] == 1 ? 'payment' : 'payments' }})</span>
+                </span>
+                <strong>Rs. {{ number_format($b['total']) }}</strong>
+            </div>
+            @endforeach
+        </div>
+        @endif
     </div>
 
     {{-- Expenses --}}

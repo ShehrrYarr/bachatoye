@@ -253,6 +253,7 @@
                 <th>Date</th>
                 <th>Description</th>
                 <th>Reference</th>
+                <th>Method / Bank</th>
                 <th class="right">Debit (Owed)</th>
                 <th class="right">Credit (Paid)</th>
                 <th class="right">Balance</th>
@@ -265,6 +266,18 @@
                 <td style="white-space:nowrap;font-size:11px;color:#555;">{{ $entry->created_at->format('d M Y') }}<br><span style="color:#aaa;">{{ $entry->created_at->format('h:i A') }}</span></td>
                 <td>{{ $entry->description }}</td>
                 <td class="mono">{{ $entry->reference ?? '—' }}</td>
+                <td style="font-size:11px;color:#555;">
+                    @if($entry->type === 'credit' && $entry->payment_method === 'cash')
+                        Cash
+                    @elseif($entry->type === 'credit' && $entry->payment_method === 'bank_transfer')
+                        {{ $entry->bankAccount?->label ?? 'Bank' }}
+                        @if($entry->bankAccount?->account_number)
+                            <br><span style="color:#aaa;font-size:10px;">{{ $entry->bankAccount->account_number }}</span>
+                        @endif
+                    @else
+                        <span style="color:#ccc;">—</span>
+                    @endif
+                </td>
                 <td class="right {{ $entry->type === 'debit' ? 'debit' : 'muted' }}">
                     {{ $entry->type === 'debit' ? 'Rs. '.number_format($entry->amount) : '—' }}
                 </td>
@@ -283,6 +296,13 @@
     @php
         $totalDebits  = $entries->where('type', 'debit')->sum('amount');
         $totalCredits = $entries->where('type', 'credit')->sum('amount');
+        $cashCredits  = $entries->where('type', 'credit')->where('payment_method', 'cash')->sum('amount');
+        $bankBreakdown = $entries
+            ->where('type', 'credit')
+            ->where('payment_method', 'bank_transfer')
+            ->filter(fn($e) => $e->bankAccount)
+            ->groupBy('bank_account_id')
+            ->map(fn($g) => ['account' => $g->first()->bankAccount, 'total' => $g->sum('amount')]);
     @endphp
     <div class="summary">
         <div class="summary-item">
@@ -293,6 +313,18 @@
             <div class="s-label">Total Credits</div>
             <div class="s-value credit">Rs. {{ number_format($totalCredits) }}</div>
         </div>
+        @if($cashCredits > 0)
+        <div class="summary-item">
+            <div class="s-label">Cash Received</div>
+            <div class="s-value credit">Rs. {{ number_format($cashCredits) }}</div>
+        </div>
+        @endif
+        @foreach($bankBreakdown as $row)
+        <div class="summary-item">
+            <div class="s-label">{{ $row['account']->label }}</div>
+            <div class="s-value" style="color:#1d4ed8;">Rs. {{ number_format($row['total']) }}</div>
+        </div>
+        @endforeach
         <div class="summary-item">
             <div class="s-label">Net Balance</div>
             <div class="s-value {{ $customer->credit_balance < 0 ? 'bal-neg' : 'bal-pos' }}">

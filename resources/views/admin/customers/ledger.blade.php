@@ -29,6 +29,7 @@
                         <th>Date</th>
                         <th>Description</th>
                         <th>Reference</th>
+                        <th>Method / Bank</th>
                         <th class="text-right">Debit (Owed)</th>
                         <th class="text-right">Credit (Paid)</th>
                         <th class="text-right">Balance</th>
@@ -40,6 +41,25 @@
                         <td class="text-xs text-gray-500 whitespace-nowrap">{{ $entry->created_at->format('d M Y H:i') }}</td>
                         <td class="text-sm">{{ $entry->description }}</td>
                         <td class="text-xs text-gray-400 font-mono">{{ $entry->reference ?? '—' }}</td>
+                        <td class="text-xs text-gray-500">
+                            @if($entry->type === 'credit' && $entry->payment_method)
+                                @if($entry->payment_method === 'cash')
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                                        <i class="fas fa-money-bill-wave"></i> Cash
+                                    </span>
+                                @elseif($entry->payment_method === 'bank_transfer')
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                                        <i class="fas fa-university"></i>
+                                        {{ $entry->bankAccount?->label ?? 'Bank' }}
+                                    </span>
+                                    @if($entry->bankAccount?->account_number)
+                                        <div class="text-[10px] text-gray-400 mt-0.5">{{ $entry->bankAccount->account_number }}</div>
+                                    @endif
+                                @endif
+                            @else
+                                <span class="text-gray-300">—</span>
+                            @endif
+                        </td>
                         <td class="text-right text-sm {{ $entry->type === 'debit' ? 'text-red-600 font-semibold' : 'text-gray-300' }}">
                             {{ $entry->type === 'debit' ? 'Rs. '.number_format($entry->amount) : '—' }}
                         </td>
@@ -51,7 +71,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="6" class="text-center py-12 text-gray-400">No ledger entries yet.</td></tr>
+                    <tr><td colspan="7" class="text-center py-12 text-gray-400">No ledger entries yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -64,7 +84,7 @@
         <div class="card p-5 sticky top-6">
             <h2 class="font-semibold text-gray-800 mb-4">Add Manual Entry</h2>
             <form method="POST" action="{{ route('admin.customers.ledger.add', $customer) }}"
-                  x-data="{ entryType: 'debit' }">
+                  x-data="{ entryType: 'debit', payMethod: '' }">
                 @csrf
                 <div class="space-y-4">
                     <div>
@@ -80,18 +100,33 @@
                         <label class="form-label">Paid Via</label>
                         <div class="flex gap-2">
                             <label class="flex-1 flex items-center justify-center gap-2 p-2 border-2 rounded-xl cursor-pointer transition-all has-[:checked]:border-green-500 has-[:checked]:bg-green-50 border-gray-200">
-                                <input type="radio" name="payment_method" value="cash" class="sr-only">
+                                <input type="radio" name="payment_method" value="cash" x-model="payMethod" class="sr-only">
                                 <i class="fas fa-money-bill-wave text-green-600"></i>
                                 <span class="text-sm font-medium">Cash</span>
                             </label>
                             <label class="flex-1 flex items-center justify-center gap-2 p-2 border-2 rounded-xl cursor-pointer transition-all has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 border-gray-200">
-                                <input type="radio" name="payment_method" value="bank_transfer" class="sr-only">
+                                <input type="radio" name="payment_method" value="bank_transfer" x-model="payMethod" class="sr-only">
                                 <i class="fas fa-university text-blue-600"></i>
                                 <span class="text-sm font-medium">Bank</span>
                             </label>
                         </div>
                         <p class="text-xs text-gray-400 mt-1">Optional — leave unselected if unknown</p>
                     </div>
+
+                    {{-- Bank account selector — shown when Bank is selected --}}
+                    <div x-show="entryType === 'credit' && payMethod === 'bank_transfer'" x-transition>
+                        <label class="form-label">Select Bank Account *</label>
+                        <select name="bank_account_id" class="form-select">
+                            <option value="">— Select account —</option>
+                            @foreach($bankAccounts as $bank)
+                                <option value="{{ $bank->id }}">
+                                    {{ $bank->label }} — {{ $bank->bank_name }}
+                                    @if($bank->account_number) · {{ $bank->account_number }} @endif
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
                     <div>
                         <label class="form-label">Amount (Rs.) *</label>
                         <input type="number" name="amount" class="form-input @error('amount') border-red-500 @enderror"

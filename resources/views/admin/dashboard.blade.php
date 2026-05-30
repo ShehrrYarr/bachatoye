@@ -382,7 +382,7 @@
                                             <th class="text-left px-4 py-2.5 font-semibold">Time</th>
                                             <th class="text-left px-4 py-2.5 font-semibold">Customer</th>
                                             <th class="text-left px-4 py-2.5 font-semibold">Description</th>
-                                            <th class="text-left px-4 py-2.5 font-semibold">Method</th>
+                                            <th class="text-left px-4 py-2.5 font-semibold">Method / Bank</th>
                                             <th class="text-right px-4 py-2.5 font-semibold">Amount</th>
                                         </tr>
                                     </thead>
@@ -393,12 +393,18 @@
                                             <td class="px-4 py-3 text-xs text-gray-700 font-medium">{{ $e->customer?->name ?? '—' }}</td>
                                             <td class="px-4 py-3 text-xs text-gray-500 max-w-xs truncate">{{ $e->description ?: '—' }}</td>
                                             <td class="px-4 py-3">
-                                                @php $meth = match($e->payment_method) {
-                                                    'cash' => ['Cash','bg-green-100 text-green-700'],
-                                                    'bank_transfer' => ['Bank','bg-blue-100 text-blue-700'],
-                                                    default => ['—','bg-gray-100 text-gray-500'],
-                                                }; @endphp
-                                                <span class="text-xs px-2 py-0.5 rounded-full font-medium {{ $meth[1] }}">{{ $meth[0] }}</span>
+                                                @if($e->payment_method === 'cash')
+                                                    <span class="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">Cash</span>
+                                                @elseif($e->payment_method === 'bank_transfer')
+                                                    <span class="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-100 text-blue-700">
+                                                        {{ $e->bankAccount?->label ?? 'Bank' }}
+                                                    </span>
+                                                    @if($e->bankAccount?->account_number)
+                                                        <div class="text-[10px] text-gray-400 mt-0.5">{{ $e->bankAccount->account_number }}</div>
+                                                    @endif
+                                                @else
+                                                    <span class="text-xs text-gray-300">—</span>
+                                                @endif
                                             </td>
                                             <td class="px-4 py-3 text-right font-bold text-green-700">+ Rs. {{ number_format($e->amount) }}</td>
                                         </tr>
@@ -412,6 +418,55 @@
                                     </tfoot>
                                 </table>
                             </div>
+
+                            {{-- Bank Account Breakdown --}}
+                            @php
+                                $khataByBank = $todayKhataEntries
+                                    ->where('payment_method', 'bank_transfer')
+                                    ->filter(fn($e) => $e->bankAccount)
+                                    ->groupBy('bank_account_id')
+                                    ->map(fn($g) => [
+                                        'account' => $g->first()->bankAccount,
+                                        'total'   => $g->sum('amount'),
+                                        'count'   => $g->count(),
+                                    ])
+                                    ->filter(fn($r) => $r['total'] > 0)
+                                    ->values();
+                                $khataCashTotal = $todayKhataEntries->where('payment_method', 'cash')->sum('amount');
+                            @endphp
+                            @if($khataByBank->isNotEmpty() || $khataCashTotal > 0)
+                            <div class="mt-4">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i class="fas fa-university text-green-500 text-xs"></i>
+                                    <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Payment Breakdown</span>
+                                </div>
+                                <div class="grid gap-2">
+                                    @if($khataCashTotal > 0)
+                                    <div class="flex items-center justify-between bg-green-50 rounded-xl px-4 py-3">
+                                        <div>
+                                            <div class="text-sm font-semibold text-green-900">Cash</div>
+                                            <div class="text-xs text-green-600 mt-0.5">{{ $todayKhataEntries->where('payment_method','cash')->count() }} {{ Str::plural('payment', $todayKhataEntries->where('payment_method','cash')->count()) }}</div>
+                                        </div>
+                                        <div class="font-bold text-green-900">Rs. {{ number_format($khataCashTotal) }}</div>
+                                    </div>
+                                    @endif
+                                    @foreach($khataByBank as $row)
+                                    <div class="flex items-center justify-between bg-blue-50 rounded-xl px-4 py-3">
+                                        <div>
+                                            <div class="text-sm font-semibold text-blue-900">{{ $row['account']->label }}</div>
+                                            <div class="text-xs text-blue-600 mt-0.5">
+                                                {{ $row['account']->bank_name }}
+                                                @if($row['account']->account_number) · {{ $row['account']->account_number }} @endif
+                                                <span class="ml-1 text-blue-400">· {{ $row['count'] }} {{ Str::plural('payment', $row['count']) }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="font-bold text-blue-900">Rs. {{ number_format($row['total']) }}</div>
+                                    </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                            @endif
+
                             @endif
                         </div>
 

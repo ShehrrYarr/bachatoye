@@ -115,7 +115,7 @@ class DashboardController extends Controller
 
         $todayKhataEntries = AccountLedger::whereDate('created_at', today())
             ->where('type', 'credit')
-            ->with(['customer', 'user'])->latest()->get();
+            ->with(['customer', 'user', 'bankAccount'])->latest()->get();
 
         $todayExpensesList = Expense::whereDate('expense_date', today())
             ->latest()->get();
@@ -144,7 +144,8 @@ class DashboardController extends Controller
         });
 
         $khataEntries = AccountLedger::whereDate('created_at', today())->where('type', 'credit')
-            ->get(['payment_method', 'amount']);
+            ->with('bankAccount')
+            ->get(['id', 'payment_method', 'bank_account_id', 'amount']);
 
         $returnOrders = ReturnOrder::whereDate('created_at', today())
             ->whereIn('status', ['approved', 'completed'])
@@ -158,6 +159,20 @@ class DashboardController extends Controller
         $khataBank  = $khataEntries->where('payment_method', 'bank_transfer')->sum('amount');
         $khataTotal = $khataEntries->sum('amount');
 
+        // Per-bank breakdown for print
+        $khataByBank = $khataEntries
+            ->where('payment_method', 'bank_transfer')
+            ->filter(fn($e) => $e->bankAccount)
+            ->groupBy('bank_account_id')
+            ->map(fn($g) => [
+                'label'          => $g->first()->bankAccount->label,
+                'bank_name'      => $g->first()->bankAccount->bank_name,
+                'account_number' => $g->first()->bankAccount->account_number,
+                'total'          => $g->sum('amount'),
+                'count'          => $g->count(),
+            ])
+            ->values();
+
         $todayReport = [
             'pos_total'    => $posOrders->sum('total'),
             'pos_cash'     => $posCash,
@@ -167,6 +182,7 @@ class DashboardController extends Controller
             'khata_cash'   => $khataCash,
             'khata_bank'   => $khataBank,
             'khata_other'  => $khataEntries->whereNotIn('payment_method', ['cash','bank_transfer'])->sum('amount'),
+            'khata_by_bank'=> $khataByBank,
             'return_total' => $returnTotal,
             'return_cash'  => $returnCash,
             'return_bank'  => $returnBank,
