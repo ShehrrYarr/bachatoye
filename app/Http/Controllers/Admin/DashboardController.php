@@ -108,7 +108,26 @@ class DashboardController extends Controller
             'date'           => today()->format('d M Y'),
         ];
 
-        return view('admin.dashboard', compact('stats', 'recentOrders', 'lowStockItems', 'posChart', 'ecomChart', 'todayReport'));
+        // ── Detail rows for Today's Report modals ────────────────────────
+        $todayPosOrders = Order::whereDate('created_at', today())
+            ->where('source', 'pos')->where('status', 'delivered')
+            ->with('customer')->latest()->get();
+
+        $todayKhataEntries = AccountLedger::whereDate('created_at', today())
+            ->where('type', 'credit')
+            ->with(['customer', 'user'])->latest()->get();
+
+        $todayExpensesList = Expense::whereDate('expense_date', today())
+            ->latest()->get();
+
+        $todayReturnsList = ReturnOrder::whereDate('created_at', today())
+            ->whereIn('status', ['approved', 'completed'])
+            ->with(['order', 'items'])->latest()->get();
+
+        return view('admin.dashboard', compact(
+            'stats', 'recentOrders', 'lowStockItems', 'posChart', 'ecomChart', 'todayReport',
+            'todayPosOrders', 'todayKhataEntries', 'todayExpensesList', 'todayReturnsList'
+        ));
     }
 
     public function todayReportPrint()

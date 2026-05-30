@@ -139,7 +139,7 @@
         </div>
 
         {{-- Today's Report --}}
-        <div class="card lg:col-span-3">
+        <div class="card lg:col-span-3" x-data="{ activeModal: null }">
             <div class="card-header">
                 <h3 class="font-semibold text-gray-800">
                     Today's Report
@@ -153,26 +153,34 @@
             <div class="p-4 space-y-3">
 
                 {{-- POS Sales --}}
-                <div class="bg-blue-50 rounded-xl p-3">
+                <button type="button" @click="activeModal = 'pos'"
+                        class="w-full text-left bg-blue-50 hover:bg-blue-100 rounded-xl p-3 transition-colors cursor-pointer group">
                     <div class="flex justify-between items-center mb-2">
                         <span class="text-sm font-semibold text-blue-800">
                             <i class="fas fa-cash-register mr-1.5"></i>POS Sales
                         </span>
-                        <span class="font-bold text-blue-900">Rs. {{ number_format($todayReport['pos_total']) }}</span>
+                        <span class="flex items-center gap-2">
+                            <span class="font-bold text-blue-900">Rs. {{ number_format($todayReport['pos_total']) }}</span>
+                            <i class="fas fa-chevron-right text-blue-400 text-xs group-hover:translate-x-0.5 transition-transform"></i>
+                        </span>
                     </div>
                     <div class="flex gap-4 text-xs text-blue-700">
                         <span><i class="fas fa-money-bill-wave mr-1"></i>Cash: Rs. {{ number_format($todayReport['pos_cash']) }}</span>
                         <span><i class="fas fa-university mr-1"></i>Bank: Rs. {{ number_format($todayReport['pos_bank']) }}</span>
                     </div>
-                </div>
+                </button>
 
                 {{-- Khata Received --}}
-                <div class="bg-green-50 rounded-xl p-3">
+                <button type="button" @click="activeModal = 'khata'"
+                        class="w-full text-left bg-green-50 hover:bg-green-100 rounded-xl p-3 transition-colors cursor-pointer group">
                     <div class="flex justify-between items-center mb-2">
                         <span class="text-sm font-semibold text-green-800">
                             <i class="fas fa-hand-holding-usd mr-1.5"></i>Khata Received
                         </span>
-                        <span class="font-bold text-green-900">Rs. {{ number_format($todayReport['khata_total']) }}</span>
+                        <span class="flex items-center gap-2">
+                            <span class="font-bold text-green-900">Rs. {{ number_format($todayReport['khata_total']) }}</span>
+                            <i class="fas fa-chevron-right text-green-400 text-xs group-hover:translate-x-0.5 transition-transform"></i>
+                        </span>
                     </div>
                     <div class="flex gap-4 text-xs text-green-700">
                         <span><i class="fas fa-money-bill-wave mr-1"></i>Cash: Rs. {{ number_format($todayReport['khata_cash']) }}</span>
@@ -181,40 +189,43 @@
                         <span><i class="fas fa-question-circle mr-1"></i>Other: Rs. {{ number_format($todayReport['khata_other']) }}</span>
                         @endif
                     </div>
-                </div>
+                </button>
 
                 {{-- Expenses --}}
-                <div class="bg-red-50 rounded-xl p-3 flex justify-between items-center">
+                <button type="button" @click="activeModal = 'expenses'"
+                        class="w-full text-left bg-red-50 hover:bg-red-100 rounded-xl p-3 flex justify-between items-center transition-colors cursor-pointer group">
                     <span class="text-sm font-semibold text-red-800">
                         <i class="fas fa-receipt mr-1.5"></i>Expenses
                     </span>
-                    <span class="font-bold text-red-900">Rs. {{ number_format($todayReport['expenses']) }}</span>
-                </div>
+                    <span class="flex items-center gap-2">
+                        <span class="font-bold text-red-900">Rs. {{ number_format($todayReport['expenses']) }}</span>
+                        <i class="fas fa-chevron-right text-red-400 text-xs group-hover:translate-x-0.5 transition-transform"></i>
+                    </span>
+                </button>
 
                 {{-- Returns --}}
-                @if($todayReport['return_total'] > 0)
-                <div class="bg-orange-50 rounded-xl p-3">
-                    <div class="flex justify-between items-center mb-2">
+                <button type="button" @click="activeModal = 'returns'"
+                        class="w-full text-left bg-orange-50 hover:bg-orange-100 rounded-xl p-3 transition-colors cursor-pointer group">
+                    <div class="flex justify-between items-center @if($todayReport['return_total'] > 0) mb-2 @endif">
                         <span class="text-sm font-semibold text-orange-800">
                             <i class="fas fa-undo-alt mr-1.5"></i>Returns (Refunded)
                         </span>
-                        <span class="font-bold text-orange-900">– Rs. {{ number_format($todayReport['return_total']) }}</span>
+                        <span class="flex items-center gap-2">
+                            <span class="font-bold text-orange-900">
+                                @if($todayReport['return_total'] > 0)– @endif Rs. {{ number_format($todayReport['return_total']) }}
+                            </span>
+                            <i class="fas fa-chevron-right text-orange-400 text-xs group-hover:translate-x-0.5 transition-transform"></i>
+                        </span>
                     </div>
+                    @if($todayReport['return_total'] > 0)
                     <div class="flex gap-4 text-xs text-orange-700">
                         <span><i class="fas fa-money-bill-wave mr-1"></i>Cash: Rs. {{ number_format($todayReport['return_cash']) }}</span>
                         <span><i class="fas fa-university mr-1"></i>Bank: Rs. {{ number_format($todayReport['return_bank']) }}</span>
                     </div>
-                </div>
-                @else
-                <div class="bg-orange-50 rounded-xl p-3 flex justify-between items-center">
-                    <span class="text-sm font-semibold text-orange-800">
-                        <i class="fas fa-undo-alt mr-1.5"></i>Returns (Refunded)
-                    </span>
-                    <span class="font-bold text-orange-900">Rs. 0</span>
-                </div>
-                @endif
+                    @endif
+                </button>
 
-                {{-- Divider + Grand totals --}}
+                {{-- Grand totals --}}
                 <div class="border-t border-gray-200 pt-3 space-y-1.5">
                     <div class="flex justify-between text-sm text-gray-600">
                         <span><i class="fas fa-money-bill-wave text-green-500 mr-1.5"></i>Total Cash In</span>
@@ -230,6 +241,220 @@
                     </div>
                 </div>
             </div>
+
+            {{-- ===== DETAIL MODALS ===== --}}
+            <template x-teleport="body">
+            <div x-show="activeModal !== null"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"
+                 class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+                 style="background:rgba(0,0,0,0.5);"
+                 @keydown.escape.window="activeModal = null">
+
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col"
+                     style="max-height: 85vh;"
+                     @click.outside="activeModal = null"
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0 scale-95 translate-y-4"
+                     x-transition:enter-end="opacity-100 scale-100 translate-y-0">
+
+                    {{-- Modal header --}}
+                    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+                        <h3 class="font-bold text-gray-900 text-base">
+                            <span x-show="activeModal === 'pos'"><i class="fas fa-cash-register mr-2 text-blue-600"></i>Today's POS Sales</span>
+                            <span x-show="activeModal === 'khata'"><i class="fas fa-hand-holding-usd mr-2 text-green-600"></i>Today's Khata Received</span>
+                            <span x-show="activeModal === 'expenses'"><i class="fas fa-receipt mr-2 text-red-500"></i>Today's Expenses</span>
+                            <span x-show="activeModal === 'returns'"><i class="fas fa-undo-alt mr-2 text-orange-500"></i>Today's Returns</span>
+                        </h3>
+                        <button @click="activeModal = null" class="text-gray-400 hover:text-gray-700 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    {{-- Scrollable content --}}
+                    <div class="overflow-y-auto flex-1 p-5">
+
+                        {{-- POS Sales Table --}}
+                        <div x-show="activeModal === 'pos'">
+                            @if($todayPosOrders->isEmpty())
+                                <p class="text-center text-gray-400 py-10">No POS sales today.</p>
+                            @else
+                            <div class="overflow-x-auto rounded-xl border border-gray-100">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                                        <tr>
+                                            <th class="text-left px-4 py-2.5 font-semibold">Time</th>
+                                            <th class="text-left px-4 py-2.5 font-semibold">Order #</th>
+                                            <th class="text-left px-4 py-2.5 font-semibold">Customer</th>
+                                            <th class="text-left px-4 py-2.5 font-semibold">Payment</th>
+                                            <th class="text-right px-4 py-2.5 font-semibold">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-50">
+                                        @foreach($todayPosOrders as $o)
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{{ $o->created_at->format('H:i') }}</td>
+                                            <td class="px-4 py-3 font-mono text-xs text-gray-700">{{ $o->order_number }}</td>
+                                            <td class="px-4 py-3 text-xs text-gray-700">{{ $o->customer_name }}</td>
+                                            <td class="px-4 py-3">
+                                                @php $pm = match($o->payment_method) {
+                                                    'cash' => ['Cash','bg-green-100 text-green-700'],
+                                                    'bank_transfer' => ['Bank','bg-blue-100 text-blue-700'],
+                                                    'split' => ['Split','bg-teal-100 text-teal-700'],
+                                                    'khata' => ['Khata','bg-red-100 text-red-700'],
+                                                    'partial' => ['Partial','bg-orange-100 text-orange-700'],
+                                                    default => [ucfirst($o->payment_method),'bg-gray-100 text-gray-600'],
+                                                }; @endphp
+                                                <span class="text-xs px-2 py-0.5 rounded-full font-medium {{ $pm[1] }}">{{ $pm[0] }}</span>
+                                            </td>
+                                            <td class="px-4 py-3 text-right font-bold text-gray-900">Rs. {{ number_format($o->total) }}</td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                    <tfoot class="bg-gray-50 border-t-2 border-gray-200">
+                                        <tr>
+                                            <td colspan="4" class="px-4 py-3 text-sm font-bold text-gray-700">{{ $todayPosOrders->count() }} orders</td>
+                                            <td class="px-4 py-3 text-right font-bold text-primary-700">Rs. {{ number_format($todayPosOrders->sum('total')) }}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            @endif
+                        </div>
+
+                        {{-- Khata Received Table --}}
+                        <div x-show="activeModal === 'khata'">
+                            @if($todayKhataEntries->isEmpty())
+                                <p class="text-center text-gray-400 py-10">No khata payments received today.</p>
+                            @else
+                            <div class="overflow-x-auto rounded-xl border border-gray-100">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                                        <tr>
+                                            <th class="text-left px-4 py-2.5 font-semibold">Time</th>
+                                            <th class="text-left px-4 py-2.5 font-semibold">Customer</th>
+                                            <th class="text-left px-4 py-2.5 font-semibold">Description</th>
+                                            <th class="text-left px-4 py-2.5 font-semibold">Method</th>
+                                            <th class="text-right px-4 py-2.5 font-semibold">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-50">
+                                        @foreach($todayKhataEntries as $e)
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{{ $e->created_at->format('H:i') }}</td>
+                                            <td class="px-4 py-3 text-xs text-gray-700 font-medium">{{ $e->customer?->name ?? '—' }}</td>
+                                            <td class="px-4 py-3 text-xs text-gray-500 max-w-xs truncate">{{ $e->description ?: '—' }}</td>
+                                            <td class="px-4 py-3">
+                                                @php $meth = match($e->payment_method) {
+                                                    'cash' => ['Cash','bg-green-100 text-green-700'],
+                                                    'bank_transfer' => ['Bank','bg-blue-100 text-blue-700'],
+                                                    default => ['—','bg-gray-100 text-gray-500'],
+                                                }; @endphp
+                                                <span class="text-xs px-2 py-0.5 rounded-full font-medium {{ $meth[1] }}">{{ $meth[0] }}</span>
+                                            </td>
+                                            <td class="px-4 py-3 text-right font-bold text-green-700">+ Rs. {{ number_format($e->amount) }}</td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                    <tfoot class="bg-gray-50 border-t-2 border-gray-200">
+                                        <tr>
+                                            <td colspan="4" class="px-4 py-3 text-sm font-bold text-gray-700">{{ $todayKhataEntries->count() }} payments</td>
+                                            <td class="px-4 py-3 text-right font-bold text-green-700">Rs. {{ number_format($todayKhataEntries->sum('amount')) }}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            @endif
+                        </div>
+
+                        {{-- Expenses Table --}}
+                        <div x-show="activeModal === 'expenses'">
+                            @if($todayExpensesList->isEmpty())
+                                <p class="text-center text-gray-400 py-10">No expenses recorded today.</p>
+                            @else
+                            <div class="overflow-x-auto rounded-xl border border-gray-100">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                                        <tr>
+                                            <th class="text-left px-4 py-2.5 font-semibold">Category</th>
+                                            <th class="text-left px-4 py-2.5 font-semibold">Description</th>
+                                            <th class="text-left px-4 py-2.5 font-semibold">Payment</th>
+                                            <th class="text-right px-4 py-2.5 font-semibold">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-50">
+                                        @foreach($todayExpensesList as $exp)
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-4 py-3 text-xs font-medium text-gray-700">{{ $exp->category ?? '—' }}</td>
+                                            <td class="px-4 py-3 text-xs text-gray-500 max-w-xs">{{ $exp->description ?: '—' }}</td>
+                                            <td class="px-4 py-3 text-xs text-gray-500 capitalize">{{ str_replace('_',' ', $exp->payment_method ?? '') ?: '—' }}</td>
+                                            <td class="px-4 py-3 text-right font-bold text-red-600">Rs. {{ number_format($exp->amount) }}</td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                    <tfoot class="bg-gray-50 border-t-2 border-gray-200">
+                                        <tr>
+                                            <td colspan="3" class="px-4 py-3 text-sm font-bold text-gray-700">{{ $todayExpensesList->count() }} expenses</td>
+                                            <td class="px-4 py-3 text-right font-bold text-red-600">Rs. {{ number_format($todayExpensesList->sum('amount')) }}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            @endif
+                        </div>
+
+                        {{-- Returns Table --}}
+                        <div x-show="activeModal === 'returns'">
+                            @if($todayReturnsList->isEmpty())
+                                <p class="text-center text-gray-400 py-10">No returns processed today.</p>
+                            @else
+                            <div class="overflow-x-auto rounded-xl border border-gray-100">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                                        <tr>
+                                            <th class="text-left px-4 py-2.5 font-semibold">Time</th>
+                                            <th class="text-left px-4 py-2.5 font-semibold">Return #</th>
+                                            <th class="text-left px-4 py-2.5 font-semibold">Orig. Order</th>
+                                            <th class="text-left px-4 py-2.5 font-semibold">Items</th>
+                                            <th class="text-left px-4 py-2.5 font-semibold">Method</th>
+                                            <th class="text-right px-4 py-2.5 font-semibold">Refund</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-50">
+                                        @foreach($todayReturnsList as $ret)
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{{ $ret->created_at->format('H:i') }}</td>
+                                            <td class="px-4 py-3 font-mono text-xs text-gray-700">{{ $ret->return_number }}</td>
+                                            <td class="px-4 py-3 font-mono text-xs text-gray-500">{{ $ret->order?->order_number ?? '—' }}</td>
+                                            <td class="px-4 py-3 text-xs text-gray-600">
+                                                @foreach($ret->items as $ri)
+                                                    <div>{{ $ri->quantity }}× {{ $ri->product_name }}</div>
+                                                @endforeach
+                                            </td>
+                                            <td class="px-4 py-3 text-xs text-gray-500 capitalize">{{ str_replace('_',' ', $ret->refund_method ?? '') }}</td>
+                                            <td class="px-4 py-3 text-right font-bold text-orange-600">Rs. {{ number_format($ret->refund_amount) }}</td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                    <tfoot class="bg-gray-50 border-t-2 border-gray-200">
+                                        <tr>
+                                            <td colspan="5" class="px-4 py-3 text-sm font-bold text-gray-700">{{ $todayReturnsList->count() }} returns</td>
+                                            <td class="px-4 py-3 text-right font-bold text-orange-600">Rs. {{ number_format($todayReturnsList->sum('refund_amount')) }}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            @endif
+                        </div>
+
+                    </div>{{-- end scrollable --}}
+                </div>
+            </div>
+            </template>
         </div>
     </div>
 
