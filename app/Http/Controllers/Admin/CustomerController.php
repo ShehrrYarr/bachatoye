@@ -22,9 +22,8 @@ class CustomerController extends Controller
                                      ->orWhere('email', 'like', "%{$s}%"));
         }
 
-        // POS / Walk-in: has at least one POS order
-        $posQuery = (clone $base)
-            ->whereHas('orders', fn($q) => $q->where('source', 'pos'));
+        // POS / Walk-in: source = pos (set when created from POS or admin panel)
+        $posQuery = (clone $base)->where('source', 'pos');
 
         if ($request->balance === 'outstanding') {
             $posQuery->where('credit_balance', '<', 0);
@@ -38,9 +37,9 @@ class CustomerController extends Controller
             ->paginate(20, ['*'], 'pos_page')
             ->withQueryString();
 
-        // Online: no POS orders at all
+        // Online: source = online (set when customer checks out on ecommerce)
         $onlineCustomers = (clone $base)
-            ->whereDoesntHave('orders', fn($q) => $q->where('source', 'pos'))
+            ->where('source', 'online')
             ->withCount('orders')
             ->latest()
             ->paginate(20, ['*'], 'online_page')
