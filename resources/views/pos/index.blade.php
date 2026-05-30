@@ -268,9 +268,9 @@
                 </button>
             </div>
 
-            {{-- Bank account selector (shown for bank_transfer and split) --}}
+            {{-- Bank account selector (shown for bank_transfer only; split has its own inline selector below) --}}
             @if($bankAccounts->count())
-            <div x-show="['bank_transfer','split'].includes(paymentMethod)" class="space-y-1">
+            <div x-show="paymentMethod === 'bank_transfer'" class="space-y-1">
                 <label class="text-xs font-semibold text-blue-700 block mb-1">
                     <i class="fas fa-university mr-1"></i>Select Bank Account
                 </label>
@@ -283,13 +283,13 @@
                     </option>
                     @endforeach
                 </select>
-                <p x-show="!bankAccountId && ['bank_transfer','split'].includes(paymentMethod)"
+                <p x-show="!bankAccountId && paymentMethod === 'bank_transfer'"
                    class="text-xs text-orange-500 font-medium">
                     <i class="fas fa-exclamation-triangle mr-1"></i>Please select a bank account.
                 </p>
             </div>
             @else
-            <div x-show="['bank_transfer','split'].includes(paymentMethod)"
+            <div x-show="paymentMethod === 'bank_transfer'"
                  class="text-xs text-orange-600 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
                 <i class="fas fa-exclamation-triangle mr-1"></i>
                 No bank accounts set up. <a href="{{ route('admin.bank-accounts.index') }}" target="_blank" class="underline font-semibold">Add one here</a>.
@@ -364,6 +364,26 @@
                            class="flex-1 text-sm font-bold border border-teal-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-teal-400 bg-white"
                            placeholder="0">
                 </div>
+                {{-- Bank account selector inside split --}}
+                @if($bankAccounts->count())
+                <div class="flex items-center gap-2">
+                    <label class="text-xs text-gray-600 shrink-0 w-16"><i class="fas fa-credit-card text-blue-400 mr-1"></i>Via:</label>
+                    <select x-model="bankAccountId"
+                            class="flex-1 text-xs border border-teal-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-teal-400 bg-white font-medium">
+                        <option value="">— Bank account —</option>
+                        @foreach($bankAccounts as $bank)
+                        <option value="{{ $bank->id }}">
+                            {{ $bank->label }} — {{ $bank->bank_name }}{{ $bank->account_number ? ' · ' . $bank->account_number : '' }}
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
+                @else
+                <div class="text-xs text-orange-600 bg-orange-50 border border-orange-200 rounded-lg px-2 py-1.5">
+                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                    No bank accounts set up. <a href="{{ route('admin.bank-accounts.index') }}" target="_blank" class="underline font-semibold">Add one here</a>.
+                </div>
+                @endif
                 <div class="grid grid-cols-4 gap-1">
                     <template x-for="amount in quickCash">
                         <button @click="splitCash = Math.min(amount, total); splitBank = Math.max(0, total - splitCash)"
