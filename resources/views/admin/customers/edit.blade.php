@@ -34,6 +34,7 @@
                 </div>
             </div>
             <div class="flex items-center gap-2">
+                <input type="hidden" name="is_active" value="0">
                 <input type="checkbox" name="is_active" id="is_active" value="1" {{ old('is_active', $customer->is_active) ? 'checked' : '' }} class="w-4 h-4 text-primary-600 rounded">
                 <label for="is_active" class="text-sm font-medium text-gray-700 cursor-pointer">Active</label>
             </div>

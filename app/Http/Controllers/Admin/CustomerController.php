@@ -96,6 +96,7 @@ class CustomerController extends Controller
             'is_active' => 'boolean',
         ]);
 
+        $data['is_active'] = $request->boolean('is_active');
         $customer->update($data);
         return redirect()->route('admin.customers.index')->with('success', 'Customer updated.');
     }
