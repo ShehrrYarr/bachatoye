@@ -396,6 +396,37 @@
             </button>
         </div>
     </div>
+
+    {{-- Color Picker Modal — kept inside posApp() so it can access colorPickerProduct --}}
+    <template x-teleport="body">
+        <div x-show="colorPickerProduct" x-transition class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+            <div class="bg-white rounded-2xl shadow-2xl p-6 w-80" @click.outside="colorPickerProduct = null">
+                <h3 class="font-bold text-gray-900 text-base mb-1" x-text="colorPickerProduct?.name"></h3>
+                <p class="text-xs text-gray-500 mb-4">Select a color variant to add to cart:</p>
+                <div class="space-y-2">
+                    <template x-for="color in colorPickerProduct?.colors || []" :key="color.id">
+                        <button type="button"
+                                @click="selectColorAndAdd(color)"
+                                :disabled="color.stock_quantity <= 0"
+                                class="w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all"
+                                :class="color.stock_quantity > 0
+                                    ? 'border-gray-300 hover:border-primary-400 hover:bg-primary-50 cursor-pointer'
+                                    : 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'">
+                            <div class="flex items-center gap-3">
+                                <div class="w-6 h-6 rounded-full border border-gray-300 shrink-0"
+                                     :style="color.hex_code ? `background:${color.hex_code}` : 'background:#e5e7eb'"></div>
+                                <span class="text-sm font-medium text-gray-800" x-text="color.name"></span>
+                            </div>
+                            <span class="text-xs font-semibold"
+                                  :class="color.stock_quantity > 0 ? 'text-green-600' : 'text-red-400'"
+                                  x-text="color.stock_quantity > 0 ? color.stock_quantity + ' left' : 'Out of stock'"></span>
+                        </button>
+                    </template>
+                </div>
+                <button @click="colorPickerProduct = null" class="btn-outline w-full mt-4 justify-center text-sm">Cancel</button>
+            </div>
+        </div>
+    </template>
 </div>
 
 {{-- ===== DAILY SUMMARY BAR ===== --}}
@@ -823,35 +854,6 @@
             <button @click="closeSession()" class="btn-danger flex-1 justify-center">Close Session</button>
             <button @click="showCloseSession = false" class="btn-outline flex-1 justify-center">Cancel</button>
         </div>
-    </div>
-</div>
-
-{{-- Color Picker Modal --}}
-<div x-show="colorPickerProduct" x-transition class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-    <div class="bg-white rounded-2xl shadow-2xl p-6 w-80" @click.outside="colorPickerProduct = null">
-        <h3 class="font-bold text-gray-900 text-base mb-1" x-text="colorPickerProduct?.name"></h3>
-        <p class="text-xs text-gray-500 mb-4">Select a color to add to cart:</p>
-        <div class="space-y-2">
-            <template x-for="color in colorPickerProduct?.colors || []" :key="color.id">
-                <button type="button"
-                        @click="selectColorAndAdd(color)"
-                        :disabled="color.stock_quantity <= 0"
-                        class="w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all"
-                        :class="color.stock_quantity > 0
-                            ? 'border-gray-300 hover:border-primary-400 hover:bg-primary-50 cursor-pointer'
-                            : 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'">
-                    <div class="flex items-center gap-3">
-                        <div class="w-6 h-6 rounded-full border border-gray-300 shrink-0"
-                             :style="color.hex_code ? `background:${color.hex_code}` : 'background:#e5e7eb'"></div>
-                        <span class="text-sm font-medium text-gray-800" x-text="color.name"></span>
-                    </div>
-                    <span class="text-xs font-semibold"
-                          :class="color.stock_quantity > 0 ? 'text-green-600' : 'text-red-400'"
-                          x-text="color.stock_quantity > 0 ? color.stock_quantity + ' left' : 'Out of stock'"></span>
-                </button>
-            </template>
-        </div>
-        <button @click="colorPickerProduct = null" class="btn-outline w-full mt-4 justify-center text-sm">Cancel</button>
     </div>
 </div>
 

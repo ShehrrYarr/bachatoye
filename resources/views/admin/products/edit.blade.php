@@ -197,9 +197,10 @@
             {{-- Colors --}}
             @php
                 $existingColors = $product->colors->map(fn($c) => [
-                    'id'       => $c->id,
-                    'name'     => $c->name,
-                    'hex_code' => $c->hex_code ?? '',
+                    'id'             => $c->id,
+                    'name'           => $c->name,
+                    'hex_code'       => $c->hex_code ?? '',
+                    'stock_quantity' => $c->stock_quantity,
                 ])->values()->toArray();
             @endphp
             <div class="card">
@@ -233,13 +234,23 @@
                             <input type="text" :name="`colors[${i}][name]`" x-model="color.name"
                                    placeholder="Color name (e.g. Red)" class="form-input flex-1 text-sm" required>
 
+                            {{-- Stock quantity per color --}}
+                            <div class="shrink-0 w-24">
+                                <input type="number" :name="`colors[${i}][stock_quantity]`"
+                                       x-model.number="color.stock_quantity"
+                                       min="0" step="1"
+                                       placeholder="Stock"
+                                       class="form-input text-sm text-center w-full"
+                                       title="Stock for this color">
+                            </div>
+
                             {{-- Remove --}}
                             <button type="button" @click="colors.splice(i, 1)"
                                     class="btn-danger btn-sm shrink-0"><i class="fas fa-times"></i></button>
                         </div>
                     </template>
 
-                    <button type="button" @click="colors.push({ id: '', name: '', hex_code: '' })"
+                    <button type="button" @click="colors.push({ id: '', name: '', hex_code: '', stock_quantity: 0 })"
                             class="btn-outline btn-sm">
                         <i class="fas fa-plus mr-1"></i> Add Color
                     </button>
