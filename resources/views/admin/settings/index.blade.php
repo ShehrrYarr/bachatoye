@@ -108,6 +108,21 @@
                     </div>
                     <p class="form-hint mt-2">Controls how long each banner is shown before auto-advancing (2 – 15 s)</p>
                 </div>
+                <div>
+                    <label class="form-label">Product Image Slider Interval (seconds)</label>
+                    <div class="flex items-center gap-4">
+                        <input type="range" name="product_image_interval"
+                               min="2" max="10" step="1"
+                               value="{{ old('product_image_interval', \App\Models\Setting::get('product_image_interval', 3)) }}"
+                               class="w-48 accent-primary-600"
+                               oninput="document.getElementById('product_img_interval_val').textContent = this.value">
+                        <span class="text-lg font-bold text-primary-600 w-12" id="product_img_interval_val">
+                            {{ \App\Models\Setting::get('product_image_interval', 3) }}
+                        </span>
+                        <span class="text-sm text-gray-500">seconds per image</span>
+                    </div>
+                    <p class="form-hint mt-2">Auto-slide interval for product images on the product detail page (2 – 10 s)</p>
+                </div>
             </div>
         </div>
 

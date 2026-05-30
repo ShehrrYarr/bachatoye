@@ -15,8 +15,10 @@
         <span class="text-gray-800 font-medium truncate">{{ $product->name }}</span>
     </nav>
 
+@php $imgInterval = max(2, (int)\App\Models\Setting::get('product_image_interval', 3)) * 1000; @endphp
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-10"
-         x-data="{ activeImg: 0, total: {{ $product->images->count() ?: 1 }}, zooming: false }">
+         x-data="productGallery({{ $product->images->count() ?: 1 }}, {{ $imgInterval }})"
+         x-init="init()">
 
         {{-- ===== LEFT: Media (Images first, then Videos) ===== --}}
         <div class="space-y-3">
@@ -29,7 +31,7 @@
                 @if($product->images->count() > 1)
                 <div class="flex flex-col gap-2 shrink-0" style="width:72px; max-height:480px; overflow-y:auto;">
                     @foreach($product->images as $i => $img)
-                    <button @click="activeImg = {{ $i }}"
+                    <button @click="goTo({{ $i }})"
                             :class="activeImg === {{ $i }}
                                 ? 'ring-2 ring-primary-500 ring-offset-1 opacity-100'
                                 : 'ring-1 ring-gray-200 opacity-60 hover:opacity-100 hover:ring-gray-400'"
@@ -45,12 +47,16 @@
                 <div class="flex-1 min-w-0">
                     <div class="relative rounded-2xl bg-gray-50 border border-gray-100 overflow-hidden w-full"
                          style="padding-bottom:100%;"
-                         @mouseenter="zooming = true" @mouseleave="zooming = false">
+                         @mouseenter="zooming = true; paused = true"
+                         @mouseleave="zooming = false; paused = false">
 
                         @foreach($product->images as $i => $img)
                         <img src="{{ $img->url }}"
                              alt="{{ $product->name }}"
                              x-show="activeImg === {{ $i }}"
+                             x-transition:enter="transition ease-out duration-400"
+                             x-transition:enter-start="opacity-0"
+                             x-transition:enter-end="opacity-100"
                              @if($i > 0) style="display:none" @endif
                              :class="zooming ? 'scale-[1.35] cursor-zoom-out' : 'scale-100 cursor-zoom-in'"
                              class="absolute inset-0 w-full h-full object-contain p-4 transition-transform duration-500 ease-out select-none">
@@ -58,17 +64,28 @@
 
                         {{-- Prev / Next arrows --}}
                         @if($product->images->count() > 1)
-                        <button @click.prevent="activeImg = (activeImg - 1 + total) % total"
+                        <button @click.prevent="goTo((activeImg - 1 + total) % total)"
                                 class="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/80 backdrop-blur shadow hover:bg-white flex items-center justify-center text-gray-700 transition-all">
                             <i class="fas fa-chevron-left text-xs"></i>
                         </button>
-                        <button @click.prevent="activeImg = (activeImg + 1) % total"
+                        <button @click.prevent="goTo((activeImg + 1) % total)"
                                 class="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/80 backdrop-blur shadow hover:bg-white flex items-center justify-center text-gray-700 transition-all">
                             <i class="fas fa-chevron-right text-xs"></i>
                         </button>
-                        <div class="absolute bottom-3 right-3 z-10 bg-black/40 text-white text-xs px-2 py-0.5 rounded-full backdrop-blur">
-                            <span x-text="activeImg + 1"></span>/{{ $product->images->count() }}
+
+                        {{-- Dot indicators --}}
+                        @if($product->images->count() > 1)
+                        <div class="absolute bottom-3 left-0 right-0 flex items-center justify-center gap-1.5 z-10">
+                            @foreach($product->images as $i => $img)
+                            <button @click.prevent="goTo({{ $i }})"
+                                    :style="activeImg === {{ $i }}
+                                        ? 'width:20px; height:5px; background:rgba(255,255,255,0.95);'
+                                        : 'width:5px;  height:5px; background:rgba(255,255,255,0.45);'"
+                                    class="rounded-full transition-all duration-300">
+                            </button>
+                            @endforeach
                         </div>
+                        @endif
                         @endif
 
                         {{-- Deal badge --}}
@@ -369,6 +386,40 @@
 
 @push('scripts')
 <script>
+function productGallery(total, intervalMs) {
+    return {
+        activeImg: 0,
+        total,
+        zooming: false,
+        paused: false,
+        _timer: null,
+        _resumeTimer: null,
+
+        init() {
+            if (this.total > 1) {
+                this._timer = setInterval(() => {
+                    if (!this.paused) {
+                        this.activeImg = (this.activeImg + 1) % this.total;
+                    }
+                }, intervalMs);
+            }
+        },
+
+        destroy() {
+            clearInterval(this._timer);
+            clearTimeout(this._resumeTimer);
+        },
+
+        // Manual navigation — pause briefly then resume auto-slide
+        goTo(i) {
+            this.activeImg = i;
+            this.paused = true;
+            clearTimeout(this._resumeTimer);
+            this._resumeTimer = setTimeout(() => { this.paused = false; }, 4000);
+        },
+    };
+}
+
 function adjustQty(delta) {
     const input = document.getElementById('qty');
     const max = parseInt(input.max) || 999;
