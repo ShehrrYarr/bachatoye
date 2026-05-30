@@ -297,7 +297,7 @@ function liveSearch() {
 
             {{-- Dismiss button --}}
             <button @click="close()"
-                    class="mt-6 w-full btn-primary justify-center py-2.5 text-sm">
+                    class="mt-6 btn-primary px-8 py-2.5 text-sm mx-auto">
                 Got it!
             </button>
         </div>
