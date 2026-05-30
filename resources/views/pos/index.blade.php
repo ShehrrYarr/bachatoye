@@ -278,7 +278,9 @@
                         class="w-full text-sm border border-blue-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white font-medium">
                     <option value="">— Choose bank account —</option>
                     @foreach($bankAccounts as $bank)
-                    <option value="{{ $bank->id }}">{{ $bank->label }} ({{ $bank->bank_name }})</option>
+                    <option value="{{ $bank->id }}">
+                        {{ $bank->label }} — {{ $bank->bank_name }}{{ $bank->account_number ? ' · ' . $bank->account_number : '' }}
+                    </option>
                     @endforeach
                 </select>
                 <p x-show="!bankAccountId && ['bank_transfer','split'].includes(paymentMethod)"
