@@ -323,6 +323,50 @@
                                     </tfoot>
                                 </table>
                             </div>
+
+                            {{-- Bank Account Breakdown --}}
+                            @php
+                                $bankBreakdown = $todayPosOrders
+                                    ->filter(fn($o) => in_array($o->payment_method, ['bank_transfer','split']) && $o->bankAccount)
+                                    ->groupBy('bank_account_id')
+                                    ->map(function($group) {
+                                        $account = $group->first()->bankAccount;
+                                        $total   = $group->sum(fn($o) => match($o->payment_method) {
+                                            'bank_transfer' => (float) $o->total,
+                                            'split'         => (float) $o->bank_amount,
+                                            default         => 0,
+                                        });
+                                        return ['account' => $account, 'total' => $total, 'count' => $group->count()];
+                                    })
+                                    ->filter(fn($r) => $r['total'] > 0)
+                                    ->values();
+                            @endphp
+                            @if($bankBreakdown->isNotEmpty())
+                            <div class="mt-4">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i class="fas fa-university text-blue-500 text-xs"></i>
+                                    <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Bank Account Breakdown</span>
+                                </div>
+                                <div class="grid gap-2">
+                                    @foreach($bankBreakdown as $row)
+                                    <div class="flex items-center justify-between bg-blue-50 rounded-xl px-4 py-3">
+                                        <div>
+                                            <div class="text-sm font-semibold text-blue-900">{{ $row['account']->label }}</div>
+                                            <div class="text-xs text-blue-600 mt-0.5">
+                                                {{ $row['account']->bank_name }}
+                                                @if($row['account']->account_number)
+                                                    · {{ $row['account']->account_number }}
+                                                @endif
+                                                <span class="ml-1 text-blue-400">· {{ $row['count'] }} {{ Str::plural('txn', $row['count']) }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="font-bold text-blue-900">Rs. {{ number_format($row['total']) }}</div>
+                                    </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                            @endif
+
                             @endif
                         </div>
 
