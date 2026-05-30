@@ -59,9 +59,11 @@ class CheckoutController extends Controller
             $customer = Customer::where('phone', $data['phone'])->first();
             if (!$customer) {
                 $customer = Customer::create([
-                    'name'  => $data['name'],
-                    'phone' => $data['phone'],
-                    'city'  => $data['city'],
+                    'name'          => $data['name'],
+                    'phone'         => $data['phone'],
+                    'city'          => $data['city'],
+                    'source'        => 'online',
+                    'khata_enabled' => false,
                 ]);
             }
 

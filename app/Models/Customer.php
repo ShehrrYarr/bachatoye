@@ -14,6 +14,8 @@ class Customer extends Model
         'city',
         'credit_balance',
         'is_active',
+        'source',
+        'khata_enabled',
         'created_by',
     ];
 
@@ -22,6 +24,7 @@ class Customer extends Model
         return [
             'credit_balance' => 'decimal:2',
             'is_active'      => 'boolean',
+            'khata_enabled'  => 'boolean',
         ];
     }
 

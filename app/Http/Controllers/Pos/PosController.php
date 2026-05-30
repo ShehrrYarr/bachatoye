@@ -281,7 +281,11 @@ class PosController extends Controller
             'phone' => 'required|string|max:20|unique:customers',
         ]);
 
-        $customer = Customer::create(array_merge($data, ['created_by' => Auth::id()]));
+        $customer = Customer::create(array_merge($data, [
+            'source'        => 'pos',
+            'khata_enabled' => true,
+            'created_by'    => Auth::id(),
+        ]));
         return response()->json($customer);
     }
 

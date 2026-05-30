@@ -64,7 +64,9 @@ class CustomerController extends Controller
             'city'    => 'nullable|string|max:100',
         ]);
 
-        $data['created_by'] = Auth::id();
+        $data['created_by']   = Auth::id();
+        $data['source']        = 'pos';
+        $data['khata_enabled'] = true;
         Customer::create($data);
 
         return redirect()->route('admin.customers.index')->with('success', 'Customer added.');
