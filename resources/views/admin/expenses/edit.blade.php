@@ -2,13 +2,14 @@
 @section('title', 'Edit Expense')
 
 @section('content')
+@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
 <div class="flex items-center gap-3 mb-6">
-    <a href="{{ route('admin.expenses.index') }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
+    <a href="{{ route("{$rPrefix}.expenses.index") }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
     <h1 class="text-xl font-bold text-gray-900">Edit Expense</h1>
 </div>
 
 <div class="max-w-xl">
-    <form method="POST" action="{{ route('admin.expenses.update', $expense) }}">
+    <form method="POST" action="{{ route("{$rPrefix}.expenses.update", $expense) }}">
         @csrf @method('PUT')
         <div class="card p-6 space-y-4">
             <div>
@@ -58,7 +59,7 @@
             </div>
             <div class="flex gap-3 pt-2">
                 <button type="submit" class="btn-primary">Update Expense</button>
-                <a href="{{ route('admin.expenses.index') }}" class="btn-outline">Cancel</a>
+                <a href="{{ route("{$rPrefix}.expenses.index") }}" class="btn-outline">Cancel</a>
             </div>
         </div>
     </form>

@@ -2,9 +2,10 @@
 @section('title', 'Expenses')
 
 @section('content')
+@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
 <div class="flex items-center justify-between mb-6">
     <h1 class="text-xl font-bold text-gray-900">Expenses</h1>
-    <a href="{{ route('admin.expenses.create') }}" class="btn-primary"><i class="fas fa-plus mr-2"></i> Add Expense</a>
+    <a href="{{ route("{$rPrefix}.expenses.create") }}" class="btn-primary"><i class="fas fa-plus mr-2"></i> Add Expense</a>
 </div>
 
 {{-- Summary stats --}}
@@ -33,7 +34,7 @@
 </div>
 
 <div class="card p-4 mb-5">
-    <form method="GET" action="{{ route('admin.expenses.index') }}" class="flex flex-wrap gap-3 items-end">
+    <form method="GET" action="{{ route("{$rPrefix}.expenses.index") }}" class="flex flex-wrap gap-3 items-end">
         <div class="flex-1 min-w-48">
             <input type="text" name="q" value="{{ request('q') }}" placeholder="Search by description..." class="form-input text-sm">
         </div>
@@ -51,7 +52,7 @@
         </div>
         <button type="submit" class="btn-primary btn-sm">Filter</button>
         @if(request()->hasAny(['q','category','date_from','date_to']))
-        <a href="{{ route('admin.expenses.index') }}" class="btn-outline btn-sm">Clear</a>
+        <a href="{{ route("{$rPrefix}.expenses.index") }}" class="btn-outline btn-sm">Clear</a>
         @endif
     </form>
 </div>
@@ -83,7 +84,7 @@
                 <td class="text-sm text-gray-500">{{ $expense->expense_date->format('d M Y') }}</td>
                 <td class="text-sm text-gray-500">{{ $expense->user?->name ?? '—' }}</td>
                 <td class="text-right">
-                    <form method="POST" action="{{ route('admin.expenses.destroy', $expense) }}"
+                    <form method="POST" action="{{ route("{$rPrefix}.expenses.destroy", $expense) }}"
                           onsubmit="return confirm('Delete this expense?')">
                         @csrf @method('DELETE')
                         <button type="submit" class="btn-danger btn-sm"><i class="fas fa-trash"></i></button>
