@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Support\Facades\Auth;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -12,6 +13,13 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo(fn () => route('auth.login'));
+
+        $middleware->redirectUsersTo(function () {
+            $user = Auth::user();
+            return $user?->isAdmin()
+                ? route('admin.dashboard')
+                : route('salesman.dashboard');
+        });
 
         $middleware->alias([
             'role'               => \Spatie\Permission\Middleware\RoleMiddleware::class,
