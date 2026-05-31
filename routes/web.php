@@ -230,6 +230,8 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
 
     Route::get('customers', [Admin\CustomerController::class, 'index'])
         ->middleware('permission:customers.view')->name('customers.index');
+    Route::get('customers/{customer}', [Admin\CustomerController::class, 'show'])
+        ->middleware('permission:customers.view')->name('customers.show');
     Route::get('customers/{customer}/ledger', [Admin\CustomerController::class, 'ledger'])
         ->middleware('permission:accounts.view')->name('customers.ledger');
     Route::get('customers/{customer}/ledger/print', [Admin\CustomerController::class, 'ledgerPrint'])
