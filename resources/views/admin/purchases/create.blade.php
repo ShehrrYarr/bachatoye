@@ -201,11 +201,16 @@
             {{-- Payment --}}
             <div class="card p-5">
                 <h2 class="font-semibold text-gray-800 mb-3">Payment</h2>
-                <div class="grid grid-cols-3 gap-2 mb-3">
+                <div class="grid grid-cols-2 gap-2 mb-3">
                     <button type="button" @click="payMethod = 'cash'"
                             :class="payMethod === 'cash' ? 'ring-2 ring-green-500 bg-green-50' : 'bg-gray-50'"
                             class="flex flex-col items-center py-2.5 rounded-xl border border-gray-200 text-xs font-semibold transition-all">
                         <i class="fas fa-money-bill-wave text-green-600 mb-1"></i> Cash
+                    </button>
+                    <button type="button" @click="payMethod = 'bank_transfer'"
+                            :class="payMethod === 'bank_transfer' ? 'ring-2 ring-blue-500 bg-blue-50' : 'bg-gray-50'"
+                            class="flex flex-col items-center py-2.5 rounded-xl border border-gray-200 text-xs font-semibold transition-all">
+                        <i class="fas fa-university text-blue-600 mb-1"></i> Bank
                     </button>
                     <button type="button" @click="payMethod = 'credit'"
                             :class="payMethod === 'credit' ? 'ring-2 ring-red-400 bg-red-50' : 'bg-gray-50'"
@@ -219,6 +224,21 @@
                     </button>
                 </div>
                 <input type="hidden" name="payment_method" :value="payMethod">
+
+                {{-- Bank account selector --}}
+                @if($bankAccounts->count())
+                <div x-show="payMethod === 'bank_transfer'" class="mt-2 space-y-1">
+                    <label class="form-label text-sm"><i class="fas fa-university mr-1 text-blue-500"></i>Select Bank Account *</label>
+                    <select name="bank_account_id" class="form-select text-sm">
+                        <option value="">— Choose bank account —</option>
+                        @foreach($bankAccounts as $bank)
+                        <option value="{{ $bank->id }}">
+                            {{ $bank->label }} — {{ $bank->bank_name }}{{ $bank->account_number ? ' · '.$bank->account_number : '' }}
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
+                @endif
 
                 <div x-show="payMethod === 'partial'" class="space-y-2 mt-2">
                     <label class="form-label text-sm">Amount Paid Now (Rs.)</label>
@@ -235,7 +255,10 @@
                     Full amount will be added to vendor's Khata
                 </div>
                 <div x-show="payMethod === 'cash'" class="mt-2 p-2 bg-green-50 rounded-lg text-xs text-green-700">
-                    Paid in full — no Khata entry
+                    <i class="fas fa-money-bill-wave mr-1"></i>Paid in full by cash — no Khata entry
+                </div>
+                <div x-show="payMethod === 'bank_transfer'" class="mt-2 p-2 bg-blue-50 rounded-lg text-xs text-blue-700">
+                    <i class="fas fa-university mr-1"></i>Paid in full via bank transfer — no Khata entry
                 </div>
             </div>
 
@@ -255,7 +278,7 @@
                         <span>Total</span>
                         <span x-text="'Rs. ' + total.toLocaleString()"></span>
                     </div>
-                    <div x-show="payMethod === 'cash'" class="flex justify-between text-green-600 font-semibold">
+                    <div x-show="payMethod === 'cash' || payMethod === 'bank_transfer'" class="flex justify-between text-green-600 font-semibold">
                         <span>Paying Now</span>
                         <span x-text="'Rs. ' + total.toLocaleString()"></span>
                     </div>

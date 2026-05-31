@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\BankAccount;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
@@ -48,8 +49,9 @@ class PurchaseController extends Controller
         $categories = Category::active()->whereNull('parent_id')
             ->with(['children' => fn($q) => $q->active()->orderBy('name')->select('id', 'name', 'parent_id')])
             ->orderBy('name')->get(['id', 'name']);
-        $brands     = Brand::orderBy('name')->get(['id', 'name']);
-        return view('admin.purchases.create', compact('vendors', 'products', 'categories', 'brands'));
+        $brands       = Brand::orderBy('name')->get(['id', 'name']);
+        $bankAccounts = BankAccount::active()->orderBy('sort_order')->get();
+        return view('admin.purchases.create', compact('vendors', 'products', 'categories', 'brands', 'bankAccounts'));
     }
 
     public function quickCreateProduct(Request $request)
@@ -158,7 +160,8 @@ class PurchaseController extends Controller
             'purchase_date'       => 'required|date',
             'vendor_id'           => 'required|exists:vendors,id',
             'reference'           => 'nullable|string|max:100',
-            'payment_method'      => 'required|in:cash,credit,partial',
+            'payment_method'      => 'required|in:cash,bank_transfer,credit,partial',
+            'bank_account_id'     => 'nullable|exists:bank_accounts,id',
             'amount_paid'         => 'nullable|numeric|min:0',
             'notes'               => 'nullable|string|max:1000',
             'items'               => 'required|array|min:1',
@@ -174,11 +177,13 @@ class PurchaseController extends Controller
             $subtotal = collect($items)->sum(fn($i) => $i['quantity'] * $i['unit_cost']);
             $total    = $subtotal;
 
-            $payMethod = $request->payment_method;
+            $payMethod    = $request->payment_method;
+            $bankAccountId = in_array($payMethod, ['bank_transfer']) ? ($request->bank_account_id ?: null) : null;
             $amountPaid = match ($payMethod) {
-                'cash'    => $total,
-                'credit'  => 0,
-                'partial' => min((float) ($request->amount_paid ?? 0), $total),
+                'cash'          => $total,
+                'bank_transfer' => $total,
+                'credit'        => 0,
+                'partial'       => min((float) ($request->amount_paid ?? 0), $total),
             };
             $payStatus = match (true) {
                 $amountPaid >= $total => 'paid',
@@ -192,8 +197,9 @@ class PurchaseController extends Controller
                 'purchase_date'  => $request->purchase_date,
                 'subtotal'       => $subtotal,
                 'total'          => $total,
-                'payment_method' => $payMethod,
-                'amount_paid'    => $amountPaid,
+                'payment_method'  => $payMethod,
+                'bank_account_id' => $bankAccountId,
+                'amount_paid'     => $amountPaid,
                 'payment_status' => $payStatus,
                 'notes'          => $request->notes,
                 'created_by'     => auth()->id(),

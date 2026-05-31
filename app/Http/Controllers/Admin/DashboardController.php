@@ -91,9 +91,12 @@ class DashboardController extends Controller
         $returnBank  = $returnOrders->where('refund_method', 'bank_transfer')->sum('refund_amount');
         $returnTotal = $returnOrders->sum('refund_amount');
 
-        $purchasesTotal = (float) Purchase::whereDate('purchase_date', today())->sum('total');
-        $purchasesPaid  = (float) Purchase::whereDate('purchase_date', today())->sum('amount_paid');
-        $purchasesDue   = $purchasesTotal - $purchasesPaid;
+        $todayPurchases     = Purchase::whereDate('purchase_date', today())->get(['payment_method', 'total', 'amount_paid']);
+        $purchasesTotal     = (float) $todayPurchases->sum('total');
+        $purchasesPaid      = (float) $todayPurchases->sum('amount_paid');
+        $purchasesDue       = $purchasesTotal - $purchasesPaid;
+        $purchasesCashPaid  = (float) $todayPurchases->whereIn('payment_method', ['cash', 'partial'])->sum('amount_paid');
+        $purchasesBankPaid  = (float) $todayPurchases->where('payment_method', 'bank_transfer')->sum('amount_paid');
 
         $todayReport = [
             'pos_total'      => $posOrders->sum('total'),
@@ -107,12 +110,14 @@ class DashboardController extends Controller
             'return_total'   => $returnTotal,
             'return_cash'    => $returnCash,
             'return_bank'    => $returnBank,
-            'total_cash'        => $posCash + $khataCash - $returnCash,
-            'total_bank'        => $posBank + $khataBank - $returnBank,
+            'total_cash'        => $posCash + $khataCash - $returnCash - $purchasesCashPaid,
+            'total_bank'        => $posBank + $khataBank - $returnBank - $purchasesBankPaid,
             'grand_total'       => $posCash + $posBank + $khataTotal - $returnTotal,
             'purchases_total'   => $purchasesTotal,
             'purchases_paid'    => $purchasesPaid,
             'purchases_due'     => $purchasesDue,
+            'purchases_cash'    => $purchasesCashPaid,
+            'purchases_bank'    => $purchasesBankPaid,
             'store_name'        => Setting::get('shop_name', config('app.name')),
             'date'              => today()->format('d M Y'),
         ];
@@ -168,9 +173,11 @@ class DashboardController extends Controller
         $returnBank  = $returnOrders->where('refund_method', 'bank_transfer')->sum('refund_amount');
         $returnTotal = $returnOrders->sum('refund_amount');
 
-        $purchasesForPrint = Purchase::whereDate('purchase_date', today())->get(['total', 'amount_paid', 'payment_status']);
+        $purchasesForPrint   = Purchase::whereDate('purchase_date', today())->get(['payment_method', 'total', 'amount_paid', 'payment_status']);
         $purchasesTotalPrint = (float) $purchasesForPrint->sum('total');
         $purchasesPaidPrint  = (float) $purchasesForPrint->sum('amount_paid');
+        $purchasesCashPrint  = (float) $purchasesForPrint->whereIn('payment_method', ['cash', 'partial'])->sum('amount_paid');
+        $purchasesBankPrint  = (float) $purchasesForPrint->where('payment_method', 'bank_transfer')->sum('amount_paid');
 
         $khataCash  = $khataEntries->where('payment_method', 'cash')->sum('amount');
         $khataBank  = $khataEntries->where('payment_method', 'bank_transfer')->sum('amount');
@@ -206,8 +213,10 @@ class DashboardController extends Controller
             'purchases_total'   => $purchasesTotalPrint,
             'purchases_paid'    => $purchasesPaidPrint,
             'purchases_due'     => $purchasesTotalPrint - $purchasesPaidPrint,
-            'total_cash'        => $posCash + $khataCash - $returnCash,
-            'total_bank'        => $posBank + $khataBank - $returnBank,
+            'purchases_cash'    => $purchasesCashPrint,
+            'purchases_bank'    => $purchasesBankPrint,
+            'total_cash'        => $posCash + $khataCash - $returnCash - $purchasesCashPrint,
+            'total_bank'        => $posBank + $khataBank - $returnBank - $purchasesBankPrint,
             'grand_total'       => $posOrders->sum('total') + $khataTotal - $returnTotal,
             'store_name'        => Setting::get('shop_name', config('app.name')),
             'store_phone'       => Setting::get('shop_phone', ''),
@@ -263,6 +272,8 @@ class DashboardController extends Controller
             'purchases_total' => 0,
             'purchases_paid'  => 0,
             'purchases_due'   => 0,
+            'purchases_cash'  => 0,
+            'purchases_bank'  => 0,
             'store_name'   => Setting::get('shop_name', config('app.name')),
             'store_phone'  => Setting::get('shop_phone', ''),
             'salesman_name'=> $user->name,
@@ -270,9 +281,14 @@ class DashboardController extends Controller
         ];
 
         if ($user->can('purchases.view')) {
-            $todayReport['purchases_total'] = (float) Purchase::whereDate('purchase_date', today())->sum('total');
-            $todayReport['purchases_paid']  = (float) Purchase::whereDate('purchase_date', today())->sum('amount_paid');
+            $printPurchases = Purchase::whereDate('purchase_date', today())->get(['payment_method', 'total', 'amount_paid']);
+            $todayReport['purchases_total'] = (float) $printPurchases->sum('total');
+            $todayReport['purchases_paid']  = (float) $printPurchases->sum('amount_paid');
             $todayReport['purchases_due']   = $todayReport['purchases_total'] - $todayReport['purchases_paid'];
+            $todayReport['purchases_cash']  = (float) $printPurchases->whereIn('payment_method', ['cash', 'partial'])->sum('amount_paid');
+            $todayReport['purchases_bank']  = (float) $printPurchases->where('payment_method', 'bank_transfer')->sum('amount_paid');
+            $todayReport['total_cash']     -= $todayReport['purchases_cash'];
+            $todayReport['total_bank']     -= $todayReport['purchases_bank'];
         }
 
         return view('salesman.today-report-print', compact('todayReport'));
@@ -352,9 +368,15 @@ class DashboardController extends Controller
 
         // Purchases (only if permission granted)
         if ($user->can('purchases.view')) {
-            $todayReport['purchases_total'] = (float) Purchase::whereDate('purchase_date', today())->sum('total');
-            $todayReport['purchases_paid']  = (float) Purchase::whereDate('purchase_date', today())->sum('amount_paid');
+            $salePurchases = Purchase::whereDate('purchase_date', today())->get(['payment_method', 'total', 'amount_paid']);
+            $todayReport['purchases_total'] = (float) $salePurchases->sum('total');
+            $todayReport['purchases_paid']  = (float) $salePurchases->sum('amount_paid');
             $todayReport['purchases_due']   = $todayReport['purchases_total'] - $todayReport['purchases_paid'];
+            $todayReport['purchases_cash']  = (float) $salePurchases->whereIn('payment_method', ['cash', 'partial'])->sum('amount_paid');
+            $todayReport['purchases_bank']  = (float) $salePurchases->where('payment_method', 'bank_transfer')->sum('amount_paid');
+            // Adjust totals to account for purchases outflow
+            $todayReport['total_cash'] -= $todayReport['purchases_cash'];
+            $todayReport['total_bank'] -= $todayReport['purchases_bank'];
         }
 
         // Detail lists for modals

@@ -8,7 +8,7 @@ class Purchase extends Model
 {
     protected $fillable = [
         'reference', 'vendor_id', 'purchase_date',
-        'subtotal', 'total', 'payment_method', 'amount_paid', 'payment_status',
+        'subtotal', 'total', 'payment_method', 'bank_account_id', 'amount_paid', 'payment_status',
         'notes', 'created_by',
     ];
 
@@ -25,6 +25,11 @@ class Purchase extends Model
     public function vendor()
     {
         return $this->belongsTo(Vendor::class);
+    }
+
+    public function bankAccount()
+    {
+        return $this->belongsTo(BankAccount::class);
     }
 
     public function items()

@@ -148,8 +148,13 @@
                 </span>
             </div>
             @if($todayReport['purchases_total'] > 0)
-            <div class="flex gap-4 text-xs text-purple-700">
-                <span><i class="fas fa-check-circle mr-1"></i>Paid: Rs. {{ number_format($todayReport['purchases_paid']) }}</span>
+            <div class="flex gap-4 text-xs text-purple-700 flex-wrap">
+                @if($todayReport['purchases_cash'] > 0)
+                <span><i class="fas fa-money-bill-wave mr-1"></i>Cash: Rs. {{ number_format($todayReport['purchases_cash']) }}</span>
+                @endif
+                @if($todayReport['purchases_bank'] > 0)
+                <span><i class="fas fa-university mr-1"></i>Bank: Rs. {{ number_format($todayReport['purchases_bank']) }}</span>
+                @endif
                 @if($todayReport['purchases_due'] > 0)
                 <span><i class="fas fa-clock mr-1"></i>Due: Rs. {{ number_format($todayReport['purchases_due']) }}</span>
                 @endif

@@ -150,7 +150,12 @@
             <span class="section-total">Rs. {{ number_format($todayReport['purchases_total']) }}</span>
         </div>
         <div class="breakdown">
-            <span><span class="dot dot-purple"></span>Paid: Rs. {{ number_format($todayReport['purchases_paid']) }}</span>
+            @if($todayReport['purchases_cash'] > 0)
+            <span><span class="dot dot-green"></span>Cash: Rs. {{ number_format($todayReport['purchases_cash']) }}</span>
+            @endif
+            @if($todayReport['purchases_bank'] > 0)
+            <span><span class="dot dot-blue"></span>Bank: Rs. {{ number_format($todayReport['purchases_bank']) }}</span>
+            @endif
             @if($todayReport['purchases_due'] > 0)
             <span style="color:#dc2626;">Due: Rs. {{ number_format($todayReport['purchases_due']) }}</span>
             @endif
