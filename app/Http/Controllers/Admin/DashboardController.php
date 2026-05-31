@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\Expense;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\Purchase;
 use App\Models\ReturnOrder;
 use App\Models\Setting;
 use Illuminate\Support\Facades\Auth;
@@ -29,6 +30,7 @@ class DashboardController extends Controller
                                         ->where('status', 'delivered')
                                         ->sum('total'),
             'today_expenses'    => Expense::whereDate('expense_date', today())->sum('amount'),
+            'today_purchases'   => Purchase::whereDate('purchase_date', today())->sum('total'),
         ];
 
         $recentOrders  = Order::where('source', 'ecommerce')->latest()->take(10)->get();
@@ -89,6 +91,10 @@ class DashboardController extends Controller
         $returnBank  = $returnOrders->where('refund_method', 'bank_transfer')->sum('refund_amount');
         $returnTotal = $returnOrders->sum('refund_amount');
 
+        $purchasesTotal = (float) Purchase::whereDate('purchase_date', today())->sum('total');
+        $purchasesPaid  = (float) Purchase::whereDate('purchase_date', today())->sum('amount_paid');
+        $purchasesDue   = $purchasesTotal - $purchasesPaid;
+
         $todayReport = [
             'pos_total'      => $posOrders->sum('total'),
             'pos_cash'       => $posCash,
@@ -101,11 +107,14 @@ class DashboardController extends Controller
             'return_total'   => $returnTotal,
             'return_cash'    => $returnCash,
             'return_bank'    => $returnBank,
-            'total_cash'     => $posCash + $khataCash - $returnCash,
-            'total_bank'     => $posBank + $khataBank - $returnBank,
-            'grand_total'    => $posCash + $posBank + $khataTotal - $returnTotal,
-            'store_name'     => Setting::get('shop_name', config('app.name')),
-            'date'           => today()->format('d M Y'),
+            'total_cash'        => $posCash + $khataCash - $returnCash,
+            'total_bank'        => $posBank + $khataBank - $returnBank,
+            'grand_total'       => $posCash + $posBank + $khataTotal - $returnTotal,
+            'purchases_total'   => $purchasesTotal,
+            'purchases_paid'    => $purchasesPaid,
+            'purchases_due'     => $purchasesDue,
+            'store_name'        => Setting::get('shop_name', config('app.name')),
+            'date'              => today()->format('d M Y'),
         ];
 
         // ── Detail rows for Today's Report modals ────────────────────────
@@ -124,9 +133,13 @@ class DashboardController extends Controller
             ->whereIn('status', ['approved', 'completed'])
             ->with(['order', 'items'])->latest()->get();
 
+        $todayPurchasesList = Purchase::whereDate('purchase_date', today())
+            ->with(['vendor', 'items'])->latest()->get();
+
         return view('admin.dashboard', compact(
             'stats', 'recentOrders', 'lowStockItems', 'posChart', 'ecomChart', 'todayReport',
-            'todayPosOrders', 'todayKhataEntries', 'todayExpensesList', 'todayReturnsList'
+            'todayPosOrders', 'todayKhataEntries', 'todayExpensesList', 'todayReturnsList',
+            'todayPurchasesList'
         ));
     }
 
@@ -154,6 +167,10 @@ class DashboardController extends Controller
         $returnCash  = $returnOrders->where('refund_method', 'cash')->sum('refund_amount');
         $returnBank  = $returnOrders->where('refund_method', 'bank_transfer')->sum('refund_amount');
         $returnTotal = $returnOrders->sum('refund_amount');
+
+        $purchasesForPrint = Purchase::whereDate('purchase_date', today())->get(['total', 'amount_paid', 'payment_status']);
+        $purchasesTotalPrint = (float) $purchasesForPrint->sum('total');
+        $purchasesPaidPrint  = (float) $purchasesForPrint->sum('amount_paid');
 
         $khataCash  = $khataEntries->where('payment_method', 'cash')->sum('amount');
         $khataBank  = $khataEntries->where('payment_method', 'bank_transfer')->sum('amount');
@@ -183,15 +200,18 @@ class DashboardController extends Controller
             'khata_bank'   => $khataBank,
             'khata_other'  => $khataEntries->whereNotIn('payment_method', ['cash','bank_transfer'])->sum('amount'),
             'khata_by_bank'=> $khataByBank,
-            'return_total' => $returnTotal,
-            'return_cash'  => $returnCash,
-            'return_bank'  => $returnBank,
-            'total_cash'   => $posCash + $khataCash - $returnCash,
-            'total_bank'   => $posBank + $khataBank - $returnBank,
-            'grand_total'  => $posOrders->sum('total') + $khataTotal - $returnTotal,
-            'store_name'   => Setting::get('shop_name', config('app.name')),
-            'store_phone'  => Setting::get('shop_phone', ''),
-            'date'         => today()->format('d M Y'),
+            'return_total'      => $returnTotal,
+            'return_cash'       => $returnCash,
+            'return_bank'       => $returnBank,
+            'purchases_total'   => $purchasesTotalPrint,
+            'purchases_paid'    => $purchasesPaidPrint,
+            'purchases_due'     => $purchasesTotalPrint - $purchasesPaidPrint,
+            'total_cash'        => $posCash + $khataCash - $returnCash,
+            'total_bank'        => $posBank + $khataBank - $returnBank,
+            'grand_total'       => $posOrders->sum('total') + $khataTotal - $returnTotal,
+            'store_name'        => Setting::get('shop_name', config('app.name')),
+            'store_phone'       => Setting::get('shop_phone', ''),
+            'date'              => today()->format('d M Y'),
         ];
 
         return view('admin.dashboard.today-report-print', compact('todayReport'));

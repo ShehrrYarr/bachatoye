@@ -53,6 +53,12 @@
         .returns .breakdown { color: #ea580c; }
         .dot-orange { background: #f97316; }
 
+        .purchases { background: #faf5ff; border: 1px solid #e9d5ff; }
+        .purchases .section-title { color: #6b21a8; }
+        .purchases .section-total { color: #6b21a8; }
+        .purchases .breakdown { color: #7c3aed; }
+        .dot-purple { background: #a855f7; }
+
         /* Totals */
         .totals { border-top: 2px solid #1a1a1a; padding-top: 14px; margin-top: 4px; }
         .total-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; font-size: 13px; color: #374151; }
@@ -153,6 +159,22 @@
         </div>
     </div>
 
+    {{-- Purchases --}}
+    <div class="section purchases">
+        <div class="section-header">
+            <span class="section-title">&#128666; Purchases (Stock In)</span>
+            <span class="section-total">Rs. {{ number_format($todayReport['purchases_total']) }}</span>
+        </div>
+        @if($todayReport['purchases_total'] > 0)
+        <div class="breakdown">
+            <span><span class="dot dot-purple"></span>Paid: Rs. {{ number_format($todayReport['purchases_paid']) }}</span>
+            @if($todayReport['purchases_due'] > 0)
+            <span style="color:#dc2626;">Due: Rs. {{ number_format($todayReport['purchases_due']) }}</span>
+            @endif
+        </div>
+        @endif
+    </div>
+
     {{-- Returns --}}
     <div class="section returns">
         <div class="section-header">
@@ -181,6 +203,12 @@
             <span>Total Expenses (Out)</span>
             <strong style="color:#be123c;">– Rs. {{ number_format($todayReport['expenses']) }}</strong>
         </div>
+        @if($todayReport['purchases_paid'] > 0)
+        <div class="total-row">
+            <span>Purchases Paid (Out)</span>
+            <strong style="color:#7c3aed;">– Rs. {{ number_format($todayReport['purchases_paid']) }}</strong>
+        </div>
+        @endif
         @if($todayReport['return_total'] > 0)
         <div class="total-row">
             <span>Total Returns (Out)</span>

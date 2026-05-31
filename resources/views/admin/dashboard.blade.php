@@ -203,6 +203,28 @@
                     </span>
                 </button>
 
+                {{-- Purchases --}}
+                <button type="button" @click="activeModal = 'purchases'"
+                        class="w-full text-left bg-purple-50 hover:bg-purple-100 rounded-xl p-3 transition-colors cursor-pointer group">
+                    <div class="flex justify-between items-center @if($todayReport['purchases_total'] > 0) mb-2 @endif">
+                        <span class="text-sm font-semibold text-purple-800">
+                            <i class="fas fa-truck mr-1.5"></i>Purchases (Stock In)
+                        </span>
+                        <span class="flex items-center gap-2">
+                            <span class="font-bold text-purple-900">Rs. {{ number_format($todayReport['purchases_total']) }}</span>
+                            <i class="fas fa-chevron-right text-purple-400 text-xs group-hover:translate-x-0.5 transition-transform"></i>
+                        </span>
+                    </div>
+                    @if($todayReport['purchases_total'] > 0)
+                    <div class="flex gap-4 text-xs text-purple-700">
+                        <span><i class="fas fa-check-circle mr-1"></i>Paid: Rs. {{ number_format($todayReport['purchases_paid']) }}</span>
+                        @if($todayReport['purchases_due'] > 0)
+                        <span><i class="fas fa-clock mr-1"></i>Due: Rs. {{ number_format($todayReport['purchases_due']) }}</span>
+                        @endif
+                    </div>
+                    @endif
+                </button>
+
                 {{-- Returns --}}
                 <button type="button" @click="activeModal = 'returns'"
                         class="w-full text-left bg-orange-50 hover:bg-orange-100 rounded-xl p-3 transition-colors cursor-pointer group">
@@ -235,6 +257,12 @@
                         <span><i class="fas fa-university text-blue-500 mr-1.5"></i>Total Bank In</span>
                         <span class="font-semibold">Rs. {{ number_format($todayReport['total_bank']) }}</span>
                     </div>
+                    @if($todayReport['purchases_total'] > 0)
+                    <div class="flex justify-between text-sm text-gray-600">
+                        <span><i class="fas fa-truck text-purple-500 mr-1.5"></i>Purchases (Out)</span>
+                        <span class="font-semibold text-purple-700">– Rs. {{ number_format($todayReport['purchases_paid']) }}</span>
+                    </div>
+                    @endif
                     <div class="flex justify-between text-base font-bold text-gray-900 border-t border-gray-200 pt-2 mt-1">
                         <span>Grand Total Received</span>
                         <span class="text-primary-700">Rs. {{ number_format($todayReport['grand_total']) }}</span>
@@ -268,6 +296,7 @@
                             <span x-show="activeModal === 'pos'"><i class="fas fa-cash-register mr-2 text-blue-600"></i>Today's POS Sales</span>
                             <span x-show="activeModal === 'khata'"><i class="fas fa-hand-holding-usd mr-2 text-green-600"></i>Today's Khata Received</span>
                             <span x-show="activeModal === 'expenses'"><i class="fas fa-receipt mr-2 text-red-500"></i>Today's Expenses</span>
+                            <span x-show="activeModal === 'purchases'"><i class="fas fa-truck mr-2 text-purple-600"></i>Today's Purchases</span>
                             <span x-show="activeModal === 'returns'"><i class="fas fa-undo-alt mr-2 text-orange-500"></i>Today's Returns</span>
                         </h3>
                         <button @click="activeModal = null" class="text-gray-400 hover:text-gray-700 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100">
@@ -548,6 +577,101 @@
                                         <tr>
                                             <td colspan="3" class="px-4 py-3 text-sm font-bold text-gray-700">{{ $todayExpensesList->count() }} expenses</td>
                                             <td class="px-4 py-3 text-right font-bold text-red-600">Rs. {{ number_format($todayExpensesList->sum('amount')) }}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            @endif
+                        </div>
+
+                        {{-- Purchases Table --}}
+                        <div x-show="activeModal === 'purchases'">
+                            @if($todayPurchasesList->isEmpty())
+                                <p class="text-center text-gray-400 py-10">No purchases recorded today.</p>
+                            @else
+                            <div class="overflow-x-auto rounded-xl border border-gray-100">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                                        <tr>
+                                            <th class="text-left px-4 py-2.5 font-semibold">Ref / Invoice</th>
+                                            <th class="text-left px-4 py-2.5 font-semibold">Vendor</th>
+                                            <th class="text-left px-4 py-2.5 font-semibold">Payment</th>
+                                            <th class="text-left px-4 py-2.5 font-semibold">Status</th>
+                                            <th class="text-right px-4 py-2.5 font-semibold">Total</th>
+                                        </tr>
+                                    </thead>
+                                    @foreach($todayPurchasesList as $p)
+                                    <tbody x-data="{ open: false }" class="border-b border-gray-100 last:border-0">
+                                        {{-- Main purchase row (clickable) --}}
+                                        <tr class="hover:bg-purple-50 cursor-pointer select-none transition-colors"
+                                            @click="open = !open">
+                                            <td class="px-4 py-3 font-mono text-xs text-gray-700">{{ $p->reference ?: '—' }}</td>
+                                            <td class="px-4 py-3 text-xs text-gray-700 font-medium">{{ $p->vendor?->name ?? '—' }}</td>
+                                            <td class="px-4 py-3 text-xs text-gray-500 capitalize">{{ str_replace('_',' ', $p->payment_method) }}</td>
+                                            <td class="px-4 py-3">
+                                                @php $statusStyle = match($p->payment_status) {
+                                                    'paid'    => 'bg-green-100 text-green-700',
+                                                    'partial' => 'bg-yellow-100 text-yellow-700',
+                                                    'unpaid'  => 'bg-red-100 text-red-700',
+                                                    default   => 'bg-gray-100 text-gray-600',
+                                                }; @endphp
+                                                <span class="text-xs px-2 py-0.5 rounded-full font-medium {{ $statusStyle }}">{{ ucfirst($p->payment_status) }}</span>
+                                            </td>
+                                            <td class="px-4 py-3 text-right font-bold text-gray-900">
+                                                <div class="flex items-center justify-end gap-2">
+                                                    Rs. {{ number_format($p->total) }}
+                                                    <i class="fas fa-chevron-down text-gray-300 text-xs transition-transform duration-200"
+                                                       :class="open ? 'rotate-180 !text-purple-400' : ''"></i>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {{-- Expanded items row --}}
+                                        <tr x-show="open"
+                                            x-transition:enter="transition-opacity ease-out duration-150"
+                                            x-transition:enter-start="opacity-0"
+                                            x-transition:enter-end="opacity-100"
+                                            x-transition:leave="transition-opacity ease-in duration-100"
+                                            x-transition:leave-start="opacity-100"
+                                            x-transition:leave-end="opacity-0"
+                                            style="display:none;">
+                                            <td colspan="5" class="px-0 bg-purple-50/40">
+                                                <div class="px-6 py-3 border-t border-purple-100">
+                                                    @if($p->amount_paid < $p->total)
+                                                    <div class="flex items-center gap-3 mb-3 text-xs">
+                                                        <span class="text-gray-500">Paid: <strong class="text-gray-800">Rs. {{ number_format($p->amount_paid) }}</strong></span>
+                                                        <span class="text-red-500">Due: <strong class="text-red-700">Rs. {{ number_format($p->total - $p->amount_paid) }}</strong></span>
+                                                    </div>
+                                                    @endif
+                                                    @if($p->items->isEmpty())
+                                                        <p class="text-xs text-gray-400 italic">No items found for this purchase.</p>
+                                                    @else
+                                                    <div class="space-y-2">
+                                                        @foreach($p->items as $item)
+                                                        <div class="flex items-center justify-between text-xs gap-3">
+                                                            <div class="flex items-center gap-2 min-w-0">
+                                                                <span class="text-purple-500 font-bold shrink-0">{{ $item->quantity }}×</span>
+                                                                <span class="font-medium text-gray-800 truncate">{{ $item->product_name }}</span>
+                                                                @if($item->color_name)
+                                                                <span class="shrink-0 text-[10px] bg-white border border-gray-200 text-gray-500 px-1.5 py-0.5 rounded-full">{{ $item->color_name }}</span>
+                                                                @endif
+                                                            </div>
+                                                            <div class="flex items-center gap-3 shrink-0 text-gray-500">
+                                                                <span class="text-gray-400">Rs. {{ number_format($item->unit_cost) }}/ea</span>
+                                                                <span class="font-semibold text-gray-800 w-20 text-right">Rs. {{ number_format($item->line_total) }}</span>
+                                                            </div>
+                                                        </div>
+                                                        @endforeach
+                                                    </div>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                    @endforeach
+                                    <tfoot class="bg-gray-50 border-t-2 border-gray-200">
+                                        <tr>
+                                            <td colspan="4" class="px-4 py-3 text-sm font-bold text-gray-700">{{ $todayPurchasesList->count() }} purchases</td>
+                                            <td class="px-4 py-3 text-right font-bold text-purple-700">Rs. {{ number_format($todayPurchasesList->sum('total')) }}</td>
                                         </tr>
                                     </tfoot>
                                 </table>
