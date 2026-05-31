@@ -174,7 +174,7 @@
                 <span class="font-semibold">Rs. {{ number_format($todayReport['total_bank']) }}</span>
             </div>
             <div class="flex justify-between text-base font-bold text-gray-900 border-t border-gray-200 pt-2 mt-1">
-                <span>Grand Total Received</span>
+                <span>Net Total</span>
                 <span class="text-primary-700">Rs. {{ number_format($todayReport['grand_total']) }}</span>
             </div>
         </div>

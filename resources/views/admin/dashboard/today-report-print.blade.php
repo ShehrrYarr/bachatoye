@@ -221,7 +221,7 @@
         </div>
         @endif
         <div class="total-row grand">
-            <span>Grand Total Received</span>
+            <span>Net Total</span>
             <span>Rs. {{ number_format($todayReport['grand_total']) }}</span>
         </div>
     </div>

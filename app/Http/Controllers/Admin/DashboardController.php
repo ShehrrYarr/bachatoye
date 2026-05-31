@@ -112,7 +112,7 @@ class DashboardController extends Controller
             'return_bank'    => $returnBank,
             'total_cash'        => $posCash + $khataCash - $returnCash - $purchasesCashPaid,
             'total_bank'        => $posBank + $khataBank - $returnBank - $purchasesBankPaid,
-            'grand_total'       => $posCash + $posBank + $khataTotal - $returnTotal,
+            'grand_total'       => $posCash + $posBank + $khataTotal - $returnTotal - $purchasesPaid,
             'purchases_total'   => $purchasesTotal,
             'purchases_paid'    => $purchasesPaid,
             'purchases_due'     => $purchasesDue,
@@ -217,7 +217,7 @@ class DashboardController extends Controller
             'purchases_bank'    => $purchasesBankPrint,
             'total_cash'        => $posCash + $khataCash - $returnCash - $purchasesCashPrint,
             'total_bank'        => $posBank + $khataBank - $returnBank - $purchasesBankPrint,
-            'grand_total'       => $posOrders->sum('total') + $khataTotal - $returnTotal,
+            'grand_total'       => $posOrders->sum('total') + $khataTotal - $returnTotal - $purchasesPaidPrint,
             'store_name'        => Setting::get('shop_name', config('app.name')),
             'store_phone'       => Setting::get('shop_phone', ''),
             'date'              => today()->format('d M Y'),
@@ -289,6 +289,7 @@ class DashboardController extends Controller
             $todayReport['purchases_bank']  = (float) $printPurchases->where('payment_method', 'bank_transfer')->sum('amount_paid');
             $todayReport['total_cash']     -= $todayReport['purchases_cash'];
             $todayReport['total_bank']     -= $todayReport['purchases_bank'];
+            $todayReport['grand_total']    -= $todayReport['purchases_paid'];
         }
 
         return view('salesman.today-report-print', compact('todayReport'));
@@ -364,6 +365,9 @@ class DashboardController extends Controller
             'total_bank'   => $posBank + $khataBank - $returnBank,
             'grand_total'  => (float) $posOrders->sum('total') + $khataTotal - $returnTotal,
             'date'         => today()->format('d M Y'),
+            // purchases keys initialised; adjusted after permission check below
+            'purchases_total' => 0, 'purchases_paid' => 0, 'purchases_due' => 0,
+            'purchases_cash'  => 0, 'purchases_bank' => 0,
         ];
 
         // Purchases (only if permission granted)
@@ -375,8 +379,9 @@ class DashboardController extends Controller
             $todayReport['purchases_cash']  = (float) $salePurchases->whereIn('payment_method', ['cash', 'partial'])->sum('amount_paid');
             $todayReport['purchases_bank']  = (float) $salePurchases->where('payment_method', 'bank_transfer')->sum('amount_paid');
             // Adjust totals to account for purchases outflow
-            $todayReport['total_cash'] -= $todayReport['purchases_cash'];
-            $todayReport['total_bank'] -= $todayReport['purchases_bank'];
+            $todayReport['total_cash']  -= $todayReport['purchases_cash'];
+            $todayReport['total_bank']  -= $todayReport['purchases_bank'];
+            $todayReport['grand_total'] -= $todayReport['purchases_paid'];
         }
 
         // Detail lists for modals
