@@ -2,12 +2,13 @@
 @section('title', 'Record Purchase')
 
 @section('content')
+@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
 <div class="flex items-center gap-3 mb-6">
-    <a href="{{ route('admin.purchases.index') }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
+    <a href="{{ route("{$rPrefix}.purchases.index") }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
     <h1 class="text-xl font-bold text-gray-900">Record Purchase</h1>
 </div>
 
-<form method="POST" action="{{ route('admin.purchases.store') }}"
+<form method="POST" action="{{ route("{$rPrefix}.purchases.store") }}"
       x-data="purchaseForm()" @submit.prevent="submitForm"
       @product-created.window="onProductCreated($event.detail)">
     @csrf

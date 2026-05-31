@@ -8,11 +8,11 @@
 @endphp
 <div class="flex items-center justify-between mb-6">
     <h1 class="text-xl font-bold text-gray-900">Purchases</h1>
-    @can('purchases.manage')
+    @if($isAdmin || auth()->user()->can('purchases.manage'))
     <a href="{{ route("{$rPrefix}.purchases.create") }}" class="btn-primary btn-sm">
         <i class="fas fa-plus mr-1"></i> Record Purchase
     </a>
-    @endcan
+    @endif
 </div>
 
 {{-- Filters --}}
