@@ -241,6 +241,16 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
 
     Route::get('inventory', [Admin\InventoryController::class, 'index'])
         ->middleware('permission:inventory.view')->name('inventory.index');
+    Route::get('inventory/low-stock', [Admin\InventoryController::class, 'lowStock'])
+        ->middleware('permission:inventory.view')->name('inventory.low_stock');
+    Route::get('inventory/{product}/history', [Admin\InventoryController::class, 'history'])
+        ->middleware('permission:inventory.view')->name('inventory.history');
+    Route::get('inventory/{product}/adjust', [Admin\InventoryController::class, 'adjustForm'])
+        ->middleware('permission:inventory.adjust')->name('inventory.adjust.form');
+    Route::patch('inventory/{product}/adjust', [Admin\InventoryController::class, 'adjust'])
+        ->middleware('permission:inventory.adjust')->name('inventory.adjust');
+    Route::patch('inventory/{product}/dismiss', [Admin\InventoryController::class, 'dismissLowStock'])
+        ->middleware('permission:inventory.adjust')->name('inventory.dismiss');
 
     Route::get('expenses', [Admin\ExpenseController::class, 'index'])
         ->middleware('permission:expenses.view')->name('expenses.index');
