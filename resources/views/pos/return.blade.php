@@ -164,14 +164,28 @@
                 <div class="card p-5 sticky top-6">
                     <h3 class="font-bold text-gray-900 mb-4">Return Summary</h3>
 
-                    <div class="space-y-2 text-sm mb-4">
+                    <div class="space-y-3 text-sm mb-4">
                         <div class="flex justify-between text-gray-600">
                             <span>Items selected</span>
                             <span x-text="selectedCount"></span>
                         </div>
-                        <div class="flex justify-between font-bold text-base text-gray-900 border-t border-gray-200 pt-2">
-                            <span>Refund Amount</span>
-                            <span class="text-green-700" x-text="`Rs. ${refundAmount.toLocaleString()}`"></span>
+
+                        {{-- Editable refund amount --}}
+                        <div class="border-t border-gray-200 pt-3">
+                            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+                                Refund Amount (Rs.)
+                            </label>
+                            <input type="number"
+                                   x-model.number="customRefundAmount"
+                                   @input="customAmountEdited = true"
+                                   min="0" step="1" placeholder="0"
+                                   class="w-full text-lg font-bold text-green-700 border-2 border-green-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400 bg-green-50">
+                            {{-- Show hint when amount differs from calculated --}}
+                            <p x-show="customAmountEdited && customRefundAmount !== refundAmount && refundAmount > 0"
+                               class="text-xs text-amber-600 mt-1.5 flex items-center gap-1">
+                                <i class="fas fa-info-circle"></i>
+                                Calculated: Rs. <span x-text="refundAmount.toLocaleString()"></span>
+                            </p>
                         </div>
                     </div>
 
@@ -275,6 +289,8 @@ function returnApp() {
         returnNotes: '',
         selectedCount: 0,
         refundAmount: 0,
+        customRefundAmount: 0,
+        customAmountEdited: false,
         processingReturn: false,
 
         async findOrder() {
@@ -332,6 +348,10 @@ function returnApp() {
             const selected = this.returnItems.filter(i => i.selected);
             this.selectedCount = selected.length;
             this.refundAmount = selected.reduce((sum, i) => sum + (i.unit_price * i.return_qty), 0);
+            // Only auto-fill if user hasn't manually edited the amount
+            if (!this.customAmountEdited) {
+                this.customRefundAmount = this.refundAmount;
+            }
         },
 
         async processReturn() {
@@ -351,6 +371,7 @@ function returnApp() {
                         restock: this.restock,
                         refund_method: this.refundMethod,
                         bank_account_id: this.refundMethod === 'bank_transfer' ? this.bankAccountId : null,
+                        custom_refund_amount: this.customRefundAmount,
                         reason: this.reason,
                         notes: this.returnNotes,
                     })
@@ -364,6 +385,8 @@ function returnApp() {
                     this.returnItems = [];
                     this.selectedCount = 0;
                     this.refundAmount = 0;
+                    this.customRefundAmount = 0;
+                    this.customAmountEdited = false;
                     this.reason = '';
                     this.returnNotes = '';
                     this.refundMethod = 'cash';

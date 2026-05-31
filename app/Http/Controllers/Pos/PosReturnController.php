@@ -119,10 +119,11 @@ class PosReturnController extends Controller
             'items'          => 'required|array|min:1',
             'items.*.order_item_id' => 'required|exists:order_items,id',
             'items.*.quantity'      => 'required|integer|min:1',
-            'reason'         => 'nullable|string|max:500',
-            'refund_method'  => 'required|in:cash,khata_credit,bank_transfer',
-            'bank_account_id'=> 'nullable|exists:bank_accounts,id',
-            'restock'        => 'boolean',
+            'reason'               => 'nullable|string|max:500',
+            'refund_method'        => 'required|in:cash,khata_credit,bank_transfer',
+            'bank_account_id'      => 'nullable|exists:bank_accounts,id',
+            'custom_refund_amount' => 'nullable|numeric|min:0',
+            'restock'              => 'boolean',
         ]);
 
         DB::beginTransaction();
@@ -191,6 +192,11 @@ class PosReturnController extends Controller
             $bankAccountId = ($request->refund_method === 'bank_transfer')
                 ? ($request->bank_account_id ?: null)
                 : null;
+
+            // Allow operator to override the refund amount
+            if ($request->filled('custom_refund_amount') && (float) $request->custom_refund_amount >= 0) {
+                $refund = (float) $request->custom_refund_amount;
+            }
 
             $returnOrder = ReturnOrder::create([
                 'order_id'        => $order->id,
