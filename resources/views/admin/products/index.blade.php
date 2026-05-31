@@ -27,7 +27,7 @@
         </button>
     </div>
 
-<div class="grid gap-2 mt-4" style="grid-template-columns: repeat(auto-fill, minmax(80px, 1fr))">
+<div class="grid gap-2 mt-4" style="grid-template-columns: repeat(auto-fill, minmax(120px, 1fr))">
 
     @forelse($categories as $cat)
     <a href="{{ route('admin.products.index', ['category' => $cat->id]) }}"
