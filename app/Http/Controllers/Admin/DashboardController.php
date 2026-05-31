@@ -233,15 +233,94 @@ class DashboardController extends Controller
                                  ->whereColumn('stock_quantity', '<=', 'low_stock_threshold')
                                  ->count();
 
-        $recentOrders = Order::where('served_by', $user->id)->with('customer')->latest()->take(8)->get();
+        $recentOrders  = Order::where('served_by', $user->id)->with('customer')->latest()->take(8)->get();
         $lowStockItems = Product::active()->where('track_inventory', true)
                                  ->whereColumn('stock_quantity', '<=', 'low_stock_threshold')
                                  ->with('category')->take(6)->get();
         $pendingOrders = Order::where('status', 'pending')->latest()->take(8)->get();
 
+        // ── Today's Report ────────────────────────────────────────────────────
+        $posOrders = Order::where('served_by', $user->id)
+            ->whereDate('created_at', today())
+            ->where('source', 'pos')
+            ->where('status', 'delivered')
+            ->get(['payment_method', 'total', 'cash_amount', 'bank_amount']);
+
+        $posCash = $posOrders->sum(fn($o) => match($o->payment_method) {
+            'cash'  => (float) $o->total,
+            'split' => (float) $o->cash_amount,
+            default => 0,
+        });
+        $posBank = $posOrders->sum(fn($o) => match($o->payment_method) {
+            'bank_transfer' => (float) $o->total,
+            'split'         => (float) $o->bank_amount,
+            default         => 0,
+        });
+
+        $returnOrders = ReturnOrder::where('processed_by', $user->id)
+            ->whereDate('created_at', today())
+            ->whereIn('status', ['approved', 'completed'])
+            ->get(['refund_method', 'refund_amount']);
+        $returnTotal = (float) $returnOrders->sum('refund_amount');
+        $returnCash  = (float) $returnOrders->where('refund_method', 'cash')->sum('refund_amount');
+        $returnBank  = (float) $returnOrders->where('refund_method', 'bank_transfer')->sum('refund_amount');
+
+        $khataEntries = AccountLedger::where('user_id', $user->id)
+            ->whereDate('created_at', today())
+            ->where('type', 'credit')
+            ->get(['payment_method', 'amount']);
+        $khataTotal = (float) $khataEntries->sum('amount');
+        $khataCash  = (float) $khataEntries->where('payment_method', 'cash')->sum('amount');
+        $khataBank  = (float) $khataEntries->where('payment_method', 'bank_transfer')->sum('amount');
+
+        $todayReport = [
+            'pos_total'    => (float) $posOrders->sum('total'),
+            'pos_cash'     => $posCash,
+            'pos_bank'     => $posBank,
+            'return_total' => $returnTotal,
+            'return_cash'  => $returnCash,
+            'return_bank'  => $returnBank,
+            'khata_total'  => $khataTotal,
+            'khata_cash'   => $khataCash,
+            'khata_bank'   => $khataBank,
+            'total_cash'   => $posCash + $khataCash - $returnCash,
+            'total_bank'   => $posBank + $khataBank - $returnBank,
+            'grand_total'  => (float) $posOrders->sum('total') + $khataTotal - $returnTotal,
+            'date'         => today()->format('d M Y'),
+        ];
+
+        // Purchases (only if permission granted)
+        if ($user->can('purchases.view')) {
+            $todayReport['purchases_total'] = (float) Purchase::whereDate('purchase_date', today())->sum('total');
+            $todayReport['purchases_paid']  = (float) Purchase::whereDate('purchase_date', today())->sum('amount_paid');
+            $todayReport['purchases_due']   = $todayReport['purchases_total'] - $todayReport['purchases_paid'];
+        }
+
+        // Detail lists for modals
+        $todayPosOrders = Order::where('served_by', $user->id)
+            ->whereDate('created_at', today())
+            ->where('source', 'pos')->where('status', 'delivered')
+            ->with(['customer', 'items'])->latest()->get();
+
+        $todayReturnsList = ReturnOrder::where('processed_by', $user->id)
+            ->whereDate('created_at', today())
+            ->whereIn('status', ['approved', 'completed'])
+            ->with(['order', 'items'])->latest()->get();
+
+        $todayKhataEntries = AccountLedger::where('user_id', $user->id)
+            ->whereDate('created_at', today())
+            ->where('type', 'credit')
+            ->with(['customer', 'bankAccount'])->latest()->get();
+
+        $todayPurchasesList = $user->can('purchases.view')
+            ? Purchase::whereDate('purchase_date', today())->with(['vendor', 'items'])->latest()->get()
+            : collect();
+
         return view('salesman.dashboard', compact(
             'todaySales', 'todayOrders', 'monthSales', 'lowStockCount',
-            'recentOrders', 'lowStockItems', 'pendingOrders'
+            'recentOrders', 'lowStockItems', 'pendingOrders',
+            'todayReport', 'todayPosOrders', 'todayReturnsList',
+            'todayKhataEntries', 'todayPurchasesList'
         ));
     }
 }
