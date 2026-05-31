@@ -15,10 +15,23 @@
     </a>
 </div>
 
-<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
+{{-- Category search --}}
+<div class="mb-5" x-data="{ catSearch: '' }">
+    <div class="relative max-w-sm">
+        <input type="text" x-model="catSearch" placeholder="Search categories..."
+               class="form-input pl-9 text-sm">
+        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+        <button x-show="catSearch" @click="catSearch = ''"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            <i class="fas fa-times text-xs"></i>
+        </button>
+    </div>
+
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4 mt-4">
 
     @forelse($categories as $cat)
     <a href="{{ route('admin.products.index', ['category' => $cat->id]) }}"
+       x-show="!catSearch || '{{ strtolower($cat->name) }}'.includes(catSearch.toLowerCase())"
        class="group bg-white rounded-2xl border border-gray-200 shadow-sm hover:border-primary-400 hover:shadow-md transition-all overflow-hidden flex flex-col">
 
         {{-- Category image --}}
@@ -54,6 +67,7 @@
     {{-- Uncategorized card --}}
     @if($uncategorizedCount > 0)
     <a href="{{ route('admin.products.index', ['category' => 'uncategorized']) }}"
+       x-show="!catSearch || 'uncategorized'.includes(catSearch.toLowerCase())"
        class="group bg-white rounded-2xl border border-dashed border-gray-300 hover:border-gray-400 hover:shadow-md transition-all overflow-hidden flex flex-col">
         <div class="h-28 bg-gray-50 flex items-center justify-center">
             <i class="fas fa-question-circle text-3xl text-gray-300"></i>
@@ -68,7 +82,8 @@
     </a>
     @endif
 
-</div>
+</div>{{-- end grid --}}
+</div>{{-- end x-data catSearch --}}
 
 @else
 {{-- ===== PRODUCTS TABLE VIEW (category selected) ===== --}}
