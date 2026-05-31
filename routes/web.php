@@ -260,6 +260,31 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
         ->middleware('permission:purchases.manage')->name('purchases.store');
     Route::get('purchases/{purchase}', [Admin\PurchaseController::class, 'show'])
         ->middleware('permission:purchases.view')->name('purchases.show');
+
+    // Purchase-related API helpers (mirrors admin endpoints)
+    Route::get('api/products/search', function (\Illuminate\Http\Request $request) {
+        $q = $request->input('q', '');
+        if (strlen($q) < 2) return response()->json([]);
+        $products = \App\Models\Product::where('name', 'like', "%{$q}%")
+            ->orWhere('sku', 'like', "%{$q}%")
+            ->orderBy('name')->limit(10)->with('colors')
+            ->get(['id', 'name', 'sku', 'cost_price']);
+        return response()->json($products->map(fn($p) => [
+            'id'         => $p->id,
+            'name'       => $p->name,
+            'sku'        => $p->sku,
+            'cost_price' => $p->cost_price,
+            'colors'     => $p->colors->map(fn($c) => [
+                'id' => $c->id, 'name' => $c->name, 'hex_code' => $c->hex_code,
+            ])->values(),
+        ]));
+    })->middleware('permission:purchases.manage')->name('api.products.search');
+
+    Route::post('api/products/quick-create', [Admin\PurchaseController::class, 'quickCreateProduct'])
+        ->middleware('permission:purchases.manage')->name('api.products.quick-create');
+
+    Route::get('products/generate-barcode', [Admin\ProductController::class, 'generateBarcodeAjax'])
+        ->middleware('permission:purchases.manage')->name('products.generate_barcode');
 });
 
 /*

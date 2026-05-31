@@ -544,7 +544,7 @@ function purchaseForm() {
 
         async searchProducts() {
             if (this.searchQuery.length < 2) { this.searchResults = []; return; }
-            const res = await fetch(`/admin/api/products/search?q=${encodeURIComponent(this.searchQuery)}`);
+            const res = await fetch(`/{{ auth()->user()->hasRole('admin') ? 'admin' : 'salesman' }}/api/products/search?q=${encodeURIComponent(this.searchQuery)}`);
             this.searchResults = await res.json();
             this.showDropdown = true;
         },
@@ -748,7 +748,7 @@ function purchaseCreateModal() {
         },
 
         async generateBarcode() {
-            const res  = await fetch('{{ route('admin.products.generate_barcode') }}');
+            const res  = await fetch('{{ route("{$rPrefix}.products.generate_barcode") }}');
             const data = await res.json();
             this.form.barcode = data.barcode;
         },
@@ -790,7 +790,7 @@ function purchaseCreateModal() {
                     fd.append(`colors[${i}][hex_code]`, c.hex_code || '');
                 });
 
-                const res = await fetch('{{ route('admin.api.products.quick-create') }}', {
+                const res = await fetch('{{ route("{$rPrefix}.api.products.quick-create") }}', {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
