@@ -353,11 +353,6 @@
             </div>
             @endif
 
-            {{-- SKU / Barcode --}}
-            <div class="text-xs text-gray-400 space-y-1 pt-2 border-t border-gray-100">
-                @if($product->sku) <div>SKU: <span class="font-mono">{{ $product->sku }}</span></div> @endif
-                @if($product->barcode) <div>Barcode: <span class="font-mono">{{ $product->barcode }}</span></div> @endif
-            </div>
         </div>
     </div>
 
