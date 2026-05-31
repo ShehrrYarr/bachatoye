@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Pos;
 
 use App\Http\Controllers\Controller;
+use App\Models\BankAccount;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -20,7 +21,8 @@ class PosExchangeController extends Controller
 {
     public function index()
     {
-        return view('pos.exchange');
+        $bankAccounts = BankAccount::active()->orderBy('sort_order')->get();
+        return view('pos.exchange', compact('bankAccounts'));
     }
 
     public function findOrder(string $orderNumber)
@@ -53,6 +55,7 @@ class PosExchangeController extends Controller
             'payment_method'         => 'required|in:cash,bank_transfer,split,none',
             'cash_amount'            => 'nullable|numeric|min:0',
             'bank_amount'            => 'nullable|numeric|min:0',
+            'bank_account_id'        => 'nullable|exists:bank_accounts,id',
             'notes'                  => 'nullable|string|max:500',
         ]);
 
@@ -147,19 +150,23 @@ class PosExchangeController extends Controller
             $total = max(0, $subtotal - $exchangeValue);
 
             // ─── Resolve payment details ────────────────────────────────────────
-            $payMethod  = $request->payment_method;
-            $amountPaid = $total;
-            $cashAmount = null;
-            $bankAmount = null;
+            $payMethod     = $request->payment_method;
+            $amountPaid    = $total;
+            $cashAmount    = null;
+            $bankAmount    = null;
+            $bankAccountId = null;
 
             if ($payMethod === 'none') {
                 // Exchange value fully covers new items — no extra payment
                 $payMethod  = 'cash';
                 $amountPaid = 0;
             } elseif ($payMethod === 'split') {
-                $cashAmount = (float)($request->cash_amount ?? 0);
-                $bankAmount = (float)($request->bank_amount ?? 0);
-                $amountPaid = $cashAmount + $bankAmount;
+                $cashAmount    = (float)($request->cash_amount ?? 0);
+                $bankAmount    = (float)($request->bank_amount ?? 0);
+                $amountPaid    = $cashAmount + $bankAmount;
+                $bankAccountId = $request->bank_account_id ?: null;
+            } elseif ($payMethod === 'bank_transfer') {
+                $bankAccountId = $request->bank_account_id ?: null;
             }
 
             // ─── Step 3: Create new POS Order ──────────────────────────────────
@@ -176,6 +183,7 @@ class PosExchangeController extends Controller
                 'amount_paid'        => $amountPaid,
                 'cash_amount'        => $cashAmount,
                 'bank_amount'        => $bankAmount,
+                'bank_account_id'    => $bankAccountId,
                 'payment_method'     => $payMethod,
                 'payment_status'     => 'paid',
                 'notes'              => $request->notes,

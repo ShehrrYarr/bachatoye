@@ -1,5 +1,9 @@
 @extends('layouts.pos')
 
+@push('styles')
+<style>body { overflow: auto !important; height: auto !important; }</style>
+@endpush
+
 @section('content')
 <div class="min-h-screen bg-gray-100 p-4 md:p-6" x-data="exchangeApp()">
 
@@ -237,26 +241,74 @@
                     {{-- Payment method (only if customer owes money) --}}
                     <div x-show="difference > 0">
                         <label class="form-label text-sm">Payment Method for Difference</label>
-                        <select x-model="paymentMethod" @change="recalculate()" class="form-select text-sm">
+                        <select x-model="paymentMethod" @change="bankAccountId = null; recalculate()" class="form-select text-sm">
                             <option value="cash">Cash</option>
                             <option value="bank_transfer">Bank Transfer</option>
                             <option value="split">Split (Cash + Bank)</option>
                         </select>
 
-                        {{-- Split amounts --}}
-                        <div x-show="paymentMethod === 'split'" class="mt-2 grid grid-cols-2 gap-2">
-                            <div>
-                                <label class="text-xs text-gray-500 mb-1 block">Cash (Rs.)</label>
-                                <input type="number" x-model.number="splitCash"
-                                       min="0" @input="recalculate()"
-                                       class="form-input text-sm">
+                        {{-- Bank account selector for bank_transfer --}}
+                        <div x-show="paymentMethod === 'bank_transfer'" x-transition class="mt-3">
+                            @if($bankAccounts->count())
+                            <label class="form-label text-sm"><i class="fas fa-university mr-1 text-blue-500"></i>Select Bank Account *</label>
+                            <div class="space-y-2">
+                                @foreach($bankAccounts as $bank)
+                                <button type="button"
+                                        @click="bankAccountId = {{ $bank->id }}"
+                                        :class="bankAccountId === {{ $bank->id }}
+                                            ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-400'
+                                            : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'"
+                                        class="w-full flex items-center justify-between px-4 py-2.5 border rounded-xl transition-all text-left">
+                                    <div>
+                                        <div class="text-sm font-semibold text-gray-800">{{ $bank->label }}</div>
+                                        <div class="text-xs text-gray-500">
+                                            {{ $bank->bank_name }}
+                                            @if($bank->account_number) · {{ $bank->account_number }} @endif
+                                        </div>
+                                    </div>
+                                    <i class="fas fa-check-circle text-blue-500 text-lg"
+                                       x-show="bankAccountId === {{ $bank->id }}"></i>
+                                </button>
+                                @endforeach
                             </div>
-                            <div>
-                                <label class="text-xs text-gray-500 mb-1 block">Bank (Rs.)</label>
-                                <input type="number" x-model.number="splitBank"
-                                       min="0" @input="recalculate()"
-                                       class="form-input text-sm">
+                            <p x-show="!bankAccountId" class="text-xs text-orange-500 font-medium mt-2">
+                                <i class="fas fa-exclamation-triangle mr-1"></i>Please select a bank account to continue.
+                            </p>
+                            @else
+                            <div class="text-xs text-orange-600 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
+                                <i class="fas fa-exclamation-triangle mr-1"></i>
+                                No bank accounts set up. <a href="{{ route('admin.bank-accounts.index') }}" target="_blank" class="underline font-semibold">Add one here</a>.
                             </div>
+                            @endif
+                        </div>
+
+                        {{-- Split amounts + bank selector --}}
+                        <div x-show="paymentMethod === 'split'" class="mt-2 space-y-2">
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="text-xs text-gray-500 mb-1 block">Cash (Rs.)</label>
+                                    <input type="number" x-model.number="splitCash"
+                                           min="0" @input="recalculate()"
+                                           class="form-input text-sm">
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-500 mb-1 block">Bank (Rs.)</label>
+                                    <input type="number" x-model.number="splitBank"
+                                           min="0" @input="recalculate()"
+                                           class="form-input text-sm">
+                                </div>
+                            </div>
+                            @if($bankAccounts->count())
+                            <div>
+                                <label class="text-xs text-gray-500 mb-1 block"><i class="fas fa-university mr-1 text-blue-400"></i>Via Bank Account</label>
+                                <select x-model="bankAccountId" class="form-select text-sm">
+                                    <option value="">— Select bank account —</option>
+                                    @foreach($bankAccounts as $bank)
+                                    <option value="{{ $bank->id }}">{{ $bank->label }} — {{ $bank->bank_name }}{{ $bank->account_number ? ' · '.$bank->account_number : '' }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            @endif
                         </div>
                     </div>
 
@@ -323,13 +375,19 @@ function exchangeApp() {
         newSubtotal: 0,
         difference: 0,
         paymentMethod: 'cash',
+        bankAccountId: null,
         splitCash: 0,
         splitBank: 0,
         notes: '',
         processing: false,
 
         get canConfirm() {
-            return this.selectedItem !== null && this.newCart.length > 0;
+            if (!this.selectedItem || this.newCart.length === 0) return false;
+            // When customer owes money and bank is involved, require a bank account
+            if (this.difference > 0) {
+                if (this.paymentMethod === 'bank_transfer' && !this.bankAccountId) return false;
+            }
+            return true;
         },
 
         // ── Helpers ──────────────────────────────────────────────────────────
@@ -438,10 +496,11 @@ function exchangeApp() {
                     unit_price: i.price,
                     color_id:   i.color_id || null,
                 })),
-                payment_method: payMethod,
-                cash_amount:    payMethod === 'split' ? this.splitCash : null,
-                bank_amount:    payMethod === 'split' ? this.splitBank : null,
-                notes:          this.notes,
+                payment_method:  payMethod,
+                cash_amount:     payMethod === 'split' ? this.splitCash : null,
+                bank_amount:     payMethod === 'split' ? this.splitBank : null,
+                bank_account_id: ['bank_transfer', 'split'].includes(payMethod) ? this.bankAccountId : null,
+                notes:           this.notes,
             };
 
             try {
@@ -465,17 +524,21 @@ function exchangeApp() {
                     }
 
                     // Reset the page for next exchange
-                    this.order        = null;
-                    this.orderSearch  = '';
-                    this.orderItems   = [];
-                    this.selectedItem = null;
-                    this.returnQty    = 1;
+                    this.order         = null;
+                    this.orderSearch   = '';
+                    this.orderItems    = [];
+                    this.selectedItem  = null;
+                    this.returnQty     = 1;
                     this.exchangeValue = 0;
-                    this.newCart      = [];
-                    this.newSubtotal  = 0;
-                    this.difference   = 0;
-                    this.notes        = '';
-                    this.error        = '';
+                    this.newCart       = [];
+                    this.newSubtotal   = 0;
+                    this.difference    = 0;
+                    this.paymentMethod = 'cash';
+                    this.bankAccountId = null;
+                    this.splitCash     = 0;
+                    this.splitBank     = 0;
+                    this.notes         = '';
+                    this.error         = '';
                 } else {
                     alert(data.error || 'Exchange failed. Please try again.');
                 }
