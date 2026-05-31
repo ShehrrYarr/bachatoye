@@ -23,6 +23,48 @@ class PosReturnController extends Controller
         return view('pos.return', compact('bankAccounts'));
     }
 
+    public function searchBySku(Request $request)
+    {
+        $q = trim($request->get('q', ''));
+        if (!$q) {
+            return response()->json(['error' => 'Please enter a SKU or barcode.'], 422);
+        }
+
+        $orders = Order::whereHas('items', function ($query) use ($q) {
+                $query->where('product_barcode', $q)
+                      ->orWhereHas('product', fn($pq) => $pq->where('sku', $q)->orWhere('barcode', $q));
+            })
+            ->with(['items' => function ($query) use ($q) {
+                $query->where('product_barcode', $q)
+                      ->orWhereHas('product', fn($pq) => $pq->where('sku', $q)->orWhere('barcode', $q));
+            }])
+            ->latest()
+            ->get();
+
+        if ($orders->isEmpty()) {
+            return response()->json(['error' => 'No orders found with that SKU or barcode.'], 404);
+        }
+
+        $result = $orders->map(function ($order) {
+            $item = $order->items->first();
+            return [
+                'id'            => $order->id,
+                'order_number'  => $order->order_number,
+                'customer_name' => $order->customer_name ?: 'Walk-in',
+                'customer_phone'=> $order->customer_phone,
+                'total'         => $order->total,
+                'status'        => $order->status,
+                'payment_method'=> $order->payment_method,
+                'date'          => $order->created_at->format('d M Y'),
+                'time'          => $order->created_at->format('H:i'),
+                'product_name'  => $item?->product_name ?? '—',
+                'quantity'      => $item?->quantity ?? 0,
+            ];
+        })->values();
+
+        return response()->json(['orders' => $result]);
+    }
+
     public function findOrder(string $orderNumber)
     {
         $order = Order::where('order_number', $orderNumber)

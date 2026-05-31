@@ -20,18 +20,58 @@
 
         {{-- Order Lookup --}}
         <div class="card p-5 mb-6">
-            <h2 class="font-semibold text-gray-800 mb-4">Find Order</h2>
+            <h2 class="font-semibold text-gray-800 mb-1">Find Order</h2>
+            <p class="text-xs text-gray-400 mb-4">Enter an order number <span class="font-mono">ORD-…</span> or a product SKU / barcode</p>
             <div class="flex gap-3">
                 <input type="text" x-model="orderSearch" @keydown.enter="findOrder()"
-                       placeholder="Enter order number (e.g. ORD-20240101-0001)"
+                       placeholder="Order number or SKU / barcode..."
                        class="form-input flex-1">
                 <button @click="findOrder()" :disabled="searching"
                         class="btn-primary px-5">
-                    <span x-show="!searching"><i class="fas fa-search mr-1"></i> Find</span>
+                    <span x-show="!searching"><i class="fas fa-search mr-1"></i> Search</span>
                     <span x-show="searching"><i class="fas fa-spinner fa-spin mr-1"></i> Searching...</span>
                 </button>
             </div>
             <div x-show="error" class="alert-error mt-3" x-text="error"></div>
+
+            {{-- SKU search results list --}}
+            <div x-show="orderList.length > 0" class="mt-4">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                    <i class="fas fa-list mr-1"></i>
+                    <span x-text="orderList.length + ' order(s) found — only the latest can be selected'"></span>
+                </p>
+                <div class="space-y-2">
+                    <template x-for="(o, idx) in orderList" :key="o.id">
+                        <div @click="idx === 0 && selectOrder(o.order_number)"
+                             :class="idx === 0
+                                 ? 'border-indigo-300 bg-indigo-50 cursor-pointer hover:bg-indigo-100'
+                                 : 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'"
+                             class="flex items-center justify-between gap-3 border rounded-xl px-4 py-3 transition-colors">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div :class="idx === 0 ? 'bg-indigo-600' : 'bg-gray-300'"
+                                     class="w-6 h-6 rounded-full flex items-center justify-center shrink-0">
+                                    <i class="fas fa-receipt text-white text-xs"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="text-sm font-semibold text-gray-800 font-mono" x-text="o.order_number"></div>
+                                    <div class="text-xs text-gray-500 truncate">
+                                        <span x-text="o.product_name"></span>
+                                        <span class="mx-1 text-gray-300">·</span>
+                                        <span x-text="o.customer_name"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <div class="text-xs text-gray-500" x-text="o.date + ' ' + o.time"></div>
+                                <div class="text-xs font-semibold text-gray-700" x-text="'Rs. ' + Number(o.total).toLocaleString()"></div>
+                            </div>
+                            <div x-show="idx === 0" class="shrink-0">
+                                <span class="text-xs bg-indigo-100 text-indigo-700 font-semibold px-2 py-0.5 rounded-full">Latest</span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
         </div>
 
         {{-- Order Found --}}
@@ -224,6 +264,7 @@ function returnApp() {
     return {
         orderSearch: '{{ request("order", "") }}',
         order: null,
+        orderList: [],
         returnItems: [],
         searching: false,
         error: '',
@@ -237,12 +278,42 @@ function returnApp() {
         processingReturn: false,
 
         async findOrder() {
-            if (!this.orderSearch.trim()) return;
+            const q = this.orderSearch.trim();
+            if (!q) return;
             this.searching = true;
             this.error = '';
             this.order = null;
+            this.orderList = [];
+
+            // Order number → direct lookup
+            if (q.toUpperCase().startsWith('ORD-')) {
+                await this._loadOrder(q);
+            } else {
+                // SKU / barcode → show list
+                try {
+                    const res  = await fetch(`/pos/return/search/sku?q=${encodeURIComponent(q)}`);
+                    const data = await res.json();
+                    if (data.error) {
+                        this.error = data.error;
+                    } else {
+                        this.orderList = data.orders;
+                    }
+                } catch(e) { this.error = 'Search failed. Please try again.'; }
+            }
+            this.searching = false;
+        },
+
+        async selectOrder(orderNumber) {
+            this.searching = true;
+            this.error = '';
+            this.orderList = [];
+            await this._loadOrder(orderNumber);
+            this.searching = false;
+        },
+
+        async _loadOrder(orderNumber) {
             try {
-                const res = await fetch(`/pos/return/order/${encodeURIComponent(this.orderSearch)}`);
+                const res  = await fetch(`/pos/return/order/${encodeURIComponent(orderNumber)}`);
                 const data = await res.json();
                 if (data.error) {
                     this.error = data.error;
@@ -251,11 +322,10 @@ function returnApp() {
                     this.returnItems = data.items.map(i => ({
                         ...i,
                         selected: false,
-                        return_qty: i.returnable_qty,   // default to max returnable
+                        return_qty: i.returnable_qty,
                     }));
                 }
-            } catch(e) { this.error = 'Failed to find order. Please try again.'; }
-            this.searching = false;
+            } catch(e) { this.error = 'Failed to load order. Please try again.'; }
         },
 
         recalculate() {
@@ -290,6 +360,7 @@ function returnApp() {
                     window.open(`/pos/return/${data.return_id}/receipt`, '_blank', 'width=400,height=600');
                     this.order = null;
                     this.orderSearch = '';
+                    this.orderList = [];
                     this.returnItems = [];
                     this.selectedCount = 0;
                     this.refundAmount = 0;

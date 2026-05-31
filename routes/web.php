@@ -274,6 +274,8 @@ Route::prefix('pos')->name('pos.')->middleware(['auth', 'permission:pos.access']
         ->middleware('permission:pos.process_returns')->name('return.index');
     Route::get('/return/order/{orderNumber}', [Pos\PosReturnController::class, 'findOrder'])
         ->middleware('permission:pos.process_returns')->name('return.find');
+    Route::get('/return/search/sku', [Pos\PosReturnController::class, 'searchBySku'])
+        ->middleware('permission:pos.process_returns')->name('return.search');
     Route::post('/return', [Pos\PosReturnController::class, 'process'])
         ->middleware('permission:pos.process_returns')->name('return.process');
     Route::get('/return/{return}/receipt', [Pos\PosReturnController::class, 'receipt'])
