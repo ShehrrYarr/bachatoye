@@ -21,26 +21,42 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
+        $categories = Category::active()->withCount('products')->orderBy('sort_order')->orderBy('name')->get();
+        $brands     = Brand::all();
+
+        // If no category is selected, show the category grid instead of products
+        if (!$request->filled('category') && !$request->filled('q') && !$request->filled('brand') && !$request->filled('status')) {
+            $uncategorizedCount = Product::whereNull('category_id')->count();
+            return view('admin.products.index', compact('categories', 'brands', 'uncategorizedCount'));
+        }
+
+        // Category (or filter) selected — show products
         $query = Product::with(['category', 'brand'])->latest();
 
-        if ($request->filled('search')) {
-            $s = $request->search;
+        if ($request->filled('q')) {
+            $s = $request->q;
             $query->where(fn($q) => $q->where('name', 'like', "%{$s}%")
                                       ->orWhere('barcode', 'like', "%{$s}%")
                                       ->orWhere('sku', 'like', "%{$s}%"));
         }
 
-        if ($request->filled('category')) $query->where('category_id', $request->category);
-        if ($request->filled('brand')) $query->where('brand_id', $request->brand);
-        if ($request->filled('status')) {
-            $query->where('is_active', $request->status === 'active');
+        if ($request->filled('category')) {
+            if ($request->category === 'uncategorized') {
+                $query->whereNull('category_id');
+            } else {
+                $query->where('category_id', $request->category);
+            }
         }
+        if ($request->filled('brand'))  $query->where('brand_id', $request->brand);
+        if ($request->filled('status')) $query->where('is_active', $request->status === 'active');
 
-        $products   = $query->paginate(20)->withQueryString();
-        $categories = Category::active()->get();
-        $brands     = Brand::all();
+        $products        = $query->paginate(30)->withQueryString();
+        $selectedCat     = $request->category === 'uncategorized'
+                            ? (object)['id' => 'uncategorized', 'name' => 'Uncategorized']
+                            : ($request->filled('category') ? $categories->firstWhere('id', $request->category) : null);
+        $uncategorizedCount = 0;
 
-        return view('admin.products.index', compact('products', 'categories', 'brands'));
+        return view('admin.products.index', compact('products', 'categories', 'brands', 'selectedCat', 'uncategorizedCount'));
     }
 
     public function create()
