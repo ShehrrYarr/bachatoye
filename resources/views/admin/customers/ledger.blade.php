@@ -2,17 +2,22 @@
 @section('title', 'Ledger: ' . $customer->name)
 
 @section('content')
+@php
+    $isAdmin    = auth()->user()->hasRole('admin');
+    $backRoute  = $isAdmin ? route('admin.customers.show', $customer) : route('salesman.customers.index');
+    $printRoute = $isAdmin ? route('admin.customers.ledger.print', $customer) : route('salesman.customers.ledger.print', $customer);
+    $addRoute   = $isAdmin ? route('admin.customers.ledger.add', $customer) : route('salesman.customers.ledger.add', $customer);
+@endphp
 <div class="flex items-center justify-between mb-6">
     <div class="flex items-center gap-3">
-        <a href="{{ route('admin.customers.show', $customer) }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
+        <a href="{{ $backRoute }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
         <h1 class="text-xl font-bold text-gray-900">Khata Ledger: {{ $customer->name }}</h1>
     </div>
     <div class="flex items-center gap-3">
         <span class="text-sm {{ $customer->credit_balance < 0 ? 'text-red-600 font-bold' : 'text-green-600 font-bold' }}">
             Balance: Rs. {{ number_format($customer->credit_balance) }}
         </span>
-        <a href="{{ route('admin.customers.ledger.print', $customer) }}" target="_blank"
-           class="btn-outline btn-sm">
+        <a href="{{ $printRoute }}" target="_blank" class="btn-outline btn-sm">
             <i class="fas fa-file-pdf mr-1.5 text-red-500"></i> Print as PDF
         </a>
     </div>
@@ -83,7 +88,7 @@
     <div>
         <div class="card p-5 sticky top-6">
             <h2 class="font-semibold text-gray-800 mb-4">Add Manual Entry</h2>
-            <form method="POST" action="{{ route('admin.customers.ledger.add', $customer) }}"
+            <form method="POST" action="{{ $addRoute }}"
                   x-data="{ entryType: 'credit', payMethod: '' }">
                 @csrf
                 <div class="space-y-4">
