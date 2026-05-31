@@ -27,34 +27,31 @@
         </button>
     </div>
 
-<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4 mt-4">
+<div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8 gap-3 mt-4">
 
     @forelse($categories as $cat)
     <a href="{{ route('admin.products.index', ['category' => $cat->id]) }}"
        x-show="!catSearch || '{{ strtolower($cat->name) }}'.includes(catSearch.toLowerCase())"
-       class="group bg-white rounded-2xl border border-gray-200 shadow-sm hover:border-primary-400 hover:shadow-md transition-all overflow-hidden flex flex-col">
+       class="group bg-white rounded-xl border border-gray-200 shadow-sm hover:border-primary-400 hover:shadow-md transition-all overflow-hidden flex flex-col">
 
         {{-- Category image --}}
-        <div class="h-28 bg-gray-100 overflow-hidden">
+        <div class="h-16 bg-gray-100 overflow-hidden">
             @if($cat->image)
             <img src="{{ Storage::url($cat->image) }}" alt="{{ $cat->name }}"
                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
             @else
             <div class="w-full h-full flex items-center justify-center">
-                <i class="fas fa-tag text-3xl text-gray-300"></i>
+                <i class="fas fa-tag text-xl text-gray-300"></i>
             </div>
             @endif
         </div>
 
         {{-- Category info --}}
-        <div class="p-3 flex-1 flex flex-col justify-between">
-            <div class="font-semibold text-gray-800 text-sm leading-tight group-hover:text-primary-700 transition-colors">
+        <div class="px-2 py-1.5">
+            <div class="font-medium text-gray-800 text-xs leading-tight truncate group-hover:text-primary-700 transition-colors">
                 {{ $cat->name }}
             </div>
-            <div class="mt-2 flex items-center justify-between">
-                <span class="text-xs text-gray-500">{{ $cat->products_count }} {{ Str::plural('product', $cat->products_count) }}</span>
-                <i class="fas fa-chevron-right text-gray-300 text-xs group-hover:text-primary-500 group-hover:translate-x-0.5 transition-all"></i>
-            </div>
+            <div class="text-[10px] text-gray-400 mt-0.5">{{ $cat->products_count }} products</div>
         </div>
     </a>
     @empty
@@ -68,16 +65,13 @@
     @if($uncategorizedCount > 0)
     <a href="{{ route('admin.products.index', ['category' => 'uncategorized']) }}"
        x-show="!catSearch || 'uncategorized'.includes(catSearch.toLowerCase())"
-       class="group bg-white rounded-2xl border border-dashed border-gray-300 hover:border-gray-400 hover:shadow-md transition-all overflow-hidden flex flex-col">
-        <div class="h-28 bg-gray-50 flex items-center justify-center">
-            <i class="fas fa-question-circle text-3xl text-gray-300"></i>
+       class="group bg-white rounded-xl border border-dashed border-gray-300 hover:border-gray-400 hover:shadow-md transition-all overflow-hidden flex flex-col">
+        <div class="h-16 bg-gray-50 flex items-center justify-center">
+            <i class="fas fa-question-circle text-xl text-gray-300"></i>
         </div>
-        <div class="p-3 flex-1 flex flex-col justify-between">
-            <div class="font-semibold text-gray-500 text-sm">Uncategorized</div>
-            <div class="mt-2 flex items-center justify-between">
-                <span class="text-xs text-gray-400">{{ $uncategorizedCount }} {{ Str::plural('product', $uncategorizedCount) }}</span>
-                <i class="fas fa-chevron-right text-gray-300 text-xs group-hover:translate-x-0.5 transition-transform"></i>
-            </div>
+        <div class="px-2 py-1.5">
+            <div class="font-medium text-gray-500 text-xs truncate">Uncategorized</div>
+            <div class="text-[10px] text-gray-400 mt-0.5">{{ $uncategorizedCount }} products</div>
         </div>
     </a>
     @endif
