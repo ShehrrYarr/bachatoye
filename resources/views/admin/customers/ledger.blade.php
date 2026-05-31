@@ -84,14 +84,14 @@
         <div class="card p-5 sticky top-6">
             <h2 class="font-semibold text-gray-800 mb-4">Add Manual Entry</h2>
             <form method="POST" action="{{ route('admin.customers.ledger.add', $customer) }}"
-                  x-data="{ entryType: 'debit', payMethod: '' }">
+                  x-data="{ entryType: 'credit', payMethod: '' }">
                 @csrf
                 <div class="space-y-4">
                     <div>
                         <label class="form-label">Entry Type *</label>
                         <select name="type" x-model="entryType" class="form-select" required>
-                            <option value="debit">Debit (Customer owes more)</option>
                             <option value="credit">Credit (Customer paid / refund)</option>
+                            <option value="debit">Debit (Customer owes more)</option>
                         </select>
                     </div>
 
