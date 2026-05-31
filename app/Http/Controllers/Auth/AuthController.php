@@ -13,6 +13,11 @@ class AuthController extends Controller
 {
     public function showLogin()
     {
+        if (Auth::check()) {
+            $user = Auth::user();
+            return redirect()->route($user->isAdmin() ? 'admin.dashboard' : 'salesman.dashboard');
+        }
+
         return view('auth.login');
     }
 
