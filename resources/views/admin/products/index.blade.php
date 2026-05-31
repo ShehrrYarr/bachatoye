@@ -32,26 +32,28 @@
     @forelse($categories as $cat)
     <a href="{{ route('admin.products.index', ['category' => $cat->id]) }}"
        x-show="!catSearch || '{{ strtolower($cat->name) }}'.includes(catSearch.toLowerCase())"
-       class="group relative aspect-square rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:border-primary-400 hover:shadow-md transition-all">
+       class="group flex flex-col hover:opacity-90 transition-opacity">
 
-        {{-- Background image or colour --}}
-        @if($cat->image)
-        <img src="{{ Storage::url($cat->image) }}" alt="{{ $cat->name }}"
-             class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
-        @else
-        <div class="absolute inset-0 bg-gray-100 flex items-center justify-center">
-            <i class="fas fa-tag text-2xl text-gray-300"></i>
+        {{-- Square image --}}
+        <div class="aspect-square rounded-xl border border-gray-200 overflow-hidden shadow-sm group-hover:border-primary-400 group-hover:shadow-md transition-all">
+            @if($cat->image)
+            <img src="{{ Storage::url($cat->image) }}" alt="{{ $cat->name }}"
+                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+            @else
+            <div class="w-full h-full bg-gray-100 flex items-center justify-center">
+                <i class="fas fa-tag text-2xl text-gray-300"></i>
+            </div>
+            @endif
         </div>
-        @endif
 
-        {{-- Name overlay at bottom --}}
-        <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1.5 pt-4 pb-1.5">
-            <div class="text-white text-[10px] font-semibold leading-tight truncate">{{ $cat->name }}</div>
-            <div class="text-white/70 text-[9px]">{{ $cat->products_count }}</div>
+        {{-- Text below --}}
+        <div class="mt-1.5 px-0.5">
+            <div class="text-xs font-semibold text-gray-800 leading-tight truncate group-hover:text-primary-700 transition-colors">{{ $cat->name }}</div>
+            <div class="text-[10px] text-gray-400 mt-0.5">{{ $cat->products_count }} products</div>
         </div>
     </a>
     @empty
-    <div class="col-span-10 text-center py-16 text-gray-400">
+    <div class="col-span-full text-center py-16 text-gray-400">
         <i class="fas fa-tags text-4xl mb-3"></i>
         <p>No categories found. <a href="{{ route('admin.categories.index') }}" class="text-primary-600 hover:underline">Add categories first.</a></p>
     </div>
@@ -61,13 +63,13 @@
     @if($uncategorizedCount > 0)
     <a href="{{ route('admin.products.index', ['category' => 'uncategorized']) }}"
        x-show="!catSearch || 'uncategorized'.includes(catSearch.toLowerCase())"
-       class="group relative aspect-square rounded-xl border border-dashed border-gray-300 overflow-hidden hover:border-gray-400 hover:shadow-md transition-all bg-gray-50">
-        <div class="absolute inset-0 flex items-center justify-center">
+       class="group flex flex-col hover:opacity-90 transition-opacity">
+        <div class="aspect-square rounded-xl border border-dashed border-gray-300 overflow-hidden bg-gray-50 group-hover:border-gray-400 group-hover:shadow-md transition-all flex items-center justify-center">
             <i class="fas fa-question-circle text-2xl text-gray-300"></i>
         </div>
-        <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-1.5 pt-4 pb-1.5">
-            <div class="text-white text-[10px] font-semibold leading-tight truncate">Uncategorized</div>
-            <div class="text-white/70 text-[9px]">{{ $uncategorizedCount }}</div>
+        <div class="mt-1.5 px-0.5">
+            <div class="text-xs font-semibold text-gray-500 leading-tight truncate">Uncategorized</div>
+            <div class="text-[10px] text-gray-400 mt-0.5">{{ $uncategorizedCount }} products</div>
         </div>
     </a>
     @endif
