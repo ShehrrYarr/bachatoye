@@ -69,7 +69,7 @@ class CustomerController extends Controller
         $data['khata_enabled'] = true;
         Customer::create($data);
 
-        return redirect()->route('admin.customers.index')->with('success', 'Customer added.');
+        return redirect()->route(Auth::user()->hasRole('admin') ? 'admin.customers.index' : 'salesman.customers.index')->with('success', 'Customer added.');
     }
 
     public function show(Customer $customer)
@@ -99,13 +99,13 @@ class CustomerController extends Controller
 
         $data['is_active'] = $request->boolean('is_active');
         $customer->update($data);
-        return redirect()->route('admin.customers.index')->with('success', 'Customer updated.');
+        return redirect()->route(Auth::user()->hasRole('admin') ? 'admin.customers.index' : 'salesman.customers.index')->with('success', 'Customer updated.');
     }
 
     public function destroy(Customer $customer)
     {
         $customer->delete();
-        return redirect()->route('admin.customers.index')->with('success', 'Customer removed.');
+        return redirect()->route(Auth::user()->hasRole('admin') ? 'admin.customers.index' : 'salesman.customers.index')->with('success', 'Customer removed.');
     }
 
     public function ledger(Customer $customer)

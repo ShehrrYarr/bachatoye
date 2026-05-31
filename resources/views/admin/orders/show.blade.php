@@ -2,9 +2,10 @@
 @section('title', 'Order: ' . $order->order_number)
 
 @section('content')
+@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
 <div class="flex items-center justify-between mb-6">
     <div class="flex items-center gap-3">
-        <a href="{{ route('admin.orders.index') }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
+        <a href="{{ route("{$rPrefix}.orders.index") }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
         <h1 class="text-xl font-bold text-gray-900">{{ $order->order_number }}</h1>
         <span class="badge
             @if($order->status === 'delivered') bg-green-100 text-green-700
@@ -145,7 +146,7 @@
                 @endif
                 @if($order->customer)
                 <div class="pt-2 border-t border-gray-100">
-                    <a href="{{ route('admin.customers.show', $order->customer) }}" class="text-primary-600 hover:underline text-xs font-medium">
+                    <a href="{{ route("{$rPrefix}.customers.show", $order->customer) }}" class="text-primary-600 hover:underline text-xs font-medium">
                         View Customer Profile →
                     </a>
                 </div>

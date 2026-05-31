@@ -2,10 +2,11 @@
 @section('title', 'Inventory')
 
 @section('content')
+@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
 <div class="flex items-center justify-between mb-6">
     <h1 class="text-xl font-bold text-gray-900">Inventory Management</h1>
     <div class="flex gap-2">
-        <a href="{{ route('admin.inventory.low_stock') }}" class="btn-outline btn-sm">
+        <a href="{{ route("{$rPrefix}.inventory.low_stock") }}" class="btn-outline btn-sm">
             <i class="fas fa-exclamation-triangle text-orange-500 mr-1"></i> Low Stock
         </a>
         <a href="{{ route('admin.inventory.barcode_print') }}" class="btn-outline btn-sm">
@@ -16,7 +17,7 @@
 
 {{-- Filters --}}
 <div class="card p-4 mb-5">
-    <form method="GET" action="{{ route('admin.inventory.index') }}" class="flex flex-wrap gap-3 items-end">
+    <form method="GET" action="{{ route("{$rPrefix}.inventory.index") }}" class="flex flex-wrap gap-3 items-end">
         <div class="flex-1 min-w-48">
             <input type="text" name="q" value="{{ request('q') }}" placeholder="Search name, SKU, barcode..."
                    class="form-input text-sm">
@@ -39,7 +40,7 @@
         </div>
         <button type="submit" class="btn-primary btn-sm">Filter</button>
         @if(request()->hasAny(['q','category','stock_status']))
-        <a href="{{ route('admin.inventory.index') }}" class="btn-outline btn-sm">Clear</a>
+        <a href="{{ route("{$rPrefix}.inventory.index") }}" class="btn-outline btn-sm">Clear</a>
         @endif
     </form>
 </div>
@@ -121,10 +122,10 @@
                     <td class="text-center text-sm text-gray-500">{{ $product->low_stock_threshold ?? '—' }}</td>
                     <td class="text-right">
                         <div class="flex items-center justify-end gap-2">
-                            <a href="{{ route('admin.inventory.adjust.form', $product) }}" class="btn-primary btn-sm">
+                            <a href="{{ route("{$rPrefix}.inventory.adjust.form", $product) }}" class="btn-primary btn-sm">
                                 <i class="fas fa-edit mr-1"></i> Adjust
                             </a>
-                            <a href="{{ route('admin.inventory.history', $product) }}" class="btn-outline btn-sm">
+                            <a href="{{ route("{$rPrefix}.inventory.history", $product) }}" class="btn-outline btn-sm">
                                 History
                             </a>
                         </div>

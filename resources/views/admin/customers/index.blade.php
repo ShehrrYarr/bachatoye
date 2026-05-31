@@ -77,7 +77,7 @@
                         <div class="flex items-center justify-end gap-2">
                             <a href="{{ $isAdmin ? route('admin.customers.show', $customer) : route('salesman.customers.show', $customer) }}" class="btn-outline btn-sm" title="View"><i class="fas fa-eye"></i></a>
                             <a href="{{ $isAdmin ? route('admin.customers.ledger', $customer) : route('salesman.customers.ledger', $customer) }}" class="btn-outline btn-sm" title="Khata Ledger"><i class="fas fa-book"></i></a>
-                            <a href="{{ route('admin.customers.edit', $customer) }}" class="btn-outline btn-sm" title="Edit"><i class="fas fa-edit"></i></a>
+                            @if($isAdmin)<a href="{{ route('admin.customers.edit', $customer) }}" class="btn-outline btn-sm" title="Edit"><i class="fas fa-edit"></i></a>@endif
                         </div>
                     </td>
                 </tr>
@@ -137,7 +137,7 @@
                     <td class="text-right">
                         <div class="flex items-center justify-end gap-2">
                             <a href="{{ $isAdmin ? route('admin.customers.show', $customer) : route('salesman.customers.show', $customer) }}" class="btn-outline btn-sm" title="View"><i class="fas fa-eye"></i></a>
-                            <a href="{{ route('admin.customers.edit', $customer) }}" class="btn-outline btn-sm" title="Edit"><i class="fas fa-edit"></i></a>
+                            @if($isAdmin)<a href="{{ route('admin.customers.edit', $customer) }}" class="btn-outline btn-sm" title="Edit"><i class="fas fa-edit"></i></a>@endif
                         </div>
                     </td>
                 </tr>

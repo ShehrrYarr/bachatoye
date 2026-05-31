@@ -15,17 +15,17 @@
     </a>
     @endcan
     @can('orders.view')
-    <a href="{{ route('admin.orders.index') }}" class="btn-outline btn-lg">
+    <a href="{{ route('salesman.orders.index') }}" class="btn-outline btn-lg">
         <i class="fas fa-shopping-bag mr-2"></i> Orders
     </a>
     @endcan
     @can('inventory.view')
-    <a href="{{ route('admin.inventory.index') }}" class="btn-outline btn-lg">
+    <a href="{{ route('salesman.inventory.index') }}" class="btn-outline btn-lg">
         <i class="fas fa-boxes mr-2"></i> Inventory
     </a>
     @endcan
     @can('customers.view')
-    <a href="{{ route('admin.customers.index') }}" class="btn-outline btn-lg">
+    <a href="{{ route('salesman.customers.index') }}" class="btn-outline btn-lg">
         <i class="fas fa-users mr-2"></i> Customers
     </a>
     @endcan
@@ -477,7 +477,7 @@
         <div class="card-header">
             <h2 class="font-semibold text-gray-800">My Recent Orders</h2>
             @can('orders.view')
-            <a href="{{ route('admin.orders.index') }}" class="text-sm text-primary-600 hover:underline">View All</a>
+            <a href="{{ route('salesman.orders.index') }}" class="text-sm text-primary-600 hover:underline">View All</a>
             @endcan
         </div>
         <table class="data-table text-sm">
@@ -487,7 +487,7 @@
                 <tr>
                     <td>
                         @can('orders.view')
-                        <a href="{{ route('admin.orders.show', $order) }}" class="text-primary-600 hover:underline font-mono">{{ $order->order_number }}</a>
+                        <a href="{{ route('salesman.orders.show', $order) }}" class="text-primary-600 hover:underline font-mono">{{ $order->order_number }}</a>
                         @else
                         <span class="font-mono">{{ $order->order_number }}</span>
                         @endcan
@@ -512,7 +512,7 @@
     <div class="card">
         <div class="card-header">
             <h2 class="font-semibold text-gray-800">Low Stock Alerts</h2>
-            <a href="{{ route('admin.inventory.low_stock') }}" class="text-sm text-orange-600 hover:underline">View All</a>
+            <a href="{{ route('salesman.inventory.low_stock') }}" class="text-sm text-orange-600 hover:underline">View All</a>
         </div>
         <div class="divide-y divide-gray-100">
             @forelse($lowStockItems as $product)
@@ -524,7 +524,7 @@
                     </div>
                 </div>
                 @can('inventory.manage')
-                <a href="{{ route('admin.inventory.adjust.form', $product) }}" class="btn-outline btn-sm">Restock</a>
+                <a href="{{ route('salesman.inventory.adjust.form', $product) }}" class="btn-outline btn-sm">Restock</a>
                 @endcan
             </div>
             @empty

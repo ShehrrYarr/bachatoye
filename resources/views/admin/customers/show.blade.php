@@ -17,9 +17,11 @@
             <i class="fas fa-book mr-1"></i> Khata Ledger
         </a>
         @endif
+        @if($isAdmin)
         <a href="{{ route('admin.customers.edit', $customer) }}" class="btn-primary btn-sm">
             <i class="fas fa-edit mr-1"></i> Edit
         </a>
+        @endif
     </div>
 </div>
 

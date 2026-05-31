@@ -273,7 +273,8 @@ class PurchaseController extends Controller
             }
         });
 
-        return redirect()->route('admin.purchases.index')->with('success', 'Purchase recorded and stock updated.');
+        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        return redirect()->route("{$rPrefix}.purchases.index")->with('success', 'Purchase recorded and stock updated.');
     }
 
     public function show(Purchase $purchase)

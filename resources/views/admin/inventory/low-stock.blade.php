@@ -2,8 +2,9 @@
 @section('title', 'Low Stock Alert')
 
 @section('content')
+@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
 <div class="flex items-center gap-3 mb-6">
-    <a href="{{ route('admin.inventory.index') }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
+    <a href="{{ route("{$rPrefix}.inventory.index") }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
     <h1 class="text-xl font-bold text-gray-900">Low Stock Alert</h1>
     <span class="badge bg-orange-100 text-orange-700">{{ $products->count() }} products</span>
 </div>
@@ -43,7 +44,7 @@
                 <td class="text-center text-sm text-gray-500">{{ $product->low_stock_threshold }}</td>
                 <td class="text-right">
                     <div class="flex items-center justify-end gap-2">
-                        <a href="{{ route('admin.inventory.adjust.form', $product) }}" class="btn-primary btn-sm">
+                        <a href="{{ route("{$rPrefix}.inventory.adjust.form", $product) }}" class="btn-primary btn-sm">
                             <i class="fas fa-plus mr-1"></i> Restock
                         </a>
                         <form method="POST" action="{{ route('admin.inventory.dismiss', $product) }}">

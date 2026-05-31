@@ -2,8 +2,9 @@
 @section('title', 'Adjust Stock: ' . $product->name)
 
 @section('content')
+@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
 <div class="flex items-center gap-3 mb-6">
-    <a href="{{ route('admin.inventory.index') }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
+    <a href="{{ route("{$rPrefix}.inventory.index") }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
     <h1 class="text-xl font-bold text-gray-900">Adjust Stock</h1>
 </div>
 
@@ -36,7 +37,7 @@
     {{-- Adjust form --}}
     <div class="card p-5">
         <h2 class="font-semibold text-gray-800 mb-4">Stock Adjustment</h2>
-        <form method="POST" action="{{ route('admin.inventory.adjust', $product) }}">
+        <form method="POST" action="{{ route("{$rPrefix}.inventory.adjust", $product) }}">
             @csrf @method('PATCH')
             <div class="space-y-4">
                 <div>
@@ -60,7 +61,7 @@
                 </div>
                 <div class="flex gap-3">
                     <button type="submit" class="btn-primary">Apply Adjustment</button>
-                    <a href="{{ route('admin.inventory.index') }}" class="btn-outline">Cancel</a>
+                    <a href="{{ route("{$rPrefix}.inventory.index") }}" class="btn-outline">Cancel</a>
                 </div>
             </div>
         </form>
