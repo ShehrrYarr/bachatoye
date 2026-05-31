@@ -2,6 +2,7 @@
 @section('title', 'Customers')
 
 @section('content')
+@php $isAdmin = auth()->user()->hasRole('admin'); @endphp
 <div class="flex items-center justify-between mb-6">
     <h1 class="text-xl font-bold text-gray-900">Customers</h1>
     <a href="{{ route('admin.customers.create') }}" class="btn-primary"><i class="fas fa-plus mr-2"></i> Add Customer</a>
@@ -75,7 +76,7 @@
                     <td class="text-right">
                         <div class="flex items-center justify-end gap-2">
                             <a href="{{ route('admin.customers.show', $customer) }}" class="btn-outline btn-sm" title="View"><i class="fas fa-eye"></i></a>
-                            <a href="{{ route('admin.customers.ledger', $customer) }}" class="btn-outline btn-sm" title="Khata Ledger"><i class="fas fa-book"></i></a>
+                            <a href="{{ $isAdmin ? route('admin.customers.ledger', $customer) : route('salesman.customers.ledger', $customer) }}" class="btn-outline btn-sm" title="Khata Ledger"><i class="fas fa-book"></i></a>
                             <a href="{{ route('admin.customers.edit', $customer) }}" class="btn-outline btn-sm" title="Edit"><i class="fas fa-edit"></i></a>
                         </div>
                     </td>

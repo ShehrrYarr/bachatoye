@@ -197,7 +197,8 @@
     {{-- Print toolbar (hidden on print) --}}
     <div class="print-bar">
         <div style="display:flex;align-items:center;gap:12px;">
-            <a href="{{ route('admin.customers.ledger', $customer) }}" class="btn-back">&#8592; Back</a>
+            @php $isAdmin = auth()->user()->hasRole('admin'); @endphp
+            <a href="{{ $isAdmin ? route('admin.customers.ledger', $customer) : route('salesman.customers.ledger', $customer) }}" class="btn-back">&#8592; Back</a>
             <span>Khata Ledger — {{ $customer->name }}</span>
         </div>
         <button class="btn-print" onclick="window.print()">
