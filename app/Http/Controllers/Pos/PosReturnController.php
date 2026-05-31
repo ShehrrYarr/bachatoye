@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Pos;
 
 use App\Http\Controllers\Controller;
 use App\Models\AccountLedger;
+use App\Models\BankAccount;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\ReturnItem;
@@ -18,7 +19,8 @@ class PosReturnController extends Controller
 {
     public function index()
     {
-        return view('pos.return');
+        $bankAccounts = BankAccount::active()->orderBy('sort_order')->get();
+        return view('pos.return', compact('bankAccounts'));
     }
 
     public function findOrder(string $orderNumber)
@@ -71,13 +73,14 @@ class PosReturnController extends Controller
     public function process(Request $request)
     {
         $request->validate([
-            'order_id'      => 'required|exists:orders,id',
-            'items'         => 'required|array|min:1',
+            'order_id'       => 'required|exists:orders,id',
+            'items'          => 'required|array|min:1',
             'items.*.order_item_id' => 'required|exists:order_items,id',
             'items.*.quantity'      => 'required|integer|min:1',
-            'reason'        => 'nullable|string|max:500',
-            'refund_method' => 'required|in:cash,khata_credit,bank_transfer',
-            'restock'       => 'boolean',
+            'reason'         => 'nullable|string|max:500',
+            'refund_method'  => 'required|in:cash,khata_credit,bank_transfer',
+            'bank_account_id'=> 'nullable|exists:bank_accounts,id',
+            'restock'        => 'boolean',
         ]);
 
         DB::beginTransaction();
@@ -143,15 +146,20 @@ class PosReturnController extends Controller
                 ];
             }
 
+            $bankAccountId = ($request->refund_method === 'bank_transfer')
+                ? ($request->bank_account_id ?: null)
+                : null;
+
             $returnOrder = ReturnOrder::create([
-                'order_id'      => $order->id,
-                'customer_id'   => $order->customer_id,
-                'reason'        => $request->reason,
-                'refund_amount' => $refund,
-                'refund_method' => $request->refund_method,
-                'status'        => 'completed',
-                'restock'       => $request->boolean('restock', true),
-                'processed_by'  => Auth::id(),
+                'order_id'        => $order->id,
+                'customer_id'     => $order->customer_id,
+                'reason'          => $request->reason,
+                'refund_amount'   => $refund,
+                'refund_method'   => $request->refund_method,
+                'bank_account_id' => $bankAccountId,
+                'status'          => 'completed',
+                'restock'         => $request->boolean('restock', true),
+                'processed_by'    => Auth::id(),
             ]);
 
             foreach ($items as $item) {

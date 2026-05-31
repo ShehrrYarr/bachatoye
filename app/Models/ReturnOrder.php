@@ -10,7 +10,7 @@ class ReturnOrder extends Model
 
     protected $fillable = [
         'return_number', 'order_id', 'customer_id', 'reason',
-        'refund_amount', 'refund_method', 'status', 'restock', 'processed_by',
+        'refund_amount', 'refund_method', 'bank_account_id', 'status', 'restock', 'processed_by',
     ];
 
     protected function casts(): array
@@ -35,6 +35,11 @@ class ReturnOrder extends Model
     public function order()
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function bankAccount()
+    {
+        return $this->belongsTo(BankAccount::class);
     }
 
     public function customer()

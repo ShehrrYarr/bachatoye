@@ -144,11 +144,47 @@
                     {{-- Refund method --}}
                     <div class="mb-4">
                         <label class="form-label text-sm">Refund Method</label>
-                        <select x-model="refundMethod" class="form-select text-sm">
+                        <select x-model="refundMethod" @change="bankAccountId = null" class="form-select text-sm">
                             <option value="cash">Cash Refund</option>
                             <option value="bank_transfer">Bank Transfer</option>
                             <option value="khata_credit" x-show="order?.customer_id">Add to Khata Credit</option>
                         </select>
+                    </div>
+
+                    {{-- Bank account selector (shown when bank_transfer is selected) --}}
+                    <div x-show="refundMethod === 'bank_transfer'" x-transition class="mb-4">
+                        @if($bankAccounts->count())
+                        <label class="form-label text-sm"><i class="fas fa-university mr-1 text-blue-500"></i>Select Bank Account *</label>
+                        <div class="space-y-2">
+                            @foreach($bankAccounts as $bank)
+                            <button type="button"
+                                    @click="bankAccountId = {{ $bank->id }}"
+                                    :class="bankAccountId === {{ $bank->id }}
+                                        ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-400'
+                                        : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'"
+                                    class="w-full flex items-center justify-between px-4 py-3 border rounded-xl transition-all text-left">
+                                <div>
+                                    <div class="text-sm font-semibold text-gray-800">{{ $bank->label }}</div>
+                                    <div class="text-xs text-gray-500 mt-0.5">
+                                        {{ $bank->bank_name }}
+                                        @if($bank->account_number) · {{ $bank->account_number }} @endif
+                                    </div>
+                                </div>
+                                <i class="fas fa-check-circle text-blue-500 text-lg"
+                                   x-show="bankAccountId === {{ $bank->id }}"></i>
+                            </button>
+                            @endforeach
+                        </div>
+                        <p x-show="!bankAccountId" class="text-xs text-orange-500 font-medium mt-2">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>Please select a bank account to continue.
+                        </p>
+                        @else
+                        <div class="text-xs text-orange-600 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                            No bank accounts set up.
+                            <a href="{{ route('admin.bank-accounts.index') }}" target="_blank" class="underline font-semibold">Add one here</a>.
+                        </div>
+                        @endif
                     </div>
 
                     {{-- Reason --}}
@@ -171,7 +207,7 @@
                     </div>
 
                     <button @click="processReturn()"
-                            :disabled="selectedCount === 0 || !reason || processingReturn"
+                            :disabled="selectedCount === 0 || !reason || processingReturn || (refundMethod === 'bank_transfer' && !bankAccountId)"
                             class="btn-danger w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed">
                         <span x-show="!processingReturn"><i class="fas fa-undo mr-2"></i> Process Return</span>
                         <span x-show="processingReturn"><i class="fas fa-spinner fa-spin mr-2"></i> Processing...</span>
@@ -193,6 +229,7 @@ function returnApp() {
         error: '',
         restock: true,
         refundMethod: 'cash',
+        bankAccountId: null,
         reason: '',
         returnNotes: '',
         selectedCount: 0,
@@ -243,6 +280,7 @@ function returnApp() {
                         items,
                         restock: this.restock,
                         refund_method: this.refundMethod,
+                        bank_account_id: this.refundMethod === 'bank_transfer' ? this.bankAccountId : null,
                         reason: this.reason,
                         notes: this.returnNotes,
                     })
@@ -257,6 +295,8 @@ function returnApp() {
                     this.refundAmount = 0;
                     this.reason = '';
                     this.returnNotes = '';
+                    this.refundMethod = 'cash';
+                    this.bankAccountId = null;
                 } else {
                     this.error = data.error || data.message || 'Return failed. Please try again.';
                     window.scrollTo({ top: 0, behavior: 'smooth' });
