@@ -115,7 +115,10 @@
                                 <span class="text-sm font-medium">Bank</span>
                             </label>
                         </div>
-                        <p class="text-xs text-gray-400 mt-1">Optional — leave unselected if unknown</p>
+                        <p x-show="entryType === 'credit' && payMethod === ''"
+                           class="text-xs text-red-500 mt-1 font-medium">
+                            <i class="fas fa-exclamation-circle mr-1"></i>Please select Cash or Bank
+                        </p>
                     </div>
 
                     {{-- Bank account selector — shown when Bank is selected --}}
@@ -144,7 +147,9 @@
                                placeholder="e.g. Payment received, Credit for return..." required>
                         @error('description') <p class="form-error">{{ $message }}</p> @enderror
                     </div>
-                    <button type="submit" class="btn-primary w-full justify-center">
+                    <button type="submit"
+                            :disabled="entryType === 'credit' && payMethod === ''"
+                            class="btn-primary w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed">
                         <i class="fas fa-plus mr-2"></i> Add Entry
                     </button>
                 </div>

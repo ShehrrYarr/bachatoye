@@ -128,7 +128,7 @@ class CustomerController extends Controller
     {
         $data = $request->validate([
             'type'            => 'required|in:debit,credit',
-            'payment_method'  => 'nullable|in:cash,bank_transfer',
+            'payment_method'  => 'required_if:type,credit|in:cash,bank_transfer',
             'bank_account_id' => 'nullable|exists:bank_accounts,id',
             'amount'          => 'required|numeric|min:0.01',
             'description'     => 'required|string|max:255',
