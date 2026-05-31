@@ -294,9 +294,11 @@
                                             <th class="text-right px-4 py-2.5 font-semibold">Amount</th>
                                         </tr>
                                     </thead>
-                                    <tbody class="divide-y divide-gray-50">
-                                        @foreach($todayPosOrders as $o)
-                                        <tr class="hover:bg-gray-50">
+                                    @foreach($todayPosOrders as $o)
+                                    <tbody x-data="{ open: false }" class="border-b border-gray-100 last:border-0">
+                                        {{-- Main order row (clickable) --}}
+                                        <tr class="hover:bg-blue-50 cursor-pointer select-none transition-colors"
+                                            @click="open = !open">
                                             <td class="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{{ $o->created_at->format('H:i') }}</td>
                                             <td class="px-4 py-3 font-mono text-xs text-gray-700">{{ $o->order_number }}</td>
                                             <td class="px-4 py-3 text-xs text-gray-700">{{ $o->customer_name }}</td>
@@ -311,10 +313,57 @@
                                                 }; @endphp
                                                 <span class="text-xs px-2 py-0.5 rounded-full font-medium {{ $pm[1] }}">{{ $pm[0] }}</span>
                                             </td>
-                                            <td class="px-4 py-3 text-right font-bold text-gray-900">Rs. {{ number_format($o->total) }}</td>
+                                            <td class="px-4 py-3 text-right font-bold text-gray-900">
+                                                <div class="flex items-center justify-end gap-2">
+                                                    Rs. {{ number_format($o->total) }}
+                                                    <i class="fas fa-chevron-down text-gray-300 text-xs transition-transform duration-200"
+                                                       :class="open ? 'rotate-180 !text-blue-400' : ''"></i>
+                                                </div>
+                                            </td>
                                         </tr>
-                                        @endforeach
+                                        {{-- Expanded items row --}}
+                                        <tr x-show="open"
+                                            x-transition:enter="transition-opacity ease-out duration-150"
+                                            x-transition:enter-start="opacity-0"
+                                            x-transition:enter-end="opacity-100"
+                                            x-transition:leave="transition-opacity ease-in duration-100"
+                                            x-transition:leave-start="opacity-100"
+                                            x-transition:leave-end="opacity-0"
+                                            style="display:none;">
+                                            <td colspan="5" class="px-0 bg-blue-50/40">
+                                                <div class="px-6 py-3 border-t border-blue-100">
+                                                    @if($o->items->isEmpty())
+                                                        <p class="text-xs text-gray-400 italic">No items found for this order.</p>
+                                                    @else
+                                                    <div class="space-y-2">
+                                                        @foreach($o->items as $item)
+                                                        <div class="flex items-center justify-between text-xs gap-3">
+                                                            <div class="flex items-center gap-2 min-w-0">
+                                                                <span class="text-blue-500 font-bold shrink-0">{{ $item->quantity }}×</span>
+                                                                <span class="font-medium text-gray-800 truncate">{{ $item->product_name }}</span>
+                                                                @if($item->color_name)
+                                                                <span class="shrink-0 text-[10px] bg-white border border-gray-200 text-gray-500 px-1.5 py-0.5 rounded-full">{{ $item->color_name }}</span>
+                                                                @endif
+                                                                @if($item->free_quantity)
+                                                                <span class="shrink-0 text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">+{{ $item->free_quantity }} free</span>
+                                                                @endif
+                                                            </div>
+                                                            <div class="flex items-center gap-3 shrink-0 text-gray-500">
+                                                                <span class="text-gray-400">Rs. {{ number_format($item->unit_price) }}/ea</span>
+                                                                @if($item->discount_amount > 0)
+                                                                <span class="text-red-400 font-medium">–Rs. {{ number_format($item->discount_amount) }}</span>
+                                                                @endif
+                                                                <span class="font-semibold text-gray-800 w-20 text-right">Rs. {{ number_format($item->line_total) }}</span>
+                                                            </div>
+                                                        </div>
+                                                        @endforeach
+                                                    </div>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                        </tr>
                                     </tbody>
+                                    @endforeach
                                     <tfoot class="bg-gray-50 border-t-2 border-gray-200">
                                         <tr>
                                             <td colspan="4" class="px-4 py-3 text-sm font-bold text-gray-700">{{ $todayPosOrders->count() }} orders</td>

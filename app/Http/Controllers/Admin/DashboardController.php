@@ -111,7 +111,7 @@ class DashboardController extends Controller
         // ── Detail rows for Today's Report modals ────────────────────────
         $todayPosOrders = Order::whereDate('created_at', today())
             ->where('source', 'pos')->where('status', 'delivered')
-            ->with(['customer', 'bankAccount'])->latest()->get();
+            ->with(['customer', 'bankAccount', 'items'])->latest()->get();
 
         $todayKhataEntries = AccountLedger::whereDate('created_at', today())
             ->where('type', 'credit')
