@@ -52,9 +52,9 @@
                    class="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg font-medium transition-colors">
                     <i class="fas fa-sync-alt mr-1"></i>Exchange
                 </a>
-                <a href="{{ route('admin.dashboard') }}"
+                <a href="{{ auth()->user()->hasRole('admin') ? route('admin.dashboard') : route('salesman.dashboard') }}"
                    class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg font-medium transition-colors">
-                    <i class="fas fa-th-large mr-1"></i>Admin
+                    <i class="fas fa-th-large mr-1"></i>Dashboard
                 </a>
             </div>
         </div>
