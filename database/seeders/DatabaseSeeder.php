@@ -33,6 +33,8 @@ class DatabaseSeeder extends Seeder
             'accounts.manage',
             'expenses.view',
             'expenses.manage',
+            'purchases.view',
+            'purchases.manage',
             'reports.view',
             'deals.manage',
             'banners.manage',
