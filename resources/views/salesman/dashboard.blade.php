@@ -70,6 +70,9 @@
             Today's Report
             <span class="text-xs font-normal text-gray-400 ml-1">{{ now()->format('d M Y') }}</span>
         </h3>
+        <a href="{{ route('salesman.dashboard.today-report') }}" target="_blank" class="btn-outline btn-sm">
+            <i class="fas fa-print mr-1.5 text-gray-500"></i> Print
+        </a>
     </div>
     <div class="p-4 space-y-3">
 

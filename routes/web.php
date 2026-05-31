@@ -221,6 +221,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
 */
 Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman'])->group(function () {
     Route::get('/dashboard', [Admin\DashboardController::class, 'salesmanDashboard'])->name('dashboard');
+    Route::get('/dashboard/today-report', [Admin\DashboardController::class, 'salesmanTodayReportPrint'])->name('dashboard.today-report');
 
     Route::get('orders', [Admin\OrderController::class, 'index'])
         ->middleware('permission:orders.view')->name('orders.index');
