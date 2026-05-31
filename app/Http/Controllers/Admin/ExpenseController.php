@@ -58,7 +58,8 @@ class ExpenseController extends Controller
         $data['user_id'] = Auth::id();
         Expense::create($data);
 
-        return redirect()->route('admin.expenses.index')->with('success', 'Expense recorded.');
+        $rPrefix = Auth::user()->hasRole('admin') ? 'admin' : 'salesman';
+        return redirect()->route("{$rPrefix}.expenses.index")->with('success', 'Expense recorded.');
     }
 
     public function edit(Expense $expense)
@@ -79,7 +80,8 @@ class ExpenseController extends Controller
         ]);
 
         $expense->update($data);
-        return redirect()->route('admin.expenses.index')->with('success', 'Expense updated.');
+        $rPrefix = Auth::user()->hasRole('admin') ? 'admin' : 'salesman';
+        return redirect()->route("{$rPrefix}.expenses.index")->with('success', 'Expense updated.');
     }
 
     public function destroy(Expense $expense)
