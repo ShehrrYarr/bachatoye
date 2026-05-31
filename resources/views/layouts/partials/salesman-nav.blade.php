@@ -28,6 +28,12 @@
 </a>
 @endcan
 
+@can('purchases.view')
+<a href="{{ route('salesman.purchases.index') }}" class="sidebar-link {{ $is('salesman.purchases') ? 'active' : '' }}">
+    <i class="fas fa-file-invoice-dollar"></i> Purchases
+</a>
+@endcan
+
 @can('expenses.view')
 <a href="{{ route('salesman.expenses.index') }}" class="sidebar-link {{ $is('salesman.expenses') ? 'active' : '' }}">
     <i class="fas fa-receipt"></i> Expenses

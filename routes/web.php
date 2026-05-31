@@ -251,6 +251,15 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
 
     Route::get('reports/sales', [Admin\ReportController::class, 'sales'])
         ->middleware('permission:reports.view')->name('reports.sales');
+
+    Route::get('purchases', [Admin\PurchaseController::class, 'index'])
+        ->middleware('permission:purchases.view')->name('purchases.index');
+    Route::get('purchases/create', [Admin\PurchaseController::class, 'create'])
+        ->middleware('permission:purchases.manage')->name('purchases.create');
+    Route::post('purchases', [Admin\PurchaseController::class, 'store'])
+        ->middleware('permission:purchases.manage')->name('purchases.store');
+    Route::get('purchases/{purchase}', [Admin\PurchaseController::class, 'show'])
+        ->middleware('permission:purchases.view')->name('purchases.show');
 });
 
 /*

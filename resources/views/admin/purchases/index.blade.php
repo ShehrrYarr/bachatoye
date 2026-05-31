@@ -2,11 +2,17 @@
 @section('title', 'Purchases')
 
 @section('content')
+@php
+    $isAdmin = auth()->user()->hasRole('admin');
+    $rPrefix = $isAdmin ? 'admin' : 'salesman';
+@endphp
 <div class="flex items-center justify-between mb-6">
     <h1 class="text-xl font-bold text-gray-900">Purchases</h1>
-    <a href="{{ route('admin.purchases.create') }}" class="btn-primary btn-sm">
+    @can('purchases.manage')
+    <a href="{{ route("{$rPrefix}.purchases.create") }}" class="btn-primary btn-sm">
         <i class="fas fa-plus mr-1"></i> Record Purchase
     </a>
+    @endcan
 </div>
 
 {{-- Filters --}}
@@ -27,7 +33,7 @@
     <input type="date" name="to" value="{{ request('to') }}" class="form-input w-40" placeholder="To date">
     <button type="submit" class="btn-outline btn-sm">Filter</button>
     @if(request()->hasAny(['vendor','status','from','to']))
-        <a href="{{ route('admin.purchases.index') }}" class="btn-outline btn-sm">Clear</a>
+        <a href="{{ route("{$rPrefix}.purchases.index") }}" class="btn-outline btn-sm">Clear</a>
     @endif
 </form>
 
@@ -74,7 +80,7 @@
                         </span>
                     </td>
                     <td>
-                        <a href="{{ route('admin.purchases.show', $purchase) }}" class="btn-outline btn-sm">
+                        <a href="{{ route("{$rPrefix}.purchases.show", $purchase) }}" class="btn-outline btn-sm">
                             <i class="fas fa-eye"></i>
                         </a>
                     </td>
@@ -82,7 +88,7 @@
                 @empty
                 <tr>
                     <td colspan="8" class="text-center text-gray-400 py-10">
-                        No purchases recorded yet. <a href="{{ route('admin.purchases.create') }}" class="text-primary-600 hover:underline">Record first purchase</a>
+                        No purchases recorded yet. <a href="{{ route("{$rPrefix}.purchases.create") }}" class="text-primary-600 hover:underline">Record first purchase</a>
                     </td>
                 </tr>
                 @endforelse
