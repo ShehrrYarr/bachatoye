@@ -638,15 +638,25 @@
                                         <td class="px-4 py-3">
                                             @php
                                                 $pmLabel = match($saleOrder->payment_method) {
-                                                    'cash'          => ['Cash',         'bg-green-100 text-green-700'],
-                                                    'bank_transfer' => ['Bank',          'bg-blue-100 text-blue-700'],
-                                                    'khata'         => ['Khata',         'bg-red-100 text-red-700'],
-                                                    'partial'       => ['Partial',       'bg-orange-100 text-orange-700'],
-                                                    'split'         => ['Cash+Bank',     'bg-teal-100 text-teal-700'],
-                                                    default         => [$saleOrder->payment_method, 'bg-gray-100 text-gray-600'],
+                                                    'cash'          => ['Cash',     'bg-green-100 text-green-700'],
+                                                    'bank_transfer' => ['Bank',     'bg-blue-100 text-blue-700'],
+                                                    'khata'         => ['Khata',    'bg-red-100 text-red-700'],
+                                                    'partial'       => ['Partial',  'bg-orange-100 text-orange-700'],
+                                                    'split'         => ['Split',    'bg-teal-100 text-teal-700'],
+                                                    default         => [ucfirst($saleOrder->payment_method), 'bg-gray-100 text-gray-600'],
                                                 };
                                             @endphp
                                             <span class="text-xs px-2 py-0.5 rounded-full font-medium {{ $pmLabel[1] }}">{{ $pmLabel[0] }}</span>
+                                            @if($saleOrder->payment_method === 'split')
+                                            <div class="mt-1 space-y-0.5">
+                                                <div class="text-xs text-green-600">
+                                                    <i class="fas fa-money-bill-wave text-[10px] mr-0.5"></i>Rs. {{ number_format($saleOrder->cash_amount) }}
+                                                </div>
+                                                <div class="text-xs text-blue-600">
+                                                    <i class="fas fa-university text-[10px] mr-0.5"></i>Rs. {{ number_format($saleOrder->bank_amount) }}
+                                                </div>
+                                            </div>
+                                            @endif
                                         </td>
                                         <td class="px-4 py-3 text-right">
                                             <div class="font-bold text-gray-900">Rs. {{ number_format($saleOrder->total) }}</div>
