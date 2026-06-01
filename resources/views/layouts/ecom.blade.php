@@ -381,7 +381,7 @@ function colorPickerModal() {
                         badge.textContent    = data.count > 9 ? '9+' : data.count;
                         badge.style.display  = data.count > 0 ? '' : 'none';
                     }
-                    this.$dispatch('cart-toast', { message: this.productName + ' added to cart!' });
+                    window.dispatchEvent(new CustomEvent('cart-toast', { detail: { message: this.productName + ' added to cart!' } }));
                     this.close();
                 } else {
                     this.error = (data.errors && data.errors.color && data.errors.color[0])
