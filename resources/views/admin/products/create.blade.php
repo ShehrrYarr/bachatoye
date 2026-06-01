@@ -278,6 +278,13 @@
                         </span>
                     </label>
                     <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="cod_enabled" value="1" {{ old('cod_enabled', true) ? 'checked' : '' }}
+                               class="w-4 h-4 text-yellow-600 rounded">
+                        <span class="text-sm font-medium text-gray-700">COD Available
+                            <span class="block text-xs font-normal text-gray-400">Allow Cash on Delivery for this product</span>
+                        </span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" name="is_new_arrival" value="1" {{ old('is_new_arrival') ? 'checked' : '' }}
                                class="w-4 h-4 text-primary-600 rounded">
                         <span class="text-sm font-medium text-gray-700">New Arrival</span>

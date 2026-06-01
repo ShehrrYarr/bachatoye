@@ -13,7 +13,7 @@ class Product extends Model
         'name', 'slug', 'sku', 'barcode', 'short_description', 'description',
         'price', 'cost_price', 'compare_price', 'stock_quantity',
         'low_stock_threshold', 'low_stock_dismissed', 'category_id', 'subcategory_id', 'brand_id',
-        'is_active', 'is_featured', 'show_in_ecom', 'track_inventory', 'free_delivery',
+        'is_active', 'is_featured', 'show_in_ecom', 'track_inventory', 'free_delivery', 'cod_enabled',
     ];
 
     protected function casts(): array
@@ -28,6 +28,7 @@ class Product extends Model
             'track_inventory'      => 'boolean',
             'low_stock_dismissed'  => 'boolean',
             'free_delivery'        => 'boolean',
+            'cod_enabled'          => 'boolean',
         ];
     }
 
