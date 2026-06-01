@@ -192,10 +192,12 @@ class PosController extends Controller
     public function searchProduct(Request $request)
     {
         $q                  = $request->input('q', '');
+        $categoryId         = $request->input('category');
         $allowedCategoryIds = Auth::user()->allowedCategoryIds();
 
         $products = Product::active()->inStock()
             ->when($allowedCategoryIds !== null, fn($query) => $query->whereIn('category_id', $allowedCategoryIds))
+            ->when($categoryId, fn($query) => $query->where('category_id', $categoryId))
             ->where(fn($query) => $query
                 ->where('name', 'like', "%{$q}%")
                 ->orWhere('barcode', 'like', "%{$q}%")
@@ -209,7 +211,7 @@ class PosController extends Controller
                 )
             )
             ->with(['images', 'colors', 'category.section'])
-            ->limit(15)
+            ->limit($q ? 15 : 60)
             ->get()
             ->map(fn($p) => [
                 'id'               => $p->id,

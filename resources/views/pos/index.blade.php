@@ -59,34 +59,78 @@
             </div>
         </div>
 
-        {{-- Product grid --}}
-        <div class="p-4 flex-1">
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3" id="productGrid">
-                <template x-for="product in displayProducts" :key="product.id">
-                    <div @click="addToCart(product)"
-                         class="pos-product-tile"
-                         :class="product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'">
-                        <div class="h-20 bg-gray-100 rounded-lg overflow-hidden mb-2">
-                            <img :src="product.image" :alt="product.name" class="w-full h-full object-cover">
+        {{-- Category grid (shown when no search + no category selected) --}}
+        <div class="p-4 flex-1 overflow-y-auto" x-show="!searchQuery && !selectedCategory">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
+                <template x-for="cat in categories" :key="cat.id">
+                    <div @click="selectCategory(cat)"
+                         class="cursor-pointer group bg-white rounded-xl border border-gray-200 shadow-sm hover:border-primary-400 hover:shadow-md transition-all overflow-hidden flex flex-col">
+                        <div class="aspect-square overflow-hidden bg-gray-100">
+                            <template x-if="cat.image">
+                                <img :src="cat.image" :alt="cat.name"
+                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200">
+                            </template>
+                            <template x-if="!cat.image">
+                                <div class="w-full h-full flex items-center justify-center">
+                                    <i class="fas fa-tag text-3xl text-gray-300"></i>
+                                </div>
+                            </template>
                         </div>
-                        <div class="text-xs font-semibold text-gray-800 leading-tight line-clamp-2 mb-1" x-text="product.name"></div>
-                        <div class="text-xs font-bold text-primary-700" x-text="`Rs. ${Number(product.price).toLocaleString()}`"></div>
-                        <div class="text-xs mt-0.5" :class="product.stock <= 0 ? 'text-red-500' : 'text-gray-400'"
-                             x-text="product.stock <= 0 ? 'Out of Stock' : `Stock: ${product.stock}`"></div>
+                        <div class="px-2 py-1.5">
+                            <div class="text-xs font-semibold text-gray-800 truncate group-hover:text-primary-700 transition-colors" x-text="cat.name"></div>
+                        </div>
                     </div>
                 </template>
-                <template x-if="displayProducts.length === 0 && !loading">
+                <template x-if="categories.length === 0">
                     <div class="col-span-5 text-center py-12 text-gray-400">
-                        <i class="fas fa-box-open text-4xl mb-3"></i>
-                        <p class="text-sm">No products found</p>
+                        <i class="fas fa-tags text-4xl mb-3"></i>
+                        <p class="text-sm">No categories found</p>
                     </div>
                 </template>
-                <template x-if="loading">
-                    <div class="col-span-5 text-center py-12 text-gray-400">
-                        <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
-                        <p class="text-sm">Loading...</p>
-                    </div>
-                </template>
+            </div>
+        </div>
+
+        {{-- Product grid (shown when searching OR a category is selected) --}}
+        <div class="flex-1 flex flex-col overflow-hidden" x-show="searchQuery || selectedCategory">
+            {{-- Category breadcrumb + back button --}}
+            <div x-show="selectedCategory && !searchQuery"
+                 class="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center gap-2 shrink-0">
+                <button @click="clearCategory()"
+                        class="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 transition-colors">
+                    <i class="fas fa-arrow-left text-xs"></i> Categories
+                </button>
+                <span class="text-gray-300">/</span>
+                <span class="text-xs font-semibold text-gray-800" x-text="selectedCategory?.name"></span>
+            </div>
+
+            <div class="p-4 flex-1 overflow-y-auto">
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
+                    <template x-for="product in displayProducts" :key="product.id">
+                        <div @click="addToCart(product)"
+                             class="pos-product-tile"
+                             :class="product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'">
+                            <div class="h-20 bg-gray-100 rounded-lg overflow-hidden mb-2">
+                                <img :src="product.image" :alt="product.name" class="w-full h-full object-cover">
+                            </div>
+                            <div class="text-xs font-semibold text-gray-800 leading-tight line-clamp-2 mb-1" x-text="product.name"></div>
+                            <div class="text-xs font-bold text-primary-700" x-text="`Rs. ${Number(product.price).toLocaleString()}`"></div>
+                            <div class="text-xs mt-0.5" :class="product.stock <= 0 ? 'text-red-500' : 'text-gray-400'"
+                                 x-text="product.stock <= 0 ? 'Out of Stock' : `Stock: ${product.stock}`"></div>
+                        </div>
+                    </template>
+                    <template x-if="displayProducts.length === 0 && !loading">
+                        <div class="col-span-5 text-center py-12 text-gray-400">
+                            <i class="fas fa-box-open text-4xl mb-3"></i>
+                            <p class="text-sm">No products found</p>
+                        </div>
+                    </template>
+                    <template x-if="loading">
+                        <div class="col-span-5 text-center py-12 text-gray-400">
+                            <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
+                            <p class="text-sm">Loading...</p>
+                        </div>
+                    </template>
+                </div>
             </div>
         </div>
     </div>
@@ -933,6 +977,12 @@ function posApp() {
         searchQuery: '',
         displayProducts: [],
         loading: false,
+        categories: @json($categories->map(fn($c) => [
+            'id'    => $c->id,
+            'name'  => $c->name,
+            'image' => $c->image ? \Illuminate\Support\Facades\Storage::url($c->image) : null,
+        ])->values()),
+        selectedCategory: null,
         discountType: 'flat',
         discountValue: 0,
         discountAmount: 0,
@@ -963,23 +1013,44 @@ function posApp() {
         showCloseSession: false,
 
         async init() {
-            await this.loadProducts();
             this.$refs.barcodeInput?.focus();
+            // Start on category grid — no products loaded until category selected or searched
         },
 
         async loadProducts() {
             this.loading = true;
             try {
-                const res = await fetch('/pos/product/search?q=');
+                let url = '/pos/product/search?q=';
+                if (this.selectedCategory) url += `&category=${this.selectedCategory.id}`;
+                const res = await fetch(url);
                 this.displayProducts = await res.json();
             } catch(e) { console.error(e); }
             this.loading = false;
         },
 
+        selectCategory(cat) {
+            this.selectedCategory = cat;
+            this.loadProducts();
+        },
+
+        clearCategory() {
+            this.selectedCategory = null;
+            this.displayProducts = [];
+            this.$refs.barcodeInput?.focus();
+        },
+
         async searchProducts() {
-            if (this.searchQuery.length < 1) { this.loadProducts(); return; }
+            if (this.searchQuery.length < 1) {
+                if (this.selectedCategory) {
+                    this.loadProducts(); // reload category products
+                } else {
+                    this.displayProducts = [];
+                }
+                return;
+            }
             this.loading = true;
             try {
+                // Search across ALL products (ignore category filter when searching)
                 const res = await fetch(`/pos/product/search?q=${encodeURIComponent(this.searchQuery)}`);
                 this.displayProducts = await res.json();
             } catch(e) {}
@@ -995,7 +1066,8 @@ function posApp() {
                     if (product && product.id) {
                         this.addToCart(product);
                         this.searchQuery = '';
-                        this.loadProducts();
+                        // Stay in current category after scanning
+                        if (this.selectedCategory) this.loadProducts();
                         return;
                     }
                 }
@@ -1189,7 +1261,7 @@ function posApp() {
                     this.orderNotes = '';
                     this.paymentMethod = 'cash';
                     window.open(`/pos/receipt/${data.order_id}`, '_blank', 'width=400,height=700');
-                    this.loadProducts();
+                    if (this.selectedCategory) this.loadProducts(); // reload same category
                     window.dispatchEvent(new CustomEvent('pos:order-placed'));
                 } else {
                     alert(data.message || 'Order failed. Please try again.');
