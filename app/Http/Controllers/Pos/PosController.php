@@ -414,6 +414,7 @@ class PosController extends Controller
                     'product_id'      => $item['product']->id,
                     'product_name'    => $item['product']->name,
                     'color_name'      => $item['color_name'],
+                    'color_id'        => $item['color']?->id,
                     'product_barcode' => $item['product']->barcode,
                     'unit_price'      => $item['price'],
                     'cost_price'      => $item['product']->cost_price,

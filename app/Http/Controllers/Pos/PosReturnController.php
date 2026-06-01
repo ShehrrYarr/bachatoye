@@ -183,6 +183,7 @@ class PosReturnController extends Controller
                     'order_item_id' => $orderItem->id,
                     'product_id'    => $orderItem->product_id,
                     'product_name'  => $orderItem->product_name,
+                    'color_id'      => $orderItem->color_id,
                     'quantity'      => $qty,
                     'unit_price'    => $orderItem->unit_price,
                     'line_total'    => $lineTotal,
@@ -218,6 +219,14 @@ class PosReturnController extends Controller
                     $product = \App\Models\Product::find($item['product_id']);
                     $before  = $product->stock_quantity;
                     $product->increment('stock_quantity', $item['quantity']);
+
+                    // Restore color stock if the order item was for a specific color
+                    if (!empty($item['color_id'])) {
+                        $color = \App\Models\ProductColor::find($item['color_id']);
+                        if ($color) {
+                            $color->increment('stock_quantity', $item['quantity']);
+                        }
+                    }
 
                     StockMovement::create([
                         'product_id'      => $product->id,
