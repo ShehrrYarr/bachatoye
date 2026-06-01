@@ -200,7 +200,7 @@
                 </div>
             </template>
 
-            <template x-for="(item, index) in cart" :key="item.product_id">
+            <template x-for="(item, index) in cart" :key="item._key">
                 <div class="py-1.5 border-b border-gray-100 last:border-0">
                     <div class="flex items-start gap-2">
                         <img :src="item.image" class="w-8 h-8 object-cover rounded-lg bg-gray-100 shrink-0 mt-0.5">
