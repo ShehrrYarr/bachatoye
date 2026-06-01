@@ -218,13 +218,17 @@
 
             {{-- Add to cart --}}
             @if($product->isInStock())
-            @php $productColors = $product->colors; @endphp
+            @php
+                $productColors  = $product->colors;
+                $inStockColors  = $productColors->where('stock_quantity', '>', 0)->values();
+                $preSelected    = $inStockColors->count() === 1 ? $inStockColors->first() : null;
+            @endphp
             <form method="POST" action="{{ route('cart.add') }}" class="mb-5"
                   x-data="{
-                      selectedColorId: null,
-                      selectedColorName: '',
-                      selectedColorStock: 0,
-                      hasColors: {{ $productColors->count() > 0 ? 'true' : 'false' }},
+                      selectedColorId: {{ $preSelected ? $preSelected->id : 'null' }},
+                      selectedColorName: '{{ $preSelected ? addslashes($preSelected->name) : '' }}',
+                      selectedColorStock: {{ $preSelected ? $preSelected->stock_quantity : 0 }},
+                      hasColors: {{ $inStockColors->count() > 0 ? 'true' : 'false' }},
                       canAdd() { return !this.hasColors || this.selectedColorId !== null; }
                   }">
                 @csrf
