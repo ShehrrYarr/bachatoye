@@ -27,7 +27,16 @@
                     <a href="{{ route('products.show', $item['product']->slug) }}"
                        class="font-semibold text-gray-800 hover:text-primary-600 text-sm leading-snug block mb-1">{{ $item['product']->name }}</a>
                     @if($item['product']->category)
-                        <div class="text-xs text-gray-400 mb-2">{{ $item['product']->category->name }}</div>
+                        <div class="text-xs text-gray-400 mb-1">{{ $item['product']->category->name }}</div>
+                    @endif
+                    @if($item['color_name'])
+                        <div class="flex items-center gap-1.5 mb-2">
+                            @if($item['color_hex'])
+                                <span class="w-3.5 h-3.5 rounded-full border border-gray-300 shrink-0"
+                                      style="background: {{ $item['color_hex'] }}"></span>
+                            @endif
+                            <span class="text-xs text-gray-500">{{ $item['color_name'] }}</span>
+                        </div>
                     @endif
                     <div class="flex items-center justify-between flex-wrap gap-3">
                         <span class="text-base font-bold text-primary-700">Rs. {{ number_format($item['price']) }}</span>

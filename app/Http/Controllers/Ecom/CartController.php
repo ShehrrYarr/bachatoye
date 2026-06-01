@@ -152,17 +152,19 @@ class CartController extends Controller
     private function hydrateCart(array $cart): array
     {
         $productIds = array_column($cart, 'product_id');
-        $products   = Product::whereIn('id', $productIds)->with(['images', 'category'])->get()->keyBy('id');
+        $products   = Product::whereIn('id', $productIds)->with(['images', 'category', 'colors'])->get()->keyBy('id');
 
         return collect($cart)->map(function ($item, $rowId) use ($products) {
             $product = $products[$item['product_id']] ?? null;
             if (!$product) return null;
+            $color = !empty($item['color_id']) ? $product->colors->find($item['color_id']) : null;
 
             return [
                 'row_id'     => $rowId,
                 'product'    => $product,
                 'color_id'   => $item['color_id'] ?? null,
                 'color_name' => $item['color_name'] ?? null,
+                'color_hex'  => $color?->hex_code ?? null,
                 'quantity'   => $item['quantity'],
                 'price'      => $item['price'],
                 'line_total' => $item['price'] * $item['quantity'],
