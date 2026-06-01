@@ -27,7 +27,9 @@ class CheckoutController extends Controller
         $couponDiscount = (float) session('coupon_discount', 0);
         $total = max(0, $subtotal + $deliveryCharge - $couponDiscount);
 
-        return view('ecom.checkout', compact('items', 'subtotal', 'deliveryCharge', 'couponCode', 'couponDiscount', 'total'));
+        $codAvailable = collect($items)->every(fn($item) => $item['product']->cod_enabled);
+
+        return view('ecom.checkout', compact('items', 'subtotal', 'deliveryCharge', 'couponCode', 'couponDiscount', 'total', 'codAvailable'));
     }
 
     public function store(Request $request)
@@ -52,6 +54,11 @@ class CheckoutController extends Controller
         $couponId       = session('coupon_id');
         $couponDiscount = (float) session('coupon_discount', 0);
         $total          = max(0, $subtotal + $deliveryCharge - $couponDiscount);
+
+        $codAvailable = collect($items)->every(fn($item) => $item['product']->cod_enabled);
+        if (!$codAvailable && $data['payment_method'] === 'cash') {
+            return back()->withErrors(['payment_method' => 'Cash on Delivery is not available for one or more items in your cart.'])->withInput();
+        }
 
         DB::beginTransaction();
         try {

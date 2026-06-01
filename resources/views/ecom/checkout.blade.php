@@ -24,7 +24,7 @@
 
         {{-- Left: Customer info + Payment (this IS the checkout form) --}}
         <form id="checkout-form" method="POST" action="{{ route('checkout.store') }}" enctype="multipart/form-data"
-              x-data="{ paymentMethod: '{{ old('payment_method', 'cash') }}' }"
+              x-data="{ paymentMethod: '{{ old('payment_method', $codAvailable ? 'cash' : 'bank_transfer') }}' }"
               class="lg:col-span-2 space-y-6">
             @csrf
 
@@ -80,6 +80,7 @@
                     <div class="card-body space-y-3">
 
                         {{-- Cash on Delivery --}}
+                        @if($codAvailable)
                         <label class="flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all"
                                :class="paymentMethod === 'cash' ? 'border-primary-500 bg-primary-50' : 'border-gray-200 hover:border-gray-300'">
                             <input type="radio" name="payment_method" value="cash" x-model="paymentMethod"
@@ -90,6 +91,7 @@
                             </div>
                             <i class="fas fa-money-bill-wave text-green-500 ml-auto mt-0.5"></i>
                         </label>
+                        @endif
 
                         {{-- Bank Transfer --}}
                         <label class="flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all"
