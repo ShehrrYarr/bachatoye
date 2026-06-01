@@ -295,7 +295,7 @@ function liveSearch() {
         </div>
 
         {{-- Footer --}}
-        <div class="px-5 pb-5 pt-2">
+        <div class="px-5 pb-7 pt-2">
             <p x-show="error" class="flex items-center gap-1.5 text-red-500 text-xs mb-3">
                 <i class="fas fa-exclamation-circle"></i>
                 <span x-text="error"></span>
