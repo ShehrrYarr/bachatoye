@@ -106,7 +106,7 @@ class ProductController extends Controller
         $data['show_in_ecom']    = $request->boolean('show_in_ecom', true);
         $data['track_inventory'] = $request->boolean('track_inventory', true);
         $data['free_delivery']   = $request->boolean('free_delivery');
-        $data['cod_enabled']     = $request->boolean('cod_enabled', true);
+        $data['cod_enabled']     = $request->boolean('cod_enabled');
         $data['stock_quantity']  = $data['stock_quantity'] ?? 0;
 
         // Generate barcode if not provided
@@ -206,7 +206,7 @@ class ProductController extends Controller
         $data['show_in_ecom']    = $request->boolean('show_in_ecom', true);
         $data['track_inventory'] = $request->boolean('track_inventory', true);
         $data['free_delivery']   = $request->boolean('free_delivery');
-        $data['cod_enabled']     = $request->boolean('cod_enabled', true);
+        $data['cod_enabled']     = $request->boolean('cod_enabled');
 
         // Strip non-model fields before updating
         $product->update(\Arr::except($data, ['images', 'video_embed_url', 'video_file']));
