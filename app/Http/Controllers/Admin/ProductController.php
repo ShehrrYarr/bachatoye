@@ -31,7 +31,7 @@ class ProductController extends Controller
         }
 
         // Category (or filter) selected — show products
-        $query = Product::with(['category', 'brand'])->latest();
+        $query = Product::with(['category', 'brand', 'colors'])->latest();
 
         if ($request->filled('q')) {
             $s = $request->q;

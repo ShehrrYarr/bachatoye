@@ -256,8 +256,13 @@
                 @endif
                 <div class="flex justify-between border-t border-gray-100 pt-3">
                     <dt class="text-gray-500">Stock</dt>
-                    <dd class="font-semibold {{ $product->stock_quantity <= 0 ? 'text-red-600' : ($product->isLowStock() ? 'text-orange-600' : 'text-gray-800') }}">
-                        {{ $product->track_inventory ? number_format($product->stock_quantity) : 'Not tracked' }}
+                    @php
+                        $displayStock = $product->colors->count() > 0
+                            ? $product->colors->sum('stock_quantity')
+                            : $product->stock_quantity;
+                    @endphp
+                    <dd class="font-semibold {{ $displayStock <= 0 ? 'text-red-600' : ($product->isLowStock() ? 'text-orange-600' : 'text-gray-800') }}">
+                        {{ $product->track_inventory ? number_format($displayStock) : 'Not tracked' }}
                     </dd>
                 </div>
                 @if($product->sku)

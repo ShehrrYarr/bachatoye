@@ -164,12 +164,13 @@
                     </td>
                     <td>
                         @if($product->track_inventory)
-                            @if($product->stock_quantity <= 0)
+                            @php $stock = $product->colors->count() > 0 ? $product->colors->sum('stock_quantity') : $product->stock_quantity; @endphp
+                            @if($stock <= 0)
                                 <span class="badge bg-red-100 text-red-700">Out of Stock</span>
                             @elseif($product->isLowStock())
-                                <span class="badge bg-orange-100 text-orange-700">{{ $product->stock_quantity }} (Low)</span>
+                                <span class="badge bg-orange-100 text-orange-700">{{ $stock }} (Low)</span>
                             @else
-                                <span class="text-sm font-medium text-gray-700">{{ number_format($product->stock_quantity) }}</span>
+                                <span class="text-sm font-medium text-gray-700">{{ number_format($stock) }}</span>
                             @endif
                         @else
                             <span class="text-xs text-gray-400">Not tracked</span>
