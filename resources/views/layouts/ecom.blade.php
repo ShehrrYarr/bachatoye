@@ -343,7 +343,7 @@ function colorPickerModal() {
             this.productId       = detail.productId;
             this.productName     = detail.productName;
             this.colors          = detail.colors;
-            this.selectedColorId = null;
+            this.selectedColorId = detail.colors.length === 1 ? detail.colors[0].id : null;
             this.loading         = false;
             this.error           = '';
             this.isOpen          = true;
