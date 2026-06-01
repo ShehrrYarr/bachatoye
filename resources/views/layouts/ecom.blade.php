@@ -245,36 +245,38 @@ function liveSearch() {
      @open-color-picker.window="open($event.detail)"
      x-show="isOpen"
      x-cloak
-     class="fixed inset-0 z-[999] flex items-end sm:items-center justify-center p-0 sm:p-4">
+     style="display:none"
+     class="fixed inset-0 z-[999] flex items-center justify-center"
+     style="padding: 1rem;">
 
     {{-- Backdrop --}}
-    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="close()"></div>
+    <div class="absolute inset-0 bg-black/60" @click="close()"></div>
 
-    {{-- Sheet on mobile, centered card on desktop --}}
-    <div class="relative bg-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl shadow-2xl p-6 z-10"
-         x-transition:enter="transition ease-out duration-300"
-         x-transition:enter-start="opacity-0 translate-y-8"
-         x-transition:enter-end="opacity-100 translate-y-0"
-         x-transition:leave="transition ease-in duration-200"
-         x-transition:leave-start="opacity-100 translate-y-0"
-         x-transition:leave-end="opacity-0 translate-y-8"
+    {{-- Modal card --}}
+    <div class="relative bg-white rounded-2xl shadow-2xl z-10 w-full"
+         style="max-width: 400px; margin: auto;"
+         x-transition:enter="transition ease-out duration-250"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95"
          @click.stop>
 
-        {{-- Drag handle (mobile) --}}
-        <div class="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-5 sm:hidden"></div>
-
         {{-- Header --}}
-        <div class="flex items-start justify-between mb-1">
-            <h3 class="font-bold text-gray-900 text-base leading-snug pr-4" x-text="productName"></h3>
+        <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100">
+            <div>
+                <h3 class="font-bold text-gray-900 text-base" x-text="productName"></h3>
+                <p class="text-xs text-gray-400 mt-0.5">Pick a color to continue</p>
+            </div>
             <button @click="close()"
-                    class="shrink-0 w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
+                    class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors ml-3 shrink-0">
                 <i class="fas fa-times text-sm"></i>
             </button>
         </div>
-        <p class="text-xs text-gray-400 mb-5">Select a color to add to cart</p>
 
         {{-- Color options --}}
-        <div class="space-y-2 mb-5 max-h-64 overflow-y-auto">
+        <div class="px-5 py-4 space-y-2" style="max-height: 300px; overflow-y: auto;">
             <template x-for="color in colors" :key="color.id">
                 <button type="button"
                         @click="selectedColorId = color.id"
@@ -282,31 +284,31 @@ function liveSearch() {
                         :class="selectedColorId === color.id
                             ? 'border-primary-500 bg-primary-50'
                             : 'border-gray-200 hover:border-gray-300 bg-white'">
-                    <span class="w-6 h-6 rounded-full border-2 border-white shadow-sm shrink-0"
+                    <span class="w-7 h-7 rounded-full border border-gray-200 shadow-sm shrink-0"
                           :style="color.hex_code ? `background:${color.hex_code}` : 'background:#e5e7eb'"></span>
                     <span class="font-semibold text-sm text-gray-800" x-text="color.name"></span>
-                    <span class="ml-auto text-xs text-gray-400" x-text="`${color.stock_quantity} in stock`"></span>
-                    <i class="fas fa-check text-primary-500 text-xs shrink-0 transition-opacity"
-                       :class="selectedColorId === color.id ? 'opacity-100' : 'opacity-0'"></i>
+                    <span class="ml-auto text-xs text-gray-400 shrink-0" x-text="`${color.stock_quantity} in stock`"></span>
+                    <i class="fas fa-check-circle text-primary-500 text-sm shrink-0"
+                       :style="selectedColorId === color.id ? '' : 'visibility:hidden'"></i>
                 </button>
             </template>
         </div>
 
-        {{-- Error --}}
-        <p x-show="error" class="flex items-center gap-1.5 text-red-500 text-xs mb-3">
-            <i class="fas fa-exclamation-circle"></i>
-            <span x-text="error"></span>
-        </p>
-
-        {{-- Add to Cart button --}}
-        <button @click="addToCart()"
-                :disabled="!selectedColorId || loading"
-                class="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                style="background: var(--app-gradient, linear-gradient(135deg, #be123c 0%, #881337 100%))">
-            <i class="fas fa-spinner fa-spin" x-show="loading"></i>
-            <i class="fas fa-cart-plus" x-show="!loading"></i>
-            <span x-text="loading ? 'Adding...' : 'Add to Cart'"></span>
-        </button>
+        {{-- Footer --}}
+        <div class="px-5 pb-5 pt-2">
+            <p x-show="error" class="flex items-center gap-1.5 text-red-500 text-xs mb-3">
+                <i class="fas fa-exclamation-circle"></i>
+                <span x-text="error"></span>
+            </p>
+            <button @click="addToCart()"
+                    :disabled="!selectedColorId || loading"
+                    class="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    style="background: var(--app-gradient, linear-gradient(135deg, #be123c 0%, #881337 100%))">
+                <i class="fas fa-spinner fa-spin" x-show="loading"></i>
+                <i class="fas fa-cart-plus" x-show="!loading"></i>
+                <span x-text="loading ? 'Adding...' : 'Add to Cart'"></span>
+            </button>
+        </div>
     </div>
 </div>
 
