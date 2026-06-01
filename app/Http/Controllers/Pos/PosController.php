@@ -219,7 +219,9 @@ class PosController extends Controller
                 'barcode'          => $p->barcode,
                 'price'            => $p->getDiscountedPrice(),
                 'cost_price'       => $p->cost_price,
-                'stock'            => $p->stock_quantity,
+                'stock'            => $p->colors->count() > 0
+                                        ? $p->colors->sum('stock_quantity')
+                                        : $p->stock_quantity,
                 'image'            => $p->primary_image_url,
                 'exchange_eligible' => (bool)($p->category?->section?->exchange_enabled),
                 'colors'           => $p->colors->map(fn($c) => [
