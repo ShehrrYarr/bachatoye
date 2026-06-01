@@ -4,6 +4,10 @@
     $hasDiscount    = $deal && $deal->type !== 'buy_x_get_y' && $finalPrice < $product->price;
     $comparePrice   = $product->compare_price && $product->compare_price > $finalPrice ? $product->compare_price : null;
     $strikePrice    = $hasDiscount ? $product->price : $comparePrice;
+    $productColors  = $product->relationLoaded('colors')
+        ? $product->colors->where('stock_quantity', '>', 0)->values()
+        : collect();
+    $hasColors = $productColors->isNotEmpty();
 @endphp
 <div class="ecom-product-card group">
     {{-- Image --}}
@@ -37,14 +41,31 @@
         {{-- Quick add overlay --}}
         @if($product->isInStock())
         <div class="absolute bottom-0 left-0 right-0 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-            <form method="POST" action="{{ route('cart.add') }}">
-                @csrf
-                <input type="hidden" name="product_id" value="{{ $product->id }}">
-                <input type="hidden" name="quantity" value="1">
-                <button type="submit" class="w-full bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold py-3 transition-colors">
-                    <i class="fas fa-cart-plus mr-1"></i> Add to Cart
+            @if($hasColors)
+                {{-- Product has colors: open color picker modal --}}
+                <button type="button"
+                        data-product-id="{{ $product->id }}"
+                        data-product-name="{{ $product->name }}"
+                        data-colors="{{ json_encode($productColors->map(fn($c) => ['id' => $c->id, 'name' => $c->name, 'hex_code' => $c->hex_code, 'stock_quantity' => $c->stock_quantity])->values()) }}"
+                        @click="$dispatch('open-color-picker', {
+                            productId:   $el.dataset.productId,
+                            productName: $el.dataset.productName,
+                            colors:      JSON.parse($el.dataset.colors)
+                        })"
+                        class="w-full bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold py-3 transition-colors flex items-center justify-center gap-1.5">
+                    <i class="fas fa-palette"></i> Choose Color
                 </button>
-            </form>
+            @else
+                {{-- No colors: direct add to cart --}}
+                <form method="POST" action="{{ route('cart.add') }}">
+                    @csrf
+                    <input type="hidden" name="product_id" value="{{ $product->id }}">
+                    <input type="hidden" name="quantity" value="1">
+                    <button type="submit" class="w-full bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold py-3 transition-colors">
+                        <i class="fas fa-cart-plus mr-1"></i> Add to Cart
+                    </button>
+                </form>
+            @endif
         </div>
         @endif
     </div>

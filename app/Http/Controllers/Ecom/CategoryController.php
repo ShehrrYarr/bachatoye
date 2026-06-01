@@ -16,7 +16,7 @@ class CategoryController extends Controller
         $query = Product::active()->inStock()->ecomVisible()
                          ->where(fn($q) => $q->where('category_id', $category->id)
                                              ->orWhere('subcategory_id', $category->id))
-                         ->with(['images', 'brand']);
+                         ->with(['images', 'brand', 'colors']);
 
         if (request()->filled('brand')) {
             $query->where('brand_id', request('brand'));

@@ -19,7 +19,7 @@ class HomeController extends Controller
                             ->withCount('products')
                             ->with(['children' => fn($q) => $q->active()->withCount('products')])
                             ->orderBy('sort_order')->take(8)->get();
-        $featuredProducts = Product::active()->inStock()->ecomVisible()->featured()->with(['images', 'category'])->take(8)->get();
+        $featuredProducts = Product::active()->inStock()->ecomVisible()->featured()->with(['images', 'category', 'colors'])->take(8)->get();
         $activeDeals    = Deal::active()->take(4)->get();
 
         $dealProductChunks = Product::active()->inStock()->ecomVisible()
@@ -27,7 +27,7 @@ class HomeController extends Controller
                 ->where(fn($q2) => $q2->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
                 ->where(fn($q2) => $q2->whereNull('ends_at')->orWhere('ends_at', '>=', now()))
             )
-            ->with(['images', 'category', 'deals'])
+            ->with(['images', 'category', 'deals', 'colors'])
             ->get()
             ->chunk(6);
 
@@ -48,7 +48,7 @@ class HomeController extends Controller
 
             $products = Product::active()->inStock()->ecomVisible()
                 ->whereIn('category_id', $catIds)
-                ->with(['images', 'category'])
+                ->with(['images', 'category', 'colors'])
                 ->latest()
                 ->take(8)
                 ->get();

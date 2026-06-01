@@ -10,7 +10,7 @@ class DealController extends Controller
 {
     public function index()
     {
-        $deals = Deal::active()->with(['products.images', 'categories'])->get();
+        $deals = Deal::active()->with(['products.images', 'products.colors', 'categories'])->get();
         return view('ecom.deals', compact('deals'));
     }
 }

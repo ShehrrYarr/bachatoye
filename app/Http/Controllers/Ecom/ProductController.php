@@ -13,7 +13,7 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Product::active()->inStock()->ecomVisible()->with(['images', 'category', 'brand']);
+        $query = Product::active()->inStock()->ecomVisible()->with(['images', 'category', 'brand', 'colors']);
 
         if ($request->filled('q')) {
             $q = $request->q;

@@ -92,14 +92,14 @@
                 </button>
 
                 {{-- Cart --}}
+                @php $cartCount = array_sum(array_column(session('cart', []), 'quantity')); @endphp
                 <a href="{{ route('cart.index') }}" class="relative p-2 text-gray-600 hover:text-primary-600 transition-colors">
                     <i class="fas fa-shopping-cart text-lg"></i>
-                    @php $cartCount = array_sum(array_column(session('cart', []), 'quantity')); @endphp
-                    @if($cartCount > 0)
-                        <span class="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                            {{ $cartCount > 9 ? '9+' : $cartCount }}
-                        </span>
-                    @endif
+                    <span id="cart-count-badge"
+                          class="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold"
+                          style="{{ $cartCount > 0 ? '' : 'display:none' }}">
+                        {{ $cartCount > 9 ? '9+' : $cartCount }}
+                    </span>
                 </a>
 
                 {{-- Mobile menu --}}
@@ -240,6 +240,162 @@ function liveSearch() {
     }
 }
 </script>
+{{-- ===== COLOR PICKER MODAL ===== --}}
+<div x-data="colorPickerModal()"
+     @open-color-picker.window="open($event.detail)"
+     x-show="isOpen"
+     x-cloak
+     class="fixed inset-0 z-[999] flex items-end sm:items-center justify-center p-0 sm:p-4">
+
+    {{-- Backdrop --}}
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="close()"></div>
+
+    {{-- Sheet on mobile, centered card on desktop --}}
+    <div class="relative bg-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl shadow-2xl p-6 z-10"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-8"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 translate-y-8"
+         @click.stop>
+
+        {{-- Drag handle (mobile) --}}
+        <div class="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-5 sm:hidden"></div>
+
+        {{-- Header --}}
+        <div class="flex items-start justify-between mb-1">
+            <h3 class="font-bold text-gray-900 text-base leading-snug pr-4" x-text="productName"></h3>
+            <button @click="close()"
+                    class="shrink-0 w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <p class="text-xs text-gray-400 mb-5">Select a color to add to cart</p>
+
+        {{-- Color options --}}
+        <div class="space-y-2 mb-5 max-h-64 overflow-y-auto">
+            <template x-for="color in colors" :key="color.id">
+                <button type="button"
+                        @click="selectedColorId = color.id"
+                        class="w-full flex items-center gap-3 px-4 py-3 border-2 rounded-xl transition-all text-left"
+                        :class="selectedColorId === color.id
+                            ? 'border-primary-500 bg-primary-50'
+                            : 'border-gray-200 hover:border-gray-300 bg-white'">
+                    <span class="w-6 h-6 rounded-full border-2 border-white shadow-sm shrink-0"
+                          :style="color.hex_code ? `background:${color.hex_code}` : 'background:#e5e7eb'"></span>
+                    <span class="font-semibold text-sm text-gray-800" x-text="color.name"></span>
+                    <span class="ml-auto text-xs text-gray-400" x-text="`${color.stock_quantity} in stock`"></span>
+                    <i class="fas fa-check text-primary-500 text-xs shrink-0 transition-opacity"
+                       :class="selectedColorId === color.id ? 'opacity-100' : 'opacity-0'"></i>
+                </button>
+            </template>
+        </div>
+
+        {{-- Error --}}
+        <p x-show="error" class="flex items-center gap-1.5 text-red-500 text-xs mb-3">
+            <i class="fas fa-exclamation-circle"></i>
+            <span x-text="error"></span>
+        </p>
+
+        {{-- Add to Cart button --}}
+        <button @click="addToCart()"
+                :disabled="!selectedColorId || loading"
+                class="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                style="background: var(--app-gradient, linear-gradient(135deg, #be123c 0%, #881337 100%))">
+            <i class="fas fa-spinner fa-spin" x-show="loading"></i>
+            <i class="fas fa-cart-plus" x-show="!loading"></i>
+            <span x-text="loading ? 'Adding...' : 'Add to Cart'"></span>
+        </button>
+    </div>
+</div>
+
+{{-- ===== CART TOAST ===== --}}
+<div x-data="{ show: false, message: '' }"
+     @cart-toast.window="message = $event.detail.message; show = true; setTimeout(() => show = false, 3500)"
+     x-show="show"
+     x-cloak
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0 translate-y-4"
+     x-transition:enter-end="opacity-100 translate-y-0"
+     x-transition:leave="transition ease-in duration-200"
+     x-transition:leave-start="opacity-100 translate-y-0"
+     x-transition:leave-end="opacity-0 translate-y-4"
+     class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[1000] bg-gray-900 text-white text-sm font-semibold px-5 py-3 rounded-full shadow-2xl flex items-center gap-2 whitespace-nowrap pointer-events-none">
+    <i class="fas fa-check-circle text-green-400"></i>
+    <span x-text="message"></span>
+</div>
+
+<script>
+function colorPickerModal() {
+    return {
+        isOpen:          false,
+        productId:       null,
+        productName:     '',
+        colors:          [],
+        selectedColorId: null,
+        loading:         false,
+        error:           '',
+
+        open(detail) {
+            this.productId       = detail.productId;
+            this.productName     = detail.productName;
+            this.colors          = detail.colors;
+            this.selectedColorId = null;
+            this.loading         = false;
+            this.error           = '';
+            this.isOpen          = true;
+            document.body.style.overflow = 'hidden';
+        },
+
+        close() {
+            this.isOpen = false;
+            document.body.style.overflow = '';
+        },
+
+        async addToCart() {
+            if (!this.selectedColorId || this.loading) return;
+            this.loading = true;
+            this.error   = '';
+
+            const form = new FormData();
+            form.append('product_id', this.productId);
+            form.append('color_id',   this.selectedColorId);
+            form.append('quantity',   1);
+            form.append('_token',     document.querySelector('meta[name="csrf-token"]').content);
+
+            try {
+                const res  = await fetch('{{ route("cart.add") }}', {
+                    method:  'POST',
+                    headers: { 'Accept': 'application/json' },
+                    body:    form,
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    // Update cart badge
+                    const badge = document.getElementById('cart-count-badge');
+                    if (badge) {
+                        badge.textContent    = data.count > 9 ? '9+' : data.count;
+                        badge.style.display  = data.count > 0 ? '' : 'none';
+                    }
+                    this.$dispatch('cart-toast', { message: this.productName + ' added to cart!' });
+                    this.close();
+                } else {
+                    this.error = (data.errors && data.errors.color && data.errors.color[0])
+                        || data.message
+                        || 'Could not add to cart.';
+                }
+            } catch (e) {
+                this.error = 'Something went wrong. Please try again.';
+            } finally {
+                this.loading = false;
+            }
+        },
+    };
+}
+</script>
+
 @stack('scripts')
 
 {{-- ===== ANNOUNCEMENT POPUP ===== --}}
