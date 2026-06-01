@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductColor;
 use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -45,18 +46,69 @@ class InventoryController extends Controller
 
     public function adjustForm(Product $product)
     {
+        $product->load('colors');
         $movements = $product->stockMovements()->with('user')->latest()->paginate(20);
         return view('admin.inventory.adjust', compact('product', 'movements'));
     }
 
     public function adjust(Request $request, Product $product)
     {
+        $product->load('colors');
+        $hasColors = $product->colors->count() > 0;
+
         $data = $request->validate([
             'type'     => 'required|in:purchase,adjustment,damage',
             'quantity' => 'required|integer|not_in:0',
             'note'     => 'nullable|string|max:255',
+            'color_id' => $hasColors ? 'required|exists:product_colors,id' : 'nullable',
         ]);
 
+        // ── Color product adjustment ──────────────────────────────────────
+        if ($hasColors && !empty($data['color_id'])) {
+            $color = $product->colors->find($data['color_id']);
+
+            if (!$color) {
+                return back()->withErrors(['color_id' => 'Invalid color selected.']);
+            }
+
+            $colorBefore = (int) $color->stock_quantity;
+            $colorAfter  = $colorBefore + $data['quantity'];
+
+            if ($colorAfter < 0) {
+                return back()->withErrors(['quantity' => "Stock for {$color->name} cannot go below zero (current: {$colorBefore})."]);
+            }
+
+            DB::transaction(function () use ($product, $color, $data, $colorBefore, $colorAfter) {
+                $color->update(['stock_quantity' => $colorAfter]);
+
+                // Sync main product stock to sum of all color stocks
+                $product->refresh()->load('colors');
+                $newTotal      = $product->colors->sum('stock_quantity');
+                $productBefore = $product->stock_quantity;
+
+                $updates = ['stock_quantity' => $newTotal];
+                if ($newTotal > $product->low_stock_threshold && $product->low_stock_dismissed) {
+                    $updates['low_stock_dismissed'] = false;
+                }
+                $product->update($updates);
+
+                $noteText = "Color: {$color->name}" . ($data['note'] ? " — {$data['note']}" : '');
+
+                StockMovement::create([
+                    'product_id'      => $product->id,
+                    'type'            => $data['type'],
+                    'quantity'        => $data['quantity'],
+                    'before_quantity' => $productBefore,
+                    'after_quantity'  => $newTotal,
+                    'note'            => $noteText,
+                    'user_id'         => Auth::id(),
+                ]);
+            });
+
+            return back()->with('success', "Stock updated for {$color->name}: {$colorBefore} → {$colorAfter}");
+        }
+
+        // ── Plain product adjustment ──────────────────────────────────────
         $before = $product->stock_quantity;
         $after  = $before + $data['quantity'];
 
@@ -66,22 +118,19 @@ class InventoryController extends Controller
 
         DB::transaction(function () use ($product, $data, $before, $after) {
             $updates = ['stock_quantity' => $after];
-
-            // Auto-clear the low stock dismissal when restocked above threshold
             if ($after > $product->low_stock_threshold && $product->low_stock_dismissed) {
                 $updates['low_stock_dismissed'] = false;
             }
-
             $product->update($updates);
 
             StockMovement::create([
-                'product_id'       => $product->id,
-                'type'             => $data['type'],
-                'quantity'         => $data['quantity'],
-                'before_quantity'  => $before,
-                'after_quantity'   => $after,
-                'note'             => $data['note'],
-                'user_id'          => Auth::id(),
+                'product_id'      => $product->id,
+                'type'            => $data['type'],
+                'quantity'        => $data['quantity'],
+                'before_quantity' => $before,
+                'after_quantity'  => $after,
+                'note'            => $data['note'],
+                'user_id'         => Auth::id(),
             ]);
         });
 
