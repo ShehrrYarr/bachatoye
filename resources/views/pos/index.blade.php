@@ -967,6 +967,11 @@ $_posStats = [
     'payment_count'   => $todayPayments->payment_count ?? 0,
     'total_collected' => $todayPayments->total_collected ?? 0,
 ];
+$_posCategories = $categories->map(fn($c) => [
+    'id'    => $c->id,
+    'name'  => $c->name,
+    'image' => $c->image ? \Illuminate\Support\Facades\Storage::url($c->image) : null,
+])->values()->toArray();
 @endphp
 @push('scripts')
 <script>
@@ -977,11 +982,7 @@ function posApp() {
         searchQuery: '',
         displayProducts: [],
         loading: false,
-        categories: @json($categories->map(fn($c) => [
-            'id'    => $c->id,
-            'name'  => $c->name,
-            'image' => $c->image ? \Illuminate\Support\Facades\Storage::url($c->image) : null,
-        ])->values()),
+        categories: @json($_posCategories),
         selectedCategory: null,
         discountType: 'flat',
         discountValue: 0,
