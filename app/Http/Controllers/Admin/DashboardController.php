@@ -81,7 +81,10 @@ class DashboardController extends Controller
         $khataOther = $khataEntries->whereNotIn('payment_method', ['cash', 'bank_transfer'])->sum('amount');
         $khataTotal = $khataEntries->sum('amount');
 
-        $todayExpenses = (float) ($stats['today_expenses'] ?? 0);
+        $expensesData  = Expense::whereDate('expense_date', today())->get(['payment_method', 'amount']);
+        $todayExpenses = (float) $expensesData->sum('amount');
+        $expenseCash   = (float) $expensesData->where('payment_method', 'cash')->sum('amount');
+        $expenseBank   = (float) $expensesData->where('payment_method', 'bank_transfer')->sum('amount');
 
         $returnOrders = ReturnOrder::whereDate('created_at', today())
             ->whereIn('status', ['approved', 'completed'])
@@ -103,6 +106,8 @@ class DashboardController extends Controller
             'pos_cash'       => $posCash,
             'pos_bank'       => $posBank,
             'expenses'       => $todayExpenses,
+            'expense_cash'   => $expenseCash,
+            'expense_bank'   => $expenseBank,
             'khata_total'    => $khataTotal,
             'khata_cash'     => $khataCash,
             'khata_bank'     => $khataBank,
@@ -110,9 +115,9 @@ class DashboardController extends Controller
             'return_total'   => $returnTotal,
             'return_cash'    => $returnCash,
             'return_bank'    => $returnBank,
-            'total_cash'        => $posCash + $khataCash - $returnCash - $purchasesCashPaid,
-            'total_bank'        => $posBank + $khataBank - $returnBank - $purchasesBankPaid,
-            'grand_total'       => $posCash + $posBank + $khataTotal - $returnTotal - $purchasesPaid,
+            'total_cash'        => $posCash + $khataCash - $returnCash - $purchasesCashPaid - $expenseCash,
+            'total_bank'        => $posBank + $khataBank - $returnBank - $purchasesBankPaid - $expenseBank,
+            'grand_total'       => $posCash + $posBank + $khataTotal - $returnTotal - $purchasesPaid - $todayExpenses,
             'purchases_total'   => $purchasesTotal,
             'purchases_paid'    => $purchasesPaid,
             'purchases_due'     => $purchasesDue,
@@ -183,6 +188,11 @@ class DashboardController extends Controller
         $khataBank  = $khataEntries->where('payment_method', 'bank_transfer')->sum('amount');
         $khataTotal = $khataEntries->sum('amount');
 
+        $printExpenses     = Expense::whereDate('expense_date', today())->get(['payment_method', 'amount']);
+        $printExpenseTotal = (float) $printExpenses->sum('amount');
+        $printExpenseCash  = (float) $printExpenses->where('payment_method', 'cash')->sum('amount');
+        $printExpenseBank  = (float) $printExpenses->where('payment_method', 'bank_transfer')->sum('amount');
+
         // Per-bank breakdown for print
         $khataByBank = $khataEntries
             ->where('payment_method', 'bank_transfer')
@@ -201,7 +211,9 @@ class DashboardController extends Controller
             'pos_total'    => $posOrders->sum('total'),
             'pos_cash'     => $posCash,
             'pos_bank'     => $posBank,
-            'expenses'     => (float) Expense::whereDate('expense_date', today())->sum('amount'),
+            'expenses'     => $printExpenseTotal,
+            'expense_cash' => $printExpenseCash,
+            'expense_bank' => $printExpenseBank,
             'khata_total'  => $khataTotal,
             'khata_cash'   => $khataCash,
             'khata_bank'   => $khataBank,
@@ -215,9 +227,9 @@ class DashboardController extends Controller
             'purchases_due'     => $purchasesTotalPrint - $purchasesPaidPrint,
             'purchases_cash'    => $purchasesCashPrint,
             'purchases_bank'    => $purchasesBankPrint,
-            'total_cash'        => $posCash + $khataCash - $returnCash - $purchasesCashPrint,
-            'total_bank'        => $posBank + $khataBank - $returnBank - $purchasesBankPrint,
-            'grand_total'       => $posOrders->sum('total') + $khataTotal - $returnTotal - $purchasesPaidPrint,
+            'total_cash'        => $posCash + $khataCash - $returnCash - $purchasesCashPrint - $printExpenseCash,
+            'total_bank'        => $posBank + $khataBank - $returnBank - $purchasesBankPrint - $printExpenseBank,
+            'grand_total'       => $posOrders->sum('total') + $khataTotal - $returnTotal - $purchasesPaidPrint - $printExpenseTotal,
             'store_name'        => Setting::get('shop_name', config('app.name')),
             'store_phone'       => Setting::get('shop_phone', ''),
             'date'              => today()->format('d M Y'),
@@ -256,6 +268,11 @@ class DashboardController extends Controller
         $khataCash  = (float) $khataEntries->where('payment_method', 'cash')->sum('amount');
         $khataBank  = (float) $khataEntries->where('payment_method', 'bank_transfer')->sum('amount');
 
+        $printSalesmanExpenses     = Expense::whereDate('expense_date', today())->get(['payment_method', 'amount']);
+        $printSalesmanExpenseTotal = (float) $printSalesmanExpenses->sum('amount');
+        $printSalesmanExpenseCash  = (float) $printSalesmanExpenses->where('payment_method', 'cash')->sum('amount');
+        $printSalesmanExpenseBank  = (float) $printSalesmanExpenses->where('payment_method', 'bank_transfer')->sum('amount');
+
         $todayReport = [
             'pos_total'    => (float) $posOrders->sum('total'),
             'pos_cash'     => $posCash,
@@ -266,9 +283,12 @@ class DashboardController extends Controller
             'khata_total'  => $khataTotal,
             'khata_cash'   => $khataCash,
             'khata_bank'   => $khataBank,
-            'total_cash'   => $posCash + $khataCash - $returnCash,
-            'total_bank'   => $posBank + $khataBank - $returnBank,
-            'grand_total'  => (float) $posOrders->sum('total') + $khataTotal - $returnTotal,
+            'expenses'     => $printSalesmanExpenseTotal,
+            'expense_cash' => $printSalesmanExpenseCash,
+            'expense_bank' => $printSalesmanExpenseBank,
+            'total_cash'   => $posCash + $khataCash - $returnCash - $printSalesmanExpenseCash,
+            'total_bank'   => $posBank + $khataBank - $returnBank - $printSalesmanExpenseBank,
+            'grand_total'  => (float) $posOrders->sum('total') + $khataTotal - $returnTotal - $printSalesmanExpenseTotal,
             'purchases_total' => 0,
             'purchases_paid'  => 0,
             'purchases_due'   => 0,
@@ -351,6 +371,11 @@ class DashboardController extends Controller
         $khataCash  = (float) $khataEntries->where('payment_method', 'cash')->sum('amount');
         $khataBank  = (float) $khataEntries->where('payment_method', 'bank_transfer')->sum('amount');
 
+        $salesmanExpenses     = Expense::whereDate('expense_date', today())->get(['payment_method', 'amount']);
+        $salesmanExpenseTotal = (float) $salesmanExpenses->sum('amount');
+        $salesmanExpenseCash  = (float) $salesmanExpenses->where('payment_method', 'cash')->sum('amount');
+        $salesmanExpenseBank  = (float) $salesmanExpenses->where('payment_method', 'bank_transfer')->sum('amount');
+
         $todayReport = [
             'pos_total'    => (float) $posOrders->sum('total'),
             'pos_cash'     => $posCash,
@@ -361,9 +386,12 @@ class DashboardController extends Controller
             'khata_total'  => $khataTotal,
             'khata_cash'   => $khataCash,
             'khata_bank'   => $khataBank,
-            'total_cash'   => $posCash + $khataCash - $returnCash,
-            'total_bank'   => $posBank + $khataBank - $returnBank,
-            'grand_total'  => (float) $posOrders->sum('total') + $khataTotal - $returnTotal,
+            'expenses'     => $salesmanExpenseTotal,
+            'expense_cash' => $salesmanExpenseCash,
+            'expense_bank' => $salesmanExpenseBank,
+            'total_cash'   => $posCash + $khataCash - $returnCash - $salesmanExpenseCash,
+            'total_bank'   => $posBank + $khataBank - $returnBank - $salesmanExpenseBank,
+            'grand_total'  => (float) $posOrders->sum('total') + $khataTotal - $returnTotal - $salesmanExpenseTotal,
             'date'         => today()->format('d M Y'),
             // purchases keys initialised; adjusted after permission check below
             'purchases_total' => 0, 'purchases_paid' => 0, 'purchases_due' => 0,
