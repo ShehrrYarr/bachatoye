@@ -91,6 +91,16 @@
                             </div>
                             <i class="fas fa-money-bill-wave text-green-500 ml-auto mt-0.5"></i>
                         </label>
+                        @else
+                        <div class="flex items-start gap-3 p-4 bg-amber-50 border border-amber-300 rounded-xl">
+                            <i class="fas fa-exclamation-triangle text-amber-500 mt-0.5 shrink-0"></i>
+                            <div>
+                                <div class="font-semibold text-amber-800 text-sm">Cash on Delivery Unavailable</div>
+                                <div class="text-xs text-amber-700 mt-1 leading-relaxed">
+                                    Cash on Delivery is not available for one or more items in your cart. You will need to pay in advance to place your order. Our agent will call you to confirm your order after payment.
+                                </div>
+                            </div>
+                        </div>
                         @endif
 
                         {{-- Bank Transfer --}}
