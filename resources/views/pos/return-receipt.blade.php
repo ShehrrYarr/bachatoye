@@ -77,11 +77,7 @@
         </span>
     </div>
 
-    @if($return->restock)
-    <div style="margin-top: 2px; font-size: 11px;">Items restocked to inventory.</div>
-    @endif
-
-    <div class="divider-solid"></div>
+<div class="divider-solid"></div>
 
     <div class="center" style="font-size: 11px; margin-top: 4px;">
         <div>Items exchanged/returned within 7-day policy</div>
