@@ -491,6 +491,58 @@
             </div>
         </div>
     </template>
+
+    {{-- Open Session Modal --}}
+    <div x-show="showOpenSession" x-transition class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" x-data="{ cash: '' }">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-80" @click.outside="showOpenSession = false">
+            <h3 class="font-bold text-gray-900 text-lg mb-4">Open POS Session</h3>
+            <div class="mb-4">
+                <label class="form-label text-sm">Opening Cash (Rs.)</label>
+                <input type="number" x-model="cash" class="form-input" placeholder="0">
+            </div>
+            <div class="flex gap-3">
+                <button @click="openSession(cash)" class="btn-primary flex-1 justify-center">Open Session</button>
+                <button @click="showOpenSession = false" class="btn-outline flex-1 justify-center">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Close Session Modal --}}
+    <div x-show="showCloseSession" x-transition class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-80" @click.outside="showCloseSession = false">
+            <h3 class="font-bold text-gray-900 text-lg mb-2">Close POS Session</h3>
+            <p class="text-sm text-gray-500 mb-4">This will close the current session and generate a summary.</p>
+            <div class="flex gap-3">
+                <button @click="closeSession()" class="btn-danger flex-1 justify-center">Close Session</button>
+                <button @click="showCloseSession = false" class="btn-outline flex-1 justify-center">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- New Customer Modal --}}
+    <div x-show="showNewCustomer" x-transition class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-96" @click.outside="showNewCustomer = false">
+            <h3 class="font-bold text-gray-900 text-lg mb-4">Add New Customer</h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="form-label text-sm">Name *</label>
+                    <input type="text" x-model="newCustomer.name" class="form-input" placeholder="Customer name">
+                </div>
+                <div>
+                    <label class="form-label text-sm">Phone *</label>
+                    <input type="tel" x-model="newCustomer.phone" class="form-input" placeholder="03XX-XXXXXXX">
+                </div>
+                <div>
+                    <label class="form-label text-sm">Address</label>
+                    <input type="text" x-model="newCustomer.address" class="form-input" placeholder="Optional">
+                </div>
+            </div>
+            <div class="flex gap-3 mt-4">
+                <button @click="createCustomer()" class="btn-primary flex-1 justify-center">Save Customer</button>
+                <button @click="showNewCustomer = false" class="btn-outline flex-1 justify-center">Cancel</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 {{-- ===== DAILY SUMMARY BAR ===== --}}
@@ -869,59 +921,6 @@
     </div>
 </div>
 
-{{-- ===== MODALS ===== --}}
-
-{{-- Open Session Modal --}}
-<div x-show="showOpenSession" x-transition class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" x-data="{ cash: '' }">
-    <div class="bg-white rounded-2xl shadow-2xl p-6 w-80" @click.outside="showOpenSession = false">
-        <h3 class="font-bold text-gray-900 text-lg mb-4">Open POS Session</h3>
-        <div class="mb-4">
-            <label class="form-label text-sm">Opening Cash (Rs.)</label>
-            <input type="number" x-model="cash" class="form-input" placeholder="0">
-        </div>
-        <div class="flex gap-3">
-            <button @click="openSession(cash)" class="btn-primary flex-1 justify-center">Open Session</button>
-            <button @click="showOpenSession = false" class="btn-outline flex-1 justify-center">Cancel</button>
-        </div>
-    </div>
-</div>
-
-{{-- Close Session Modal --}}
-<div x-show="showCloseSession" x-transition class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-    <div class="bg-white rounded-2xl shadow-2xl p-6 w-80" @click.outside="showCloseSession = false">
-        <h3 class="font-bold text-gray-900 text-lg mb-2">Close POS Session</h3>
-        <p class="text-sm text-gray-500 mb-4">This will close the current session and generate a summary.</p>
-        <div class="flex gap-3">
-            <button @click="closeSession()" class="btn-danger flex-1 justify-center">Close Session</button>
-            <button @click="showCloseSession = false" class="btn-outline flex-1 justify-center">Cancel</button>
-        </div>
-    </div>
-</div>
-
-{{-- New Customer Modal --}}
-<div x-show="showNewCustomer" x-transition class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-    <div class="bg-white rounded-2xl shadow-2xl p-6 w-96" @click.outside="showNewCustomer = false">
-        <h3 class="font-bold text-gray-900 text-lg mb-4">Add New Customer</h3>
-        <div class="space-y-3">
-            <div>
-                <label class="form-label text-sm">Name *</label>
-                <input type="text" x-model="newCustomer.name" class="form-input" placeholder="Customer name">
-            </div>
-            <div>
-                <label class="form-label text-sm">Phone *</label>
-                <input type="tel" x-model="newCustomer.phone" class="form-input" placeholder="03XX-XXXXXXX">
-            </div>
-            <div>
-                <label class="form-label text-sm">Address</label>
-                <input type="text" x-model="newCustomer.address" class="form-input" placeholder="Optional">
-            </div>
-        </div>
-        <div class="flex gap-3 mt-4">
-            <button @click="createCustomer()" class="btn-primary flex-1 justify-center">Save Customer</button>
-            <button @click="showNewCustomer = false" class="btn-outline flex-1 justify-center">Cancel</button>
-        </div>
-    </div>
-</div>
 
 @php
 $_posStats = [
