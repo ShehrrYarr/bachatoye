@@ -172,7 +172,7 @@ class PosController extends Controller
                 'customer_name'   => $o->customer_name,
                 'customer_phone'  => ($o->customer_phone && $o->customer_phone !== '-') ? $o->customer_phone : null,
                 'items'           => $o->items->map(fn($i) => [
-                    'quantity'     => $i->quantity,
+                    'quantity'     => (int) $i->quantity,
                     'product_name' => $i->product_name,
                     'unit_price'   => (float) $i->unit_price,
                 ])->values(),
@@ -193,7 +193,7 @@ class PosController extends Controller
                 'return_number' => $r->return_number,
                 'order_number'  => $r->order?->order_number ?? '—',
                 'items'         => $r->items->map(fn($i) => [
-                    'quantity'     => $i->quantity,
+                    'quantity'     => (int) $i->quantity,
                     'product_name' => $i->product_name,
                     'unit_price'   => (float) $i->unit_price,
                 ])->values(),
