@@ -136,7 +136,7 @@ function heroBanner(total, interval) {
 {{-- Active Deals Strip --}}
 @if($activeDeals->count())
 <section class="max-w-7xl mx-auto px-4 mt-8">
-    <div class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+    <div class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide reveal">
         @foreach($activeDeals as $deal)
         <a href="{{ route('deals.index') }}" class="flex items-center gap-3 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-2xl px-5 py-3 shrink-0 hover:shadow-lg transition-all">
             <div class="text-2xl font-black">{{ $deal->badge_label }}</div>
@@ -168,12 +168,12 @@ function heroBanner(total, interval) {
              }
          }">
 
-    <div class="flex items-center justify-between mb-5">
+    <div class="flex items-center justify-between mb-5 reveal">
         <h2 class="text-xl font-bold text-gray-900">Shop by Category</h2>
         <a href="{{ route('products.index') }}" class="text-sm text-primary-600 hover:underline font-medium">All Categories</a>
     </div>
 
-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 lg:gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 lg:gap-4" data-reveal-grid>
         @foreach($categories as $cat)
         @php $hasSubs = $cat->children->where('is_active', true)->count() > 0; @endphp
 
@@ -318,7 +318,7 @@ window._catData = @js(
 {{-- Promo Banners --}}
 @if($promoBanners->count())
 <section class="max-w-7xl mx-auto px-4 mt-10">
-    <div class="grid grid-cols-1 md:grid-cols-{{ $promoBanners->count() > 1 ? '2' : '1' }} gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-{{ $promoBanners->count() > 1 ? '2' : '1' }} gap-4" data-reveal-grid>
         @foreach($promoBanners->take(2) as $banner)
         <a href="{{ $banner->link_url ?: '#' }}" class="relative overflow-hidden rounded-2xl group">
             <img src="{{ $banner->image_url }}" class="w-full object-cover h-48 group-hover:scale-105 transition-transform duration-500" alt="{{ $banner->title }}">
@@ -345,7 +345,7 @@ window._catData = @js(
          x-data="{ slide: 0, total: {{ $totalSlides }} }">
 
     {{-- Section header --}}
-    <div class="flex items-center justify-between mb-5">
+    <div class="flex items-center justify-between mb-5 reveal">
         <div class="flex items-center gap-3">
             <div class="w-1 h-7 bg-gradient-to-b from-red-500 to-pink-600 rounded-full"></div>
             <div>
@@ -408,14 +408,14 @@ window._catData = @js(
 {{-- Featured Products --}}
 @if($featuredProducts->count())
 <section class="max-w-7xl mx-auto px-4 mt-12">
-    <div class="flex items-center justify-between mb-5">
+    <div class="flex items-center justify-between mb-5 reveal">
         <div>
             <h2 class="text-xl font-bold text-gray-900">Featured Products</h2>
             <p class="text-sm text-gray-500">Handpicked top picks</p>
         </div>
         <a href="{{ route('products.index', ['featured' => 1]) }}" class="text-sm text-primary-600 hover:underline font-medium">View All</a>
     </div>
-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4" data-reveal-grid>
         @foreach($featuredProducts as $product)
             @include('ecom.partials.product-card', ['product' => $product])
         @endforeach
@@ -436,7 +436,7 @@ window._catData = @js(
 
 @foreach($sectionNewArrivals as $i => $data)
 <section class="max-w-7xl mx-auto px-4 mt-12 {{ $loop->last ? 'mb-8' : '' }}">
-    <div class="flex items-center justify-between mb-5">
+    <div class="flex items-center justify-between mb-5 reveal">
         <div class="flex items-center gap-3">
             {{-- Accent bar — cycles through palette --}}
             <div class="w-1 h-8 bg-gradient-to-b {{ $sectionAccents[$i % count($sectionAccents)] }} rounded-full"></div>
@@ -453,7 +453,7 @@ window._catData = @js(
         </a>
     </div>
 
-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4" data-reveal-grid>
         @foreach($data['products'] as $product)
             @include('ecom.partials.product-card', ['product' => $product])
         @endforeach
@@ -464,7 +464,7 @@ window._catData = @js(
 {{-- Trust badges --}}
 <section class="bg-white border-t border-gray-100 mt-12">
     <div class="max-w-7xl mx-auto px-4 py-10">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center" data-reveal-grid>
             <div class="flex flex-col items-center gap-2">
                 <div class="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center">
                     <i class="fas fa-shipping-fast text-primary-600 text-xl"></i>
@@ -498,3 +498,46 @@ window._catData = @js(
 </section>
 
 @endsection
+
+@push('styles')
+<style>
+.reveal {
+    opacity: 0;
+    transform: translateY(32px);
+    transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal.is-visible {
+    opacity: 1;
+    transform: none;
+}
+</style>
+@endpush
+
+@push('scripts')
+<script>
+(function () {
+    // Stagger children of every [data-reveal-grid] container
+    document.querySelectorAll('[data-reveal-grid]').forEach(function (grid) {
+        Array.from(grid.children).forEach(function (child, i) {
+            child.classList.add('reveal');
+            child.style.transitionDelay = Math.min(i * 0.08, 0.48) + 's';
+        });
+    });
+
+    // Observe all .reveal elements
+    var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.08, rootMargin: '0px 0px -48px 0px' });
+
+    document.querySelectorAll('.reveal').forEach(function (el) {
+        observer.observe(el);
+    });
+}());
+</script>
+@endpush
