@@ -232,6 +232,35 @@
             </div>
         </div>
 
+        {{-- Integrations --}}
+        <div class="card">
+            <div class="card-header">
+                <h2 class="font-semibold text-gray-800">
+                    <i class="fas fa-robot mr-1.5 text-indigo-500"></i> AI Chatbot (Tidio)
+                </h2>
+            </div>
+            <div class="card-body space-y-4">
+                <div>
+                    <label class="form-label">Tidio Public Key</label>
+                    <input type="text" name="tidio_key"
+                           value="{{ old('tidio_key', \App\Models\Setting::get('tidio_key')) }}"
+                           class="form-input font-mono text-sm"
+                           placeholder="e.g. abcdef1234567890abcdef1234567890">
+                    <p class="form-hint">
+                        Paste your Tidio Public Key here to enable the live chat widget on your store.
+                        Get it from <strong>Tidio Dashboard → Settings → Live Chat → Installation</strong>.
+                        Leave blank to disable the chatbot.
+                    </p>
+                </div>
+                @if(\App\Models\Setting::get('tidio_key'))
+                <div class="flex items-center gap-2 text-sm text-green-600 bg-green-50 rounded-lg px-3 py-2">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Tidio chatbot is active on your store.</span>
+                </div>
+                @endif
+            </div>
+        </div>
+
         {{-- Colour Customization --}}
         <div class="card xl:col-span-2"
              x-data="{
