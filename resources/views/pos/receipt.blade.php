@@ -73,6 +73,9 @@
     @foreach($order->items as $item)
     <div style="margin-bottom: 3px;">
         <div class="item-name" style="font-weight: bold;">{{ $item->product_name }}</div>
+        @if($item->color_name)
+        <div class="item-name" style="font-size: 11px; color: #555;">Color: {{ $item->color_name }}</div>
+        @endif
         <div class="row">
             <span class="item-name" style="font-size: 11px;">Rs.{{ number_format($item->unit_price) }} each</span>
             <span class="item-qty">x{{ $item->quantity }}</span>
