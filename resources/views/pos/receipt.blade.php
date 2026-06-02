@@ -110,10 +110,23 @@
     <div class="divider-solid"></div>
 
     @if($order->exchange_value > 0)
-    <div class="row total-row bold" style="margin-bottom: 2px;">
-        <span>PAYABLE AMOUNT</span>
-        <span>Rs.{{ number_format($order->total) }}</span>
-    </div>
+        @php $cashback = max(0, $order->exchange_value - $order->subtotal); @endphp
+        @if($order->total > 0)
+        <div class="row total-row bold" style="margin-bottom: 2px;">
+            <span>PAYABLE AMOUNT</span>
+            <span>Rs.{{ number_format($order->total) }}</span>
+        </div>
+        @elseif($cashback > 0)
+        <div class="row total-row bold" style="margin-bottom: 2px;">
+            <span>CASHBACK TO CUSTOMER</span>
+            <span>Rs.{{ number_format($cashback) }}</span>
+        </div>
+        @else
+        <div class="row total-row bold" style="margin-bottom: 2px;">
+            <span>EVEN EXCHANGE</span>
+            <span>Rs.0</span>
+        </div>
+        @endif
     @else
     <div class="row total-row bold" style="margin-bottom: 2px;">
         <span>TOTAL</span>
