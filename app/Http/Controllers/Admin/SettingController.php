@@ -28,7 +28,6 @@ class SettingController extends Controller
             'primary_color'       => Setting::get('primary_color',   '#e11d48'),
             'secondary_color'     => Setting::get('secondary_color', '#be123c'),
             'use_gradient'        => Setting::get('use_gradient',    '1'),
-            'tidio_key'           => Setting::get('tidio_key'),
         ];
         $sections = Section::orderBy('sort_order')->orderBy('name')->get();
         return view('admin.settings.index', compact('settings', 'sections'));
@@ -69,7 +68,6 @@ class SettingController extends Controller
             'social_tiktok'       => 'nullable|url|max:255',
             'whatsapp_number'     => 'nullable|string|max:20',
             'whatsapp_message'    => 'nullable|string|max:300',
-            'tidio_key'           => 'nullable|string|max:100',
             'logo'                => 'nullable|image|max:2048',
             'primary_color'       => 'nullable|regex:/^#[0-9a-fA-F]{6}$/',
             'secondary_color'     => 'nullable|regex:/^#[0-9a-fA-F]{6}$/',

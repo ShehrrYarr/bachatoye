@@ -500,12 +500,5 @@ function announcementPopup() {
 }
 </script>
 @endif
-
-{{-- ===== TIDIO CHATBOT ===== --}}
-@php $tidioKey = \App\Models\Setting::get('tidio_key'); @endphp
-@if($tidioKey)
-<script src="//code.tidio.co/{{ e($tidioKey) }}.js" async></script>
-@endif
-
 </body>
 </html>
