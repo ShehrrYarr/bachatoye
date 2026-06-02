@@ -30,12 +30,22 @@ class PosExchangeController extends Controller
         $order = Order::where('order_number', $orderNumber)
                       ->where('source', 'pos')
                       ->where('status', '!=', 'cancelled')
-                      ->with(['items.product'])
+                      ->with(['items.product', 'items.returnItems'])
                       ->first();
 
         if (!$order) {
             return response()->json(['error' => 'Order not found.'], 404);
         }
+
+        $exchangeableItems = $order->items
+            ->map(function ($item) {
+                $item->quantity = $item->quantity - $item->returnItems->sum('quantity');
+                return $item;
+            })
+            ->filter(fn($item) => $item->quantity > 0)
+            ->values();
+
+        $order->setRelation('items', $exchangeableItems);
 
         return response()->json($order);
     }
