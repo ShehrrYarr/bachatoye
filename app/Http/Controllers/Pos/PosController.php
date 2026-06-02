@@ -163,6 +163,7 @@ class PosController extends Controller
             ->whereDate('created_at', today())
             ->where('status', 'delivered')
             ->when(!$isAdmin, fn($q) => $q->where('served_by', $user->id))
+            ->latest()
             ->with(['items'])
             ->get()
             ->map(fn($o) => [
@@ -184,6 +185,7 @@ class PosController extends Controller
 
         $returns = \App\Models\ReturnOrder::whereDate('created_at', today())
             ->when(!$isAdmin, fn($q) => $q->where('processed_by', $user->id))
+            ->latest()
             ->with(['order', 'items'])
             ->get()
             ->map(fn($r) => [
@@ -203,6 +205,7 @@ class PosController extends Controller
         $payments = \App\Models\AccountLedger::whereDate('created_at', today())
             ->where('type', 'credit')
             ->when(!$isAdmin, fn($q) => $q->where('user_id', $user->id))
+            ->latest()
             ->with(['customer', 'user'])
             ->get()
             ->map(fn($p) => [
