@@ -321,6 +321,7 @@ Route::prefix('pos')->name('pos.')->middleware(['auth', 'permission:pos.access']
     Route::post('/customer', [Pos\PosController::class, 'createCustomer'])->name('customer.create');
     Route::get('/receipt/{order}', [Pos\PosController::class, 'receipt'])->name('receipt');
     Route::get('/stats', [Pos\PosController::class, 'stats'])->name('stats');
+    Route::get('/today-activity', [Pos\PosController::class, 'todayActivity'])->name('today-activity');
 
     // Returns
     Route::get('/return', [Pos\PosReturnController::class, 'index'])

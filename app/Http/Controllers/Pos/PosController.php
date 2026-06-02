@@ -154,6 +154,71 @@ class PosController extends Controller
         ]);
     }
 
+    public function todayActivity(): \Illuminate\Http\JsonResponse
+    {
+        $user    = Auth::user();
+        $isAdmin = $user->hasRole('admin');
+
+        $orders = Order::where('source', 'pos')
+            ->whereDate('created_at', today())
+            ->where('status', 'delivered')
+            ->when(!$isAdmin, fn($q) => $q->where('served_by', $user->id))
+            ->with(['items'])
+            ->get()
+            ->map(fn($o) => [
+                'time'            => $o->created_at->format('H:i'),
+                'order_number'    => $o->order_number,
+                'customer_name'   => $o->customer_name,
+                'customer_phone'  => ($o->customer_phone && $o->customer_phone !== '-') ? $o->customer_phone : null,
+                'items'           => $o->items->map(fn($i) => [
+                    'quantity'     => $i->quantity,
+                    'product_name' => $i->product_name,
+                    'unit_price'   => (float) $i->unit_price,
+                ])->values(),
+                'payment_method'  => $o->payment_method,
+                'cash_amount'     => (float) ($o->cash_amount ?? 0),
+                'bank_amount'     => (float) ($o->bank_amount ?? 0),
+                'total'           => (float) $o->total,
+                'discount_amount' => (float) ($o->discount_amount ?? 0),
+            ])->values();
+
+        $returns = \App\Models\ReturnOrder::whereDate('created_at', today())
+            ->when(!$isAdmin, fn($q) => $q->where('processed_by', $user->id))
+            ->with(['order', 'items'])
+            ->get()
+            ->map(fn($r) => [
+                'time'          => $r->created_at->format('H:i'),
+                'return_number' => $r->return_number,
+                'order_number'  => $r->order?->order_number ?? '—',
+                'items'         => $r->items->map(fn($i) => [
+                    'quantity'     => $i->quantity,
+                    'product_name' => $i->product_name,
+                    'unit_price'   => (float) $i->unit_price,
+                ])->values(),
+                'reason'        => $r->reason ?? '—',
+                'refund_amount' => (float) $r->refund_amount,
+                'refund_method' => $r->refund_method ?? '',
+            ])->values();
+
+        $payments = \App\Models\AccountLedger::whereDate('created_at', today())
+            ->where('type', 'credit')
+            ->when(!$isAdmin, fn($q) => $q->where('user_id', $user->id))
+            ->with(['customer', 'user'])
+            ->get()
+            ->map(fn($p) => [
+                'time'           => $p->created_at->format('H:i'),
+                'customer_name'  => $p->customer?->name ?? '—',
+                'customer_phone' => $p->customer?->phone ?? null,
+                'description'    => $p->description ?? null,
+                'reference'      => $p->reference ?? null,
+                'user_name'      => $p->user?->name ?? '—',
+                'amount'         => (float) $p->amount,
+                'balance_after'  => (float) ($p->balance_after ?? 0),
+            ])->values();
+
+        return response()->json(compact('orders', 'returns', 'payments'));
+    }
+
     public function openSession(Request $request)
     {
         $data = $request->validate(['opening_cash' => 'required|numeric|min:0']);

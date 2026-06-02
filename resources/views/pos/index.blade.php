@@ -635,97 +635,80 @@
                         </div>
                     </div>
 
-                    @if($todaySalesOrders->isEmpty())
-                        <div class="text-center py-16 text-gray-300">
-                            <i class="fas fa-shopping-cart text-4xl mb-3"></i>
-                            <p class="text-sm text-gray-400">No sales today yet</p>
-                        </div>
-                    @else
-                        <div class="overflow-x-auto rounded-xl border border-gray-100">
-                            <table class="w-full text-sm">
-                                <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
-                                    <tr>
-                                        <th class="text-left px-4 py-2.5 font-semibold">Time</th>
-                                        <th class="text-left px-4 py-2.5 font-semibold">Order #</th>
-                                        <th class="text-left px-4 py-2.5 font-semibold">Customer</th>
-                                        <th class="text-left px-4 py-2.5 font-semibold">Items Sold</th>
-                                        <th class="text-left px-4 py-2.5 font-semibold">Payment</th>
-                                        <th class="text-right px-4 py-2.5 font-semibold">Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-50">
-                                    @foreach($todaySalesOrders as $saleOrder)
+                    <div x-show="activityLoading" class="text-center py-16 text-gray-300">
+                        <i class="fas fa-spinner fa-spin text-4xl mb-3"></i>
+                        <p class="text-sm text-gray-400">Loading...</p>
+                    </div>
+                    <div x-show="!activityLoading && orders.length === 0" class="text-center py-16 text-gray-300">
+                        <i class="fas fa-shopping-cart text-4xl mb-3"></i>
+                        <p class="text-sm text-gray-400">No sales today yet</p>
+                    </div>
+                    <div x-show="!activityLoading && orders.length > 0" class="overflow-x-auto rounded-xl border border-gray-100">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                                <tr>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Time</th>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Order #</th>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Customer</th>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Items Sold</th>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Payment</th>
+                                    <th class="text-right px-4 py-2.5 font-semibold">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-50">
+                                <template x-for="(o, idx) in orders" :key="idx">
                                     <tr class="hover:bg-gray-50 transition-colors">
-                                        <td class="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
-                                            {{ $saleOrder->created_at->format('H:i') }}
-                                        </td>
+                                        <td class="px-4 py-3 text-xs text-gray-500 whitespace-nowrap" x-text="o.time"></td>
                                         <td class="px-4 py-3">
-                                            <span class="font-mono text-xs text-gray-700">{{ $saleOrder->order_number }}</span>
+                                            <span class="font-mono text-xs text-gray-700" x-text="o.order_number"></span>
                                         </td>
                                         <td class="px-4 py-3 text-xs text-gray-700">
-                                            <div class="font-medium">{{ $saleOrder->customer_name }}</div>
-                                            @if($saleOrder->customer_phone && $saleOrder->customer_phone !== '-')
-                                                <div class="text-gray-400">{{ $saleOrder->customer_phone }}</div>
-                                            @endif
+                                            <div class="font-medium" x-text="o.customer_name"></div>
+                                            <div class="text-gray-400" x-show="o.customer_phone" x-text="o.customer_phone"></div>
                                         </td>
                                         <td class="px-4 py-3">
                                             <div class="space-y-0.5">
-                                                @foreach($saleOrder->items as $it)
-                                                <div class="text-xs text-gray-700 flex items-center gap-1">
-                                                    <span class="inline-block w-5 h-5 bg-primary-100 text-primary-700 rounded-full text-center leading-5 font-bold shrink-0 text-[10px]">{{ $it->quantity }}</span>
-                                                    <span>{{ $it->product_name }}</span>
-                                                    <span class="text-gray-400 ml-auto whitespace-nowrap">× Rs.{{ number_format($it->unit_price) }}</span>
-                                                </div>
-                                                @endforeach
+                                                <template x-for="(it, j) in o.items" :key="j">
+                                                    <div class="text-xs text-gray-700 flex items-center gap-1">
+                                                        <span class="inline-block w-5 h-5 bg-primary-100 text-primary-700 rounded-full text-center leading-5 font-bold shrink-0 text-[10px]" x-text="it.quantity"></span>
+                                                        <span x-text="it.product_name"></span>
+                                                        <span class="text-gray-400 ml-auto whitespace-nowrap" x-text="'× Rs.' + fmt(it.unit_price)"></span>
+                                                    </div>
+                                                </template>
                                             </div>
                                         </td>
                                         <td class="px-4 py-3">
-                                            @php
-                                                $pmLabel = match($saleOrder->payment_method) {
-                                                    'cash'          => ['Cash',     'bg-green-100 text-green-700'],
-                                                    'bank_transfer' => ['Bank',     'bg-blue-100 text-blue-700'],
-                                                    'khata'         => ['Khata',    'bg-red-100 text-red-700'],
-                                                    'partial'       => ['Partial',  'bg-orange-100 text-orange-700'],
-                                                    'split'         => ['Split',    'bg-teal-100 text-teal-700'],
-                                                    default         => [ucfirst($saleOrder->payment_method), 'bg-gray-100 text-gray-600'],
-                                                };
-                                            @endphp
-                                            <span class="text-xs px-2 py-0.5 rounded-full font-medium {{ $pmLabel[1] }}">{{ $pmLabel[0] }}</span>
-                                            @if($saleOrder->payment_method === 'split')
-                                            <div class="mt-1 space-y-0.5">
+                                            <span class="text-xs px-2 py-0.5 rounded-full font-medium"
+                                                  :class="pmLabel(o.payment_method).cls"
+                                                  x-text="pmLabel(o.payment_method).label"></span>
+                                            <div x-show="o.payment_method === 'split'" class="mt-1 space-y-0.5">
                                                 <div class="text-xs text-green-600">
-                                                    <i class="fas fa-money-bill-wave text-[10px] mr-0.5"></i>Rs. {{ number_format($saleOrder->cash_amount) }}
+                                                    <i class="fas fa-money-bill-wave text-[10px] mr-0.5"></i><span x-text="'Rs. ' + fmt(o.cash_amount)"></span>
                                                 </div>
                                                 <div class="text-xs text-blue-600">
-                                                    <i class="fas fa-university text-[10px] mr-0.5"></i>Rs. {{ number_format($saleOrder->bank_amount) }}
+                                                    <i class="fas fa-university text-[10px] mr-0.5"></i><span x-text="'Rs. ' + fmt(o.bank_amount)"></span>
                                                 </div>
                                             </div>
-                                            @endif
                                         </td>
                                         <td class="px-4 py-3 text-right">
-                                            <div class="font-bold text-gray-900">Rs. {{ number_format($saleOrder->total) }}</div>
-                                            @if($saleOrder->discount_amount > 0)
-                                                <div class="text-xs text-red-400">-Rs.{{ number_format($saleOrder->discount_amount) }} disc.</div>
-                                            @endif
+                                            <div class="font-bold text-gray-900" x-text="'Rs. ' + fmt(o.total)"></div>
+                                            <div x-show="o.discount_amount > 0" class="text-xs text-red-400"
+                                                 x-text="'-Rs.' + fmt(o.discount_amount) + ' disc.'"></div>
                                         </td>
                                     </tr>
-                                    @endforeach
-                                </tbody>
-                                <tfoot class="bg-gray-50 border-t-2 border-gray-200">
-                                    <tr>
-                                        <td colspan="3" class="px-4 py-3 text-sm font-bold text-gray-700">
-                                            Total — {{ $todaySalesOrders->count() }} orders,
-                                            {{ $todaySalesOrders->sum(fn($o) => $o->items->sum('quantity')) }} items
-                                        </td>
-                                        <td colspan="2"></td>
-                                        <td class="px-4 py-3 text-right font-bold text-lg text-primary-700">
-                                            Rs. {{ number_format($todaySalesOrders->sum('total')) }}
-                                        </td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    @endif
+                                </template>
+                            </tbody>
+                            <tfoot class="bg-gray-50 border-t-2 border-gray-200">
+                                <tr>
+                                    <td colspan="3" class="px-4 py-3 text-sm font-bold text-gray-700"
+                                        x-text="`Total — ${orders.length} orders, ${orders.reduce((s,o) => s + o.items.reduce((ss,i) => ss + i.quantity, 0), 0)} items`"></td>
+                                    <td colspan="2"></td>
+                                    <td class="px-4 py-3 text-right font-bold text-lg text-primary-700"
+                                        x-text="'Rs. ' + fmt(orders.reduce((s,o) => s + o.total, 0))"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
                 </div>
 
                 {{-- ======== RETURNS TABLE ======== --}}
@@ -743,76 +726,69 @@
                         </div>
                     </div>
 
-                    @if($todayReturnsList->isEmpty())
-                        <div class="text-center py-16 text-gray-300">
-                            <i class="fas fa-undo text-4xl mb-3"></i>
-                            <p class="text-sm text-gray-400">No returns today</p>
-                        </div>
-                    @else
-                        <div class="overflow-x-auto rounded-xl border border-gray-100">
-                            <table class="w-full text-sm">
-                                <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
-                                    <tr>
-                                        <th class="text-left px-4 py-2.5 font-semibold">Time</th>
-                                        <th class="text-left px-4 py-2.5 font-semibold">Return #</th>
-                                        <th class="text-left px-4 py-2.5 font-semibold">Orig. Order</th>
-                                        <th class="text-left px-4 py-2.5 font-semibold">Items Returned</th>
-                                        <th class="text-left px-4 py-2.5 font-semibold">Reason</th>
-                                        <th class="text-right px-4 py-2.5 font-semibold">Refund</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-50">
-                                    @foreach($todayReturnsList as $ret)
+                    <div x-show="activityLoading" class="text-center py-16 text-gray-300">
+                        <i class="fas fa-spinner fa-spin text-4xl mb-3"></i>
+                        <p class="text-sm text-gray-400">Loading...</p>
+                    </div>
+                    <div x-show="!activityLoading && returns.length === 0" class="text-center py-16 text-gray-300">
+                        <i class="fas fa-undo text-4xl mb-3"></i>
+                        <p class="text-sm text-gray-400">No returns today</p>
+                    </div>
+                    <div x-show="!activityLoading && returns.length > 0" class="overflow-x-auto rounded-xl border border-gray-100">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                                <tr>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Time</th>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Return #</th>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Orig. Order</th>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Items Returned</th>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Reason</th>
+                                    <th class="text-right px-4 py-2.5 font-semibold">Refund</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-50">
+                                <template x-for="(r, idx) in returns" :key="idx">
                                     <tr class="hover:bg-gray-50 transition-colors">
-                                        <td class="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
-                                            {{ $ret->created_at->format('H:i') }}
+                                        <td class="px-4 py-3 text-xs text-gray-500 whitespace-nowrap" x-text="r.time"></td>
+                                        <td class="px-4 py-3">
+                                            <span class="font-mono text-xs text-gray-700" x-text="r.return_number"></span>
                                         </td>
                                         <td class="px-4 py-3">
-                                            <span class="font-mono text-xs text-gray-700">{{ $ret->return_number }}</span>
-                                        </td>
-                                        <td class="px-4 py-3">
-                                            <span class="font-mono text-xs text-gray-500">{{ $ret->order?->order_number ?? '—' }}</span>
+                                            <span class="font-mono text-xs text-gray-500" x-text="r.order_number"></span>
                                         </td>
                                         <td class="px-4 py-3">
                                             <div class="space-y-0.5">
-                                                @if($ret->items->isEmpty())
+                                                <template x-if="r.items.length === 0">
                                                     <span class="text-xs text-gray-400 italic">No items</span>
-                                                @else
-                                                    @foreach($ret->items as $ri)
+                                                </template>
+                                                <template x-for="(ri, j) in r.items" :key="j">
                                                     <div class="text-xs text-gray-700 flex items-center gap-1">
-                                                        <span class="inline-block w-5 h-5 bg-red-100 text-red-600 rounded-full text-center leading-5 font-bold shrink-0 text-[10px]">{{ $ri->quantity }}</span>
-                                                        <span>{{ $ri->product_name }}</span>
-                                                        <span class="text-gray-400 ml-auto whitespace-nowrap">× Rs.{{ number_format($ri->unit_price) }}</span>
+                                                        <span class="inline-block w-5 h-5 bg-red-100 text-red-600 rounded-full text-center leading-5 font-bold shrink-0 text-[10px]" x-text="ri.quantity"></span>
+                                                        <span x-text="ri.product_name"></span>
+                                                        <span class="text-gray-400 ml-auto whitespace-nowrap" x-text="'× Rs.' + fmt(ri.unit_price)"></span>
                                                     </div>
-                                                    @endforeach
-                                                @endif
+                                                </template>
                                             </div>
                                         </td>
-                                        <td class="px-4 py-3 text-xs text-gray-500 max-w-xs">
-                                            {{ $ret->reason ?? '—' }}
-                                        </td>
+                                        <td class="px-4 py-3 text-xs text-gray-500 max-w-xs" x-text="r.reason"></td>
                                         <td class="px-4 py-3 text-right">
-                                            <div class="font-bold text-red-600">Rs. {{ number_format($ret->refund_amount) }}</div>
-                                            <div class="text-xs text-gray-400 capitalize">{{ str_replace('_', ' ', $ret->refund_method ?? '') }}</div>
+                                            <div class="font-bold text-red-600" x-text="'Rs. ' + fmt(r.refund_amount)"></div>
+                                            <div class="text-xs text-gray-400 capitalize" x-text="r.refund_method.replace('_', ' ')"></div>
                                         </td>
                                     </tr>
-                                    @endforeach
-                                </tbody>
-                                <tfoot class="bg-gray-50 border-t-2 border-gray-200">
-                                    <tr>
-                                        <td colspan="4" class="px-4 py-3 text-sm font-bold text-gray-700">
-                                            Total — {{ $todayReturnsList->count() }} returns,
-                                            {{ $todayReturnsList->sum(fn($r) => $r->items->sum('quantity')) }} items
-                                        </td>
-                                        <td></td>
-                                        <td class="px-4 py-3 text-right font-bold text-lg text-red-600">
-                                            Rs. {{ number_format($todayReturnsList->sum('refund_amount')) }}
-                                        </td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    @endif
+                                </template>
+                            </tbody>
+                            <tfoot class="bg-gray-50 border-t-2 border-gray-200">
+                                <tr>
+                                    <td colspan="4" class="px-4 py-3 text-sm font-bold text-gray-700"
+                                        x-text="`Total — ${returns.length} returns, ${returns.reduce((s,r) => s + r.items.reduce((ss,i) => ss + i.quantity, 0), 0)} items`"></td>
+                                    <td></td>
+                                    <td class="px-4 py-3 text-right font-bold text-lg text-red-600"
+                                        x-text="'Rs. ' + fmt(returns.reduce((s,r) => s + r.refund_amount, 0))"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
                 </div>
 
                 {{-- ======== PAYMENTS TABLE ======== --}}
@@ -830,71 +806,62 @@
                         </div>
                     </div>
 
-                    @if($todayPaymentsList->isEmpty())
-                        <div class="text-center py-16 text-gray-300">
-                            <i class="fas fa-hand-holding-usd text-4xl mb-3"></i>
-                            <p class="text-sm text-gray-400">No customer payments recorded today</p>
-                        </div>
-                    @else
-                        <div class="overflow-x-auto rounded-xl border border-gray-100">
-                            <table class="w-full text-sm">
-                                <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
-                                    <tr>
-                                        <th class="text-left px-4 py-2.5 font-semibold">Time</th>
-                                        <th class="text-left px-4 py-2.5 font-semibold">Customer</th>
-                                        <th class="text-left px-4 py-2.5 font-semibold">Description</th>
-                                        <th class="text-left px-4 py-2.5 font-semibold">Recorded By</th>
-                                        <th class="text-right px-4 py-2.5 font-semibold">Paid</th>
-                                        <th class="text-right px-4 py-2.5 font-semibold">Balance After</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-50">
-                                    @foreach($todayPaymentsList as $payment)
+                    <div x-show="activityLoading" class="text-center py-16 text-gray-300">
+                        <i class="fas fa-spinner fa-spin text-4xl mb-3"></i>
+                        <p class="text-sm text-gray-400">Loading...</p>
+                    </div>
+                    <div x-show="!activityLoading && payments.length === 0" class="text-center py-16 text-gray-300">
+                        <i class="fas fa-hand-holding-usd text-4xl mb-3"></i>
+                        <p class="text-sm text-gray-400">No customer payments recorded today</p>
+                    </div>
+                    <div x-show="!activityLoading && payments.length > 0" class="overflow-x-auto rounded-xl border border-gray-100">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                                <tr>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Time</th>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Customer</th>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Description</th>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Recorded By</th>
+                                    <th class="text-right px-4 py-2.5 font-semibold">Paid</th>
+                                    <th class="text-right px-4 py-2.5 font-semibold">Balance After</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-50">
+                                <template x-for="(p, idx) in payments" :key="idx">
                                     <tr class="hover:bg-gray-50 transition-colors">
-                                        <td class="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
-                                            {{ $payment->created_at->format('H:i') }}
-                                        </td>
+                                        <td class="px-4 py-3 text-xs text-gray-500 whitespace-nowrap" x-text="p.time"></td>
                                         <td class="px-4 py-3">
-                                            <div class="font-medium text-sm text-gray-800">{{ $payment->customer?->name ?? '—' }}</div>
-                                            @if($payment->customer?->phone)
-                                                <div class="text-xs text-gray-400">{{ $payment->customer->phone }}</div>
-                                            @endif
+                                            <div class="font-medium text-sm text-gray-800" x-text="p.customer_name"></div>
+                                            <div class="text-xs text-gray-400" x-show="p.customer_phone" x-text="p.customer_phone"></div>
                                         </td>
                                         <td class="px-4 py-3 text-xs text-gray-600 max-w-xs">
-                                            {{ $payment->description ?: '—' }}
-                                            @if($payment->reference)
-                                                <div class="text-gray-400 font-mono">Ref: {{ $payment->reference }}</div>
-                                            @endif
+                                            <span x-text="p.description || '—'"></span>
+                                            <div x-show="p.reference" class="text-gray-400 font-mono" x-text="'Ref: ' + p.reference"></div>
                                         </td>
-                                        <td class="px-4 py-3 text-xs text-gray-500">
-                                            {{ $payment->user?->name ?? '—' }}
-                                        </td>
+                                        <td class="px-4 py-3 text-xs text-gray-500" x-text="p.user_name"></td>
                                         <td class="px-4 py-3 text-right">
-                                            <span class="font-bold text-green-600 text-sm">+ Rs. {{ number_format($payment->amount) }}</span>
+                                            <span class="font-bold text-green-600 text-sm" x-text="'+ Rs. ' + fmt(p.amount)"></span>
                                         </td>
                                         <td class="px-4 py-3 text-right text-xs">
-                                            @php $bal = $payment->balance_after; @endphp
-                                            <span class="font-semibold {{ $bal < 0 ? 'text-red-500' : 'text-gray-600' }}">
-                                                {{ $bal < 0 ? '– Rs. ' . number_format(abs($bal)) . ' owed' : 'Rs. ' . number_format($bal) . ' credit' }}
+                                            <span class="font-semibold"
+                                                  :class="p.balance_after < 0 ? 'text-red-500' : 'text-gray-600'"
+                                                  x-text="p.balance_after < 0 ? '– Rs. ' + fmt(Math.abs(p.balance_after)) + ' owed' : 'Rs. ' + fmt(p.balance_after) + ' credit'">
                                             </span>
                                         </td>
                                     </tr>
-                                    @endforeach
-                                </tbody>
-                                <tfoot class="bg-gray-50 border-t-2 border-gray-200">
-                                    <tr>
-                                        <td colspan="3" class="px-4 py-3 text-sm font-bold text-gray-700">
-                                            Total — {{ $todayPaymentsList->count() }} payment(s)
-                                        </td>
-                                        <td colspan="2"></td>
-                                        <td class="px-4 py-3 text-right font-bold text-lg text-green-600">
-                                            + Rs. {{ number_format($todayPaymentsList->sum('amount')) }}
-                                        </td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    @endif
+                                </template>
+                            </tbody>
+                            <tfoot class="bg-gray-50 border-t-2 border-gray-200">
+                                <tr>
+                                    <td colspan="3" class="px-4 py-3 text-sm font-bold text-gray-700"
+                                        x-text="`Total — ${payments.length} payment(s)`"></td>
+                                    <td colspan="2"></td>
+                                    <td class="px-4 py-3 text-right font-bold text-lg text-green-600"
+                                        x-text="'+ Rs. ' + fmt(payments.reduce((s,p) => s + p.amount, 0))"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
                 </div>
 
             </div>{{-- end overflow-y-auto --}}
@@ -1298,24 +1265,51 @@ function posStats() {
     return {
         showDailyModal: false,
         activeTab: 'sales',
-
         stats: @json($_posStats),
+        orders: [],
+        returns: [],
+        payments: [],
+        activityLoading: false,
 
         get netRevenue() {
             return this.stats.total_revenue - this.stats.total_refunded;
         },
 
         init() {
-            window.addEventListener('pos:order-placed', () => this.refresh());
+            this.$watch('showDailyModal', val => { if (val) this.loadActivity(); });
+            window.addEventListener('pos:order-placed', () => { this.refresh(); this.loadActivity(); });
         },
 
         async refresh() {
             try {
                 const res = await fetch('/pos/stats');
-                if (res.ok) {
-                    this.stats = await res.json();
-                }
+                if (res.ok) this.stats = await res.json();
             } catch(e) { console.error('Stats refresh failed', e); }
+        },
+
+        async loadActivity() {
+            this.activityLoading = true;
+            try {
+                const res = await fetch('/pos/today-activity');
+                if (res.ok) {
+                    const data = await res.json();
+                    this.orders   = data.orders   ?? [];
+                    this.returns  = data.returns  ?? [];
+                    this.payments = data.payments ?? [];
+                }
+            } catch(e) { console.error('Activity load failed', e); }
+            this.activityLoading = false;
+        },
+
+        pmLabel(method) {
+            const map = {
+                cash:          { label: 'Cash',    cls: 'bg-green-100 text-green-700' },
+                bank_transfer: { label: 'Bank',    cls: 'bg-blue-100 text-blue-700' },
+                khata:         { label: 'Khata',   cls: 'bg-red-100 text-red-700' },
+                partial:       { label: 'Partial', cls: 'bg-orange-100 text-orange-700' },
+                split:         { label: 'Split',   cls: 'bg-teal-100 text-teal-700' },
+            };
+            return map[method] || { label: method, cls: 'bg-gray-100 text-gray-600' };
         },
 
         fmt(n) {
