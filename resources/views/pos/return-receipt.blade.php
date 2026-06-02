@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <title>Return Receipt — {{ $return->return_number }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Courier New', Courier, monospace; font-size: 12px; width: 80mm; max-width: 80mm; margin: 0 auto; padding: 4mm; color: #000; background: #fff; }
+        body { font-family: 'Roboto', sans-serif; font-size: 12px; width: 80mm; max-width: 80mm; margin: 0 auto; padding: 4mm; color: #000; background: #fff; }
         .center { text-align: center; }
         .bold { font-weight: bold; }
         .divider { border-top: 1px dashed #000; margin: 4px 0; }
