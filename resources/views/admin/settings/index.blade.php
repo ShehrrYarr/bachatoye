@@ -220,6 +220,14 @@
                     <label class="form-label">WhatsApp Number</label>
                     <input type="text" name="whatsapp_number" value="{{ old('whatsapp_number', \App\Models\Setting::get('whatsapp_number')) }}"
                            class="form-input" placeholder="923001234567 (with country code, no +)">
+                    <p class="form-hint">Include country code without + (e.g. 923001234567). Leave blank to hide the WhatsApp button.</p>
+                </div>
+                <div>
+                    <label class="form-label">WhatsApp Pre-filled Message</label>
+                    <input type="text" name="whatsapp_message"
+                           value="{{ old('whatsapp_message', \App\Models\Setting::get('whatsapp_message', 'Hi, I need help with an order.')) }}"
+                           class="form-input" placeholder="Hi, I need help with an order.">
+                    <p class="form-hint">This message will be pre-filled when a customer opens WhatsApp.</p>
                 </div>
             </div>
         </div>

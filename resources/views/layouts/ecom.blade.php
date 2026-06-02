@@ -312,6 +312,22 @@ function liveSearch() {
     </div>
 </div>
 
+{{-- ===== WHATSAPP FLOATING BUTTON ===== --}}
+@php
+    $waNumber  = \App\Models\Setting::get('whatsapp_number');
+    $waMessage = \App\Models\Setting::get('whatsapp_message', 'Hi, I need help with an order.');
+@endphp
+@if($waNumber)
+<a href="https://wa.me/{{ preg_replace('/\D/', '', $waNumber) }}?text={{ urlencode($waMessage) }}"
+   target="_blank"
+   rel="noopener noreferrer"
+   title="Chat with us on WhatsApp"
+   class="fixed bottom-6 right-6 z-50 flex items-center justify-center w-14 h-14 rounded-full shadow-2xl transition-transform hover:scale-110 active:scale-95"
+   style="background: #25D366;">
+    <i class="fab fa-whatsapp text-white text-3xl"></i>
+</a>
+@endif
+
 {{-- ===== CART TOAST ===== --}}
 <div x-data="{ show: false, message: '' }"
      @cart-toast.window="message = $event.detail.message; show = true; setTimeout(() => show = false, 3500)"
