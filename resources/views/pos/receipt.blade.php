@@ -99,19 +99,27 @@
         </div>
         @endif
         @if($order->exchange_value > 0)
-        <div class="row">
-            <span>Exchange: {{ $order->exchange_item_name ?? 'Item' }}</span>
+        <div class="row" style="margin-top: 3px;">
+            <span>Exchange Trade-in</span>
             <span>- Rs.{{ number_format($order->exchange_value) }}</span>
         </div>
+        <div style="font-size: 10px; color: #555; padding-left: 4px;">{{ $order->exchange_item_name ?? 'Returned Item' }}</div>
         @endif
     </div>
 
     <div class="divider-solid"></div>
 
+    @if($order->exchange_value > 0)
+    <div class="row total-row bold" style="margin-bottom: 2px;">
+        <span>PAYABLE AMOUNT</span>
+        <span>Rs.{{ number_format($order->total) }}</span>
+    </div>
+    @else
     <div class="row total-row bold" style="margin-bottom: 2px;">
         <span>TOTAL</span>
         <span>Rs.{{ number_format($order->total) }}</span>
     </div>
+    @endif
 
     <div class="divider"></div>
 
