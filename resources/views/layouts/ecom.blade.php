@@ -323,8 +323,7 @@ function liveSearch() {
    rel="noopener noreferrer"
    title="Chat with us on WhatsApp"
    class="fixed z-50 flex items-center justify-center w-14 h-14 rounded-full shadow-2xl transition-transform hover:scale-110 active:scale-95"
-   style="bottom: 1.5rem; right: 1.75rem;"
-   style="background: #25D366;">
+   style="bottom: 1.5rem; right: 2rem; background: #25D366;">
     <i class="fab fa-whatsapp text-white text-3xl"></i>
 </a>
 @endif
