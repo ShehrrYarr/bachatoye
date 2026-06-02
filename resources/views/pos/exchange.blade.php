@@ -89,7 +89,7 @@
                                     </label>
                                     <input type="number" x-model.number="returnQty"
                                            :max="selectedItem?.quantity" min="1"
-                                           @change="recalculate()"
+                                           @change="exchangeValue = parseFloat(selectedItem.unit_price) * returnQty; recalculate()"
                                            class="form-input text-sm">
                                 </div>
                                 <div class="flex-1">
