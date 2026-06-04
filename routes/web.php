@@ -117,6 +117,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
 
     // Orders
     Route::get('orders', [Admin\OrderController::class, 'index'])->name('orders.index');
+    Route::get('orders/deleted', [Admin\OrderController::class, 'deletedSales'])->name('orders.deleted');
     Route::get('orders/{order}', [Admin\OrderController::class, 'show'])->name('orders.show');
     Route::patch('orders/{order}/status', [Admin\OrderController::class, 'updateStatus'])->name('orders.status');
     Route::patch('orders/{order}/payment-status', [Admin\OrderController::class, 'updatePaymentStatus'])->name('orders.payment_status');

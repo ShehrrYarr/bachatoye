@@ -576,7 +576,7 @@ class PosController extends Controller
         abort_if(in_array($order->status, ['returned', 'cancelled']), 403, 'This order cannot be deleted.');
 
         // Block deletion if returns are linked to this order
-        if ($order->returnOrders()->exists()) {
+        if ($order->returns()->exists()) {
             return response()->json([
                 'error' => 'This order has returns linked to it and cannot be deleted.',
             ], 422);
@@ -632,9 +632,10 @@ class PosController extends Controller
                 }
             }
 
-            // ── 3. Delete order items then order ──────────────────────────
-            $order->items()->delete();
-            $order->delete();
+            // ── 3. Soft-delete the order (items kept for audit trail) ─────
+            $order->deleted_by = Auth::id();
+            $order->save();
+            $order->delete(); // sets deleted_at via SoftDeletes
 
             // ── 4. Adjust open POS session ────────────────────────────────
             PosSession::where('user_id', Auth::id())

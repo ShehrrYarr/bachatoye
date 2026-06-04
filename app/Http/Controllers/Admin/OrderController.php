@@ -125,4 +125,31 @@ class OrderController extends Controller
         $pdf = Pdf::loadView('admin.orders.invoice-pdf', compact('order'));
         return $pdf->download("invoice-{$order->order_number}.pdf");
     }
+
+    public function deletedSales(Request $request)
+    {
+        $query = Order::onlyTrashed()
+            ->with(['customer', 'servedBy', 'deletedBy', 'items'])
+            ->where('source', 'pos')
+            ->latest('deleted_at');
+
+        if ($request->filled('search')) {
+            $s = $request->search;
+            $query->where(fn($q) => $q->where('order_number', 'like', "%{$s}%")
+                                      ->orWhere('customer_name', 'like', "%{$s}%")
+                                      ->orWhere('customer_phone', 'like', "%{$s}%"));
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('deleted_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('deleted_at', '<=', $request->date_to);
+        }
+
+        $orders     = $query->paginate(25)->withQueryString();
+        $totalValue = Order::onlyTrashed()->where('source', 'pos')->sum('total');
+
+        return view('admin.orders.deleted', compact('orders', 'totalValue'));
+    }
 }

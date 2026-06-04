@@ -4,7 +4,13 @@
 @section('content')
 <div class="flex items-center justify-between mb-6">
     <h1 class="text-xl font-bold text-gray-900">Orders</h1>
-    <span class="text-sm text-gray-500">{{ $orders->total() }} total orders</span>
+    <div class="flex items-center gap-3">
+        <span class="text-sm text-gray-500">{{ $orders->total() }} total orders</span>
+        <a href="{{ route('admin.orders.deleted') }}"
+           class="btn-outline btn-sm text-red-600 border-red-200 hover:bg-red-50">
+            <i class="fas fa-trash-alt mr-1.5"></i> Deleted Sales
+        </a>
+    </div>
 </div>
 
 <div class="card p-4 mb-5">

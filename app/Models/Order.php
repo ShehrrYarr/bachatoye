@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Order extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'order_number', 'source', 'customer_id', 'customer_name', 'customer_phone',
         'customer_email', 'delivery_address', 'city', 'delivery_notes',
@@ -14,7 +17,7 @@ class Order extends Model
         'payment_method', 'payment_status', 'payment_proof', 'payment_notes',
         'notes', 'exchange_item_name', 'exchange_value',
         'status', 'tracking_number', 'served_by', 'deal_id',
-        'coupon_id', 'coupon_discount',
+        'coupon_id', 'coupon_discount', 'deleted_by',
     ];
 
     protected function casts(): array
@@ -51,6 +54,11 @@ class Order extends Model
     public function servedBy()
     {
         return $this->belongsTo(User::class, 'served_by');
+    }
+
+    public function deletedBy()
+    {
+        return $this->belongsTo(User::class, 'deleted_by');
     }
 
     public function deal()
