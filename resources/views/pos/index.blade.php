@@ -696,6 +696,7 @@
                         <p class="text-sm text-gray-400">No sales today yet</p>
                     </div>
                     <div x-show="!activityLoading && orders.length > 0" class="overflow-x-auto rounded-xl border border-gray-100">
+                        @php $canEditSale = auth()->user()->hasRole('admin') || auth()->user()->hasPermissionTo('pos.edit_sale'); @endphp
                         <table class="w-full text-sm">
                             <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
                                 <tr>
@@ -705,6 +706,9 @@
                                     <th class="text-left px-4 py-2.5 font-semibold">Items Sold</th>
                                     <th class="text-left px-4 py-2.5 font-semibold">Payment</th>
                                     <th class="text-right px-4 py-2.5 font-semibold">Total</th>
+                                    @if($canEditSale)
+                                    <th class="px-4 py-2.5 font-semibold"></th>
+                                    @endif
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-50">
@@ -747,6 +751,14 @@
                                             <div x-show="o.discount_amount > 0" class="text-xs text-red-400"
                                                  x-text="'-Rs.' + fmt(o.discount_amount) + ' disc.'"></div>
                                         </td>
+                                        @if($canEditSale)
+                                        <td class="px-4 py-3 text-center">
+                                            <a :href="`/pos/orders/${o.id}/edit`"
+                                               class="inline-flex items-center gap-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 font-medium px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap">
+                                                <i class="fas fa-edit text-[10px]"></i> Edit
+                                            </a>
+                                        </td>
+                                        @endif
                                     </tr>
                                 </template>
                             </tbody>
@@ -754,7 +766,7 @@
                                 <tr>
                                     <td colspan="3" class="px-4 py-3 text-sm font-bold text-gray-700"
                                         x-text="`Total — ${orders.length} orders, ${orders.reduce((s,o) => s + o.items.reduce((ss,i) => ss + i.quantity, 0), 0)} items`"></td>
-                                    <td colspan="2"></td>
+                                    <td colspan="{{ $canEditSale ? 3 : 2 }}"></td>
                                     <td class="px-4 py-3 text-right font-bold text-lg text-primary-700"
                                         x-text="'Rs. ' + fmt(orders.reduce((s,o) => s + o.total, 0))"></td>
                                 </tr>

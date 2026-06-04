@@ -167,6 +167,7 @@ class PosController extends Controller
             ->with(['items'])
             ->get()
             ->map(fn($o) => [
+                'id'              => $o->id,
                 'time'            => $o->created_at->format('H:i'),
                 'order_number'    => $o->order_number,
                 'customer_name'   => $o->customer_name,
@@ -565,5 +566,297 @@ class PosController extends Controller
             'footer'       => Setting::get('receipt_footer'),
         ];
         return view('pos.receipt', compact('order', 'settings'));
+    }
+
+    // ── Edit Sale ─────────────────────────────────────────────────────────
+
+    public function editOrder(Order $order)
+    {
+        abort_if($order->source !== 'pos', 404);
+        abort_if(in_array($order->status, ['returned', 'cancelled']), 403, 'This order cannot be edited.');
+
+        $order->load(['items.product', 'customer', 'bankAccount', 'servedBy']);
+        $bankAccounts = BankAccount::active()->orderBy('sort_order')->orderBy('id')->get();
+
+        $orderData = [
+            'id'             => $order->id,
+            'order_number'   => $order->order_number,
+            'exchange_value' => (float) ($order->exchange_value ?? 0),
+            'customer'       => $order->customer ? [
+                'id'             => $order->customer->id,
+                'name'           => $order->customer->name,
+                'phone'          => $order->customer->phone,
+                'credit_balance' => (float) $order->customer->credit_balance,
+            ] : null,
+            'payment_method'  => $order->payment_method,
+            'discount_amount' => (float) ($order->discount_amount ?? 0),
+            'amount_paid'     => (float) ($order->amount_paid ?? 0),
+            'cash_amount'     => (float) ($order->cash_amount ?? 0),
+            'bank_amount'     => (float) ($order->bank_amount ?? 0),
+            'bank_account_id' => $order->bank_account_id,
+            'notes'           => $order->notes ?? '',
+            'items'           => $order->items->map(fn($item) => [
+                'product_id'   => $item->product_id,
+                'product_name' => $item->product_name,
+                'color_id'     => $item->color_id,
+                'color_name'   => $item->color_name,
+                'qty'          => (int) $item->quantity,
+                'unit_price'   => (float) $item->unit_price,
+                'cost_price'   => (float) $item->cost_price,
+            ])->values(),
+        ];
+
+        return view('pos.edit-order', compact('order', 'bankAccounts', 'orderData'));
+    }
+
+    public function updateOrder(Request $request, Order $order)
+    {
+        abort_if($order->source !== 'pos', 404);
+        abort_if(in_array($order->status, ['returned', 'cancelled']), 403);
+
+        $request->validate([
+            'items'               => 'required|array|min:1',
+            'items.*.product_id'  => 'required|exists:products,id',
+            'items.*.quantity'    => 'required|integer|min:1',
+            'items.*.unit_price'  => 'required|numeric|min:0',
+            'items.*.color_id'    => 'nullable|exists:product_colors,id',
+            'payment_method'      => 'required|in:cash,bank_transfer,khata,partial,split',
+            'amount_paid'         => 'nullable|numeric|min:0',
+            'cash_amount'         => 'nullable|numeric|min:0',
+            'bank_amount'         => 'nullable|numeric|min:0',
+            'bank_account_id'     => 'nullable|exists:bank_accounts,id',
+            'customer_id'         => 'nullable|exists:customers,id',
+            'discount'            => 'nullable|numeric|min:0',
+            'notes'               => 'nullable|string|max:500',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $oldTotal    = (float) $order->total;
+            $oldMethod   = $order->payment_method;
+            $oldCustomer = $order->customer_id
+                ? \App\Models\Customer::find($order->customer_id)
+                : null;
+
+            // ── 1. Restore stock from old items ───────────────────────────
+            $oldItems = $order->items()->get();
+
+            foreach ($oldItems as $oldItem) {
+                $product = Product::lockForUpdate()->find($oldItem->product_id);
+                if (! $product) continue;
+
+                if ($oldItem->color_id) {
+                    $color = ProductColor::lockForUpdate()->find($oldItem->color_id);
+                    if ($color) {
+                        $color->increment('stock_quantity', $oldItem->quantity);
+                    }
+                }
+
+                $before = $product->stock_quantity;
+                $product->increment('stock_quantity', $oldItem->quantity);
+
+                StockMovement::create([
+                    'product_id'      => $product->id,
+                    'type'            => 'adjustment',
+                    'quantity'        => $oldItem->quantity,
+                    'before_quantity' => $before,
+                    'after_quantity'  => $before + $oldItem->quantity,
+                    'reference'       => $order->order_number,
+                    'note'            => 'Sale edit — stock restored',
+                    'user_id'         => Auth::id(),
+                ]);
+            }
+
+            // ── 2. Reverse khata ledger entries ───────────────────────────
+            if ($oldCustomer && in_array($oldMethod, ['khata', 'partial'])) {
+                $oldLedgers  = AccountLedger::where('reference', $order->order_number)
+                    ->where('type', 'debit')
+                    ->where('customer_id', $oldCustomer->id)
+                    ->get();
+                $ledgerTotal = $oldLedgers->sum('amount');
+                if ($ledgerTotal > 0) {
+                    $oldLedgers->each->delete();
+                    $oldCustomer->increment('credit_balance', $ledgerTotal);
+                    $oldCustomer->refresh();
+                }
+            }
+
+            // ── 3. Delete old order items ─────────────────────────────────
+            $order->items()->delete();
+
+            // ── 4. Build and validate new items ──────────────────────────
+            $customer = $request->customer_id
+                ? \App\Models\Customer::find($request->customer_id)
+                : null;
+
+            $subtotal = 0;
+            $newItems = [];
+
+            foreach ($request->items as $item) {
+                $product   = Product::lockForUpdate()->find($item['product_id']);
+                $color     = null;
+                $colorName = null;
+
+                if (! empty($item['color_id'])) {
+                    $color = ProductColor::lockForUpdate()->find($item['color_id']);
+                    if ($color) {
+                        $colorName = $color->name;
+                        if ($color->stock_quantity < $item['quantity']) {
+                            DB::rollBack();
+                            return response()->json([
+                                'error' => "Insufficient stock for: {$product->name} ({$color->name})",
+                            ], 422);
+                        }
+                    }
+                } elseif ($product->track_inventory && $product->stock_quantity < $item['quantity']) {
+                    DB::rollBack();
+                    return response()->json([
+                        'error' => "Insufficient stock for: {$product->name}",
+                    ], 422);
+                }
+
+                $lineTotal  = $item['unit_price'] * $item['quantity'];
+                $subtotal  += $lineTotal;
+
+                $newItems[] = [
+                    'product'    => $product,
+                    'color'      => $color,
+                    'color_name' => $colorName,
+                    'qty'        => $item['quantity'],
+                    'price'      => $item['unit_price'],
+                    'line_total' => $lineTotal,
+                ];
+            }
+
+            $discount      = (float) ($request->discount ?? 0);
+            $exchangeValue = (float) ($order->exchange_value ?? 0); // preserved as-is
+            $newTotal      = max(0, $subtotal - $discount - $exchangeValue);
+
+            // Resolve payment details
+            $payMethod  = $request->payment_method;
+            $amountPaid = null;
+            $cashAmount = null;
+            $bankAmount = null;
+            $payStatus  = 'paid';
+
+            if ($payMethod === 'khata') {
+                $amountPaid = 0;
+                $payStatus  = 'pending';
+                if (! $customer) {
+                    DB::rollBack();
+                    return response()->json(['error' => 'A customer is required for Khata payment.'], 422);
+                }
+            } elseif ($payMethod === 'partial') {
+                $amountPaid = min((float) ($request->amount_paid ?? 0), $newTotal);
+                $payStatus  = $amountPaid >= $newTotal ? 'paid' : 'partial';
+                if (! $customer && $amountPaid < $newTotal) {
+                    DB::rollBack();
+                    return response()->json(['error' => 'A customer is required for partial payment.'], 422);
+                }
+            } elseif ($payMethod === 'split') {
+                $cashAmount = max(0, (float) ($request->cash_amount ?? 0));
+                $bankAmount = max(0, (float) ($request->bank_amount ?? 0));
+                $amountPaid = $cashAmount + $bankAmount;
+                $payStatus  = 'paid';
+            }
+
+            // ── 5. Save new items and deduct stock ────────────────────────
+            foreach ($newItems as $item) {
+                OrderItem::create([
+                    'order_id'        => $order->id,
+                    'product_id'      => $item['product']->id,
+                    'product_name'    => $item['product']->name,
+                    'color_name'      => $item['color_name'],
+                    'color_id'        => $item['color']?->id,
+                    'product_barcode' => $item['product']->barcode,
+                    'unit_price'      => $item['price'],
+                    'cost_price'      => $item['product']->cost_price,
+                    'quantity'        => $item['qty'],
+                    'line_total'      => $item['line_total'],
+                ]);
+
+                if ($item['color']) {
+                    $item['color']->decrement('stock_quantity', $item['qty']);
+                }
+                $before = $item['product']->stock_quantity;
+                $item['product']->decrement('stock_quantity', $item['qty']);
+
+                StockMovement::create([
+                    'product_id'      => $item['product']->id,
+                    'type'            => 'sale',
+                    'quantity'        => -$item['qty'],
+                    'before_quantity' => $before,
+                    'after_quantity'  => $before - $item['qty'],
+                    'reference'       => $order->order_number,
+                    'note'            => 'Sale edit',
+                    'user_id'         => Auth::id(),
+                ]);
+            }
+
+            // ── 6. New khata ledger entry ─────────────────────────────────
+            $khataDue = 0;
+            if ($payMethod === 'khata') {
+                $khataDue = $newTotal;
+            } elseif ($payMethod === 'partial' && $payStatus === 'partial') {
+                $khataDue = $newTotal - $amountPaid;
+            }
+
+            if ($khataDue > 0 && $customer) {
+                $customer->refresh();
+                $itemsList = collect($newItems)
+                    ->map(fn($i) => "{$i['product']->name} x{$i['qty']}")
+                    ->join(', ');
+                $newBal = $customer->credit_balance - $khataDue;
+
+                AccountLedger::create([
+                    'customer_id'   => $customer->id,
+                    'type'          => 'debit',
+                    'amount'        => $khataDue,
+                    'balance_after' => $newBal,
+                    'description'   => "Edited Sale — {$order->order_number} | Total: Rs.{$newTotal} | Items: {$itemsList}",
+                    'reference'     => $order->order_number,
+                    'user_id'       => Auth::id(),
+                ]);
+                $customer->update(['credit_balance' => $newBal]);
+            }
+
+            // ── 7. Update order record ────────────────────────────────────
+            $order->update([
+                'customer_id'     => $customer?->id,
+                'customer_name'   => $customer?->name ?? 'Walk-in Customer',
+                'customer_phone'  => $customer?->phone ?? '-',
+                'subtotal'        => $subtotal,
+                'discount_amount' => $discount,
+                'total'           => $newTotal,
+                'amount_paid'     => $amountPaid,
+                'cash_amount'     => $cashAmount,
+                'bank_amount'     => $bankAmount,
+                'payment_method'  => $payMethod,
+                'payment_status'  => $payStatus,
+                'bank_account_id' => in_array($payMethod, ['bank_transfer', 'split'])
+                                        ? $request->bank_account_id : null,
+                'notes'           => $request->notes,
+            ]);
+
+            // ── 8. Adjust open POS session total ─────────────────────────
+            $totalDiff = $newTotal - $oldTotal;
+            if ($totalDiff != 0) {
+                PosSession::where('user_id', Auth::id())
+                    ->whereNull('closed_at')
+                    ->increment('total_sales', $totalDiff);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success'      => true,
+                'order_id'     => $order->id,
+                'order_number' => $order->order_number,
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
+        }
     }
 }

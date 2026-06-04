@@ -215,6 +215,12 @@
         <button onclick="window.print()" style="background: #1d4ed8; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 13px; margin-right: 8px;">
             Print Receipt
         </button>
+        @can('pos.edit_sale')
+        <a href="{{ route('pos.order.edit', $order) }}"
+           style="display:inline-block; background: #0d9488; color: white; text-decoration: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 13px; margin-right: 8px;">
+            Edit Sale
+        </a>
+        @endcan
         <button onclick="window.close()" style="background: #6b7280; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 13px;">
             Close
         </button>

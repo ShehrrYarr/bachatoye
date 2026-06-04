@@ -323,6 +323,12 @@ Route::prefix('pos')->name('pos.')->middleware(['auth', 'permission:pos.access']
     Route::get('/stats', [Pos\PosController::class, 'stats'])->name('stats');
     Route::get('/today-activity', [Pos\PosController::class, 'todayActivity'])->name('today-activity');
 
+    // Edit sale
+    Route::get('/orders/{order}/edit', [Pos\PosController::class, 'editOrder'])
+        ->middleware('permission:pos.edit_sale')->name('order.edit');
+    Route::put('/orders/{order}', [Pos\PosController::class, 'updateOrder'])
+        ->middleware('permission:pos.edit_sale')->name('order.update');
+
     // Returns
     Route::get('/return', [Pos\PosReturnController::class, 'index'])
         ->middleware('permission:pos.process_returns')->name('return.index');
