@@ -568,6 +568,93 @@ class PosController extends Controller
         return view('pos.receipt', compact('order', 'settings'));
     }
 
+    // ── Delete Sale ───────────────────────────────────────────────────────
+
+    public function deleteOrder(Order $order)
+    {
+        abort_if($order->source !== 'pos', 404);
+        abort_if(in_array($order->status, ['returned', 'cancelled']), 403, 'This order cannot be deleted.');
+
+        // Block deletion if returns are linked to this order
+        if ($order->returnOrders()->exists()) {
+            return response()->json([
+                'error' => 'This order has returns linked to it and cannot be deleted.',
+            ], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            $oldTotal    = (float) $order->total;
+            $oldMethod   = $order->payment_method;
+            $oldCustomer = $order->customer_id
+                ? \App\Models\Customer::find($order->customer_id)
+                : null;
+
+            // ── 1. Restore stock ──────────────────────────────────────────
+            $items = $order->items()->get();
+
+            foreach ($items as $item) {
+                $product = Product::lockForUpdate()->find($item->product_id);
+                if (! $product) continue;
+
+                if ($item->color_id) {
+                    $color = ProductColor::lockForUpdate()->find($item->color_id);
+                    if ($color) {
+                        $color->increment('stock_quantity', $item->quantity);
+                    }
+                }
+
+                $before = $product->stock_quantity;
+                $product->increment('stock_quantity', $item->quantity);
+
+                StockMovement::create([
+                    'product_id'      => $product->id,
+                    'type'            => 'adjustment',
+                    'quantity'        => $item->quantity,
+                    'before_quantity' => $before,
+                    'after_quantity'  => $before + $item->quantity,
+                    'reference'       => $order->order_number,
+                    'note'            => 'Sale deleted — stock restored',
+                    'user_id'         => Auth::id(),
+                ]);
+            }
+
+            // ── 2. Reverse khata ledger entries ───────────────────────────
+            if ($oldCustomer && in_array($oldMethod, ['khata', 'partial'])) {
+                $ledgers     = AccountLedger::where('reference', $order->order_number)
+                    ->where('type', 'debit')
+                    ->where('customer_id', $oldCustomer->id)
+                    ->get();
+                $ledgerTotal = $ledgers->sum('amount');
+                if ($ledgerTotal > 0) {
+                    $ledgers->each->delete();
+                    $oldCustomer->increment('credit_balance', $ledgerTotal);
+                }
+            }
+
+            // ── 3. Delete order items then order ──────────────────────────
+            $order->items()->delete();
+            $order->delete();
+
+            // ── 4. Adjust open POS session ────────────────────────────────
+            PosSession::where('user_id', Auth::id())
+                ->whereNull('closed_at')
+                ->decrement('total_sales', $oldTotal);
+
+            PosSession::where('user_id', Auth::id())
+                ->whereNull('closed_at')
+                ->decrement('total_orders');
+
+            DB::commit();
+
+            return response()->json(['success' => true]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Delete failed: ' . $e->getMessage()], 500);
+        }
+    }
+
     // ── Edit Sale ─────────────────────────────────────────────────────────
 
     public function editOrder(Order $order)

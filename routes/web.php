@@ -329,6 +329,10 @@ Route::prefix('pos')->name('pos.')->middleware(['auth', 'permission:pos.access']
     Route::put('/orders/{order}', [Pos\PosController::class, 'updateOrder'])
         ->middleware('permission:pos.edit_sale')->name('order.update');
 
+    // Delete sale
+    Route::delete('/orders/{order}', [Pos\PosController::class, 'deleteOrder'])
+        ->middleware('permission:pos.delete_sale')->name('order.delete');
+
     // Returns
     Route::get('/return', [Pos\PosReturnController::class, 'index'])
         ->middleware('permission:pos.process_returns')->name('return.index');

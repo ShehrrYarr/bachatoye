@@ -221,6 +221,11 @@
             Edit Sale
         </a>
         @endcan
+        @can('pos.delete_sale')
+        <button onclick="confirmDelete()" style="background: #dc2626; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 13px; margin-right: 8px;">
+            Delete Sale
+        </button>
+        @endcan
         <button onclick="window.close()" style="background: #6b7280; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 13px;">
             Close
         </button>
@@ -242,6 +247,29 @@
         // Auto-print when opened in a popup
         if (window.opener) {
             window.addEventListener('load', () => window.print());
+        }
+
+        async function confirmDelete() {
+            if (!confirm('Delete sale {{ $order->order_number }}?\n\nThis will restore all stock and reverse any Khata entries. This cannot be undone.')) return;
+            try {
+                const res = await fetch('/pos/orders/{{ $order->id }}', {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept':       'application/json',
+                    },
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('Sale deleted successfully.');
+                    if (window.opener) { window.opener.location.reload(); window.close(); }
+                    else { window.location.href = '/pos'; }
+                } else {
+                    alert(data.error || 'Delete failed.');
+                }
+            } catch(e) {
+                alert('Network error. Please try again.');
+            }
         }
     </script>
 </body>
