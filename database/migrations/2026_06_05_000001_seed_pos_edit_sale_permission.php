@@ -2,13 +2,23 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 return new class extends Migration
 {
     public function up(): void
     {
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
-        Permission::firstOrCreate(['name' => 'pos.edit_sale', 'guard_name' => 'web']);
+
+        $permission = Permission::firstOrCreate(['name' => 'pos.edit_sale', 'guard_name' => 'web']);
+
+        // Admin role gets this permission by default
+        $adminRole = Role::where('name', 'admin')->where('guard_name', 'web')->first();
+        if ($adminRole && ! $adminRole->hasPermissionTo('pos.edit_sale')) {
+            $adminRole->givePermissionTo($permission);
+        }
+
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
     }
 
     public function down(): void
