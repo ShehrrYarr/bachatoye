@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductColor;
@@ -15,7 +16,42 @@ class InventoryController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Product::with(['category', 'brand'])->active();
+        $groupBy = $request->input('group_by'); // 'category' | 'brand' | null
+        $groupId = $request->input('group_id'); // integer | null
+
+        // ── Stage 1: Picker ───────────────────────────────────────────────
+        if (! $groupBy) {
+            return view('admin.inventory.index', ['stage' => 'picker']);
+        }
+
+        $isCategory = $groupBy === 'category';
+        $table      = $isCategory ? 'categories' : 'brands';
+        $fk         = $isCategory ? 'category_id' : 'brand_id';
+
+        // ── Stage 2: Group cards (categories or brands with counts + value) ─
+        if (! $groupId) {
+            $groups = DB::table($table)
+                ->join('products', "products.{$fk}", '=', "{$table}.id")
+                ->where('products.is_active', true)
+                ->where("{$table}.is_active", true)
+                ->select("{$table}.id", "{$table}.name")
+                ->selectRaw('COUNT(products.id) as item_count')
+                ->selectRaw('COALESCE(SUM(products.stock_quantity * products.cost_price), 0) as total_cost')
+                ->selectRaw('COALESCE(SUM(products.stock_quantity), 0) as total_stock')
+                ->groupBy("{$table}.id", "{$table}.name")
+                ->orderBy("{$table}.name")
+                ->get();
+
+            $grandTotal = $groups->sum('total_cost');
+
+            return view('admin.inventory.index', compact('groups', 'groupBy', 'grandTotal') + ['stage' => 'groups']);
+        }
+
+        // ── Stage 3: Products within a specific group ─────────────────────
+        $group = DB::table($table)->find($groupId);
+        abort_if(! $group, 404);
+
+        $query = Product::with(['category', 'brand'])->active()->where($fk, $groupId);
 
         if ($request->filled('q')) {
             $s = $request->q;
@@ -24,24 +60,23 @@ class InventoryController extends Controller
                                       ->orWhere('sku', 'like', "%{$s}%"));
         }
 
-        if ($request->filled('category')) {
-            $query->where('category_id', $request->category);
-        }
-
         if ($request->filled('stock_status')) {
             match ($request->stock_status) {
-                'in_stock'    => $query->where('stock_quantity', '>', 0),
+                'in_stock'     => $query->where('stock_quantity', '>', 0),
                 'out_of_stock' => $query->where('stock_quantity', '<=', 0),
-                'low_stock'   => $query->whereColumn('stock_quantity', '<=', 'low_stock_threshold'),
-                default       => null,
+                'low_stock'    => $query->whereColumn('stock_quantity', '<=', 'low_stock_threshold'),
+                default        => null,
             };
         }
 
         $products   = $query->orderBy('stock_quantity')->paginate(25)->withQueryString();
-        $categories = Category::active()->orderBy('name')->get();
-        $totalValue = Product::active()->sum(DB::raw('stock_quantity * cost_price'));
+        $totalValue = Product::active()->where($fk, $groupId)->sum(DB::raw('stock_quantity * cost_price'));
+        $totalStock = Product::active()->where($fk, $groupId)->sum('stock_quantity');
+        $totalItems = Product::active()->where($fk, $groupId)->count();
 
-        return view('admin.inventory.index', compact('products', 'categories', 'totalValue'));
+        return view('admin.inventory.index', compact(
+            'products', 'groupBy', 'groupId', 'group', 'totalValue', 'totalStock', 'totalItems'
+        ) + ['stage' => 'products']);
     }
 
     public function adjustForm(Product $product)
