@@ -89,7 +89,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::resource('categories', Admin\CategoryController::class);
     Route::resource('brands', Admin\BrandController::class);
 
-    // POS Bank Accounts
+    // POS Bank Accounts & Cash Balance
+    Route::post('bank-accounts/cash-opening', [Admin\BankAccountController::class, 'updateCashOpening'])->name('bank-accounts.cash-opening');
     Route::resource('bank-accounts', Admin\BankAccountController::class)->except(['create', 'edit', 'show']);
 
     // Inventory

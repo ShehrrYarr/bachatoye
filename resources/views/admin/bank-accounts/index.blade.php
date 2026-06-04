@@ -1,11 +1,11 @@
 @extends('layouts.admin')
-@section('title', 'POS Bank Accounts')
+@section('title', 'Cash & Bank Balances')
 
 @section('content')
 <div class="flex items-center justify-between mb-6">
     <div>
-        <h1 class="text-xl font-bold text-gray-900">POS Bank Accounts</h1>
-        <p class="text-sm text-gray-500 mt-0.5">These accounts appear as a dropdown when processing bank transfers on the POS.</p>
+        <h1 class="text-xl font-bold text-gray-900">Cash & Bank Balances</h1>
+        <p class="text-sm text-gray-500 mt-0.5">Live balances computed from all recorded transactions.</p>
     </div>
 </div>
 
@@ -14,6 +14,188 @@
     <i class="fas fa-check-circle mr-2"></i>{{ session('success') }}
 </div>
 @endif
+
+{{-- ── Balance Cards ──────────────────────────────────────────────────────── --}}
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-8" x-data="{ cashOpen: false }">
+
+    {{-- Cash Card --}}
+    <div class="card overflow-hidden">
+        <div class="px-5 pt-5 pb-4">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Cash on Hand</p>
+                    <p class="text-3xl font-bold mt-1 {{ $cashSummary['balance'] >= 0 ? 'text-gray-900' : 'text-red-600' }}">
+                        Rs. {{ number_format($cashSummary['balance']) }}
+                    </p>
+                </div>
+                <div class="w-11 h-11 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
+                    <i class="fas fa-money-bill-wave text-green-600 text-lg"></i>
+                </div>
+            </div>
+
+            <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <div class="bg-green-50 rounded-lg px-3 py-2">
+                    <p class="text-green-700 font-medium">Total In</p>
+                    <p class="text-green-900 font-bold text-sm">Rs. {{ number_format($cashSummary['in_pos'] + $cashSummary['in_ecom'] + $cashSummary['in_khata']) }}</p>
+                </div>
+                <div class="bg-red-50 rounded-lg px-3 py-2">
+                    <p class="text-red-700 font-medium">Total Out</p>
+                    <p class="text-red-900 font-bold text-sm">Rs. {{ number_format($cashSummary['out_exp'] + $cashSummary['out_pur'] + $cashSummary['out_ret']) }}</p>
+                </div>
+            </div>
+        </div>
+
+        {{-- Breakdown toggle --}}
+        <button @click="cashOpen = !cashOpen"
+                class="w-full flex items-center justify-between px-5 py-2.5 bg-gray-50 border-t border-gray-100 text-xs text-gray-500 hover:bg-gray-100 transition">
+            <span>Breakdown</span>
+            <i class="fas fa-chevron-down transition-transform" :class="cashOpen && 'rotate-180'"></i>
+        </button>
+        <div x-show="cashOpen" x-collapse class="border-t border-gray-100">
+            <div class="px-5 py-3 space-y-1.5 text-xs text-gray-600">
+                @if($cashSummary['opening'])
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Opening balance</span>
+                    <span class="font-medium">Rs. {{ number_format($cashSummary['opening']) }}</span>
+                </div>
+                @endif
+                <div class="flex justify-between text-green-700">
+                    <span>+ POS cash sales</span>
+                    <span>Rs. {{ number_format($cashSummary['in_pos']) }}</span>
+                </div>
+                <div class="flex justify-between text-green-700">
+                    <span>+ Ecom COD collected</span>
+                    <span>Rs. {{ number_format($cashSummary['in_ecom']) }}</span>
+                </div>
+                @if($cashSummary['in_khata'])
+                <div class="flex justify-between text-green-700">
+                    <span>+ Khata repayments (cash)</span>
+                    <span>Rs. {{ number_format($cashSummary['in_khata']) }}</span>
+                </div>
+                @endif
+                <div class="border-t border-gray-100 my-1"></div>
+                <div class="flex justify-between text-red-600">
+                    <span>− Expenses (cash)</span>
+                    <span>Rs. {{ number_format($cashSummary['out_exp']) }}</span>
+                </div>
+                <div class="flex justify-between text-red-600">
+                    <span>− Purchases (cash)</span>
+                    <span>Rs. {{ number_format($cashSummary['out_pur']) }}</span>
+                </div>
+                @if($cashSummary['out_ret'])
+                <div class="flex justify-between text-red-600">
+                    <span>− Refunds (cash)</span>
+                    <span>Rs. {{ number_format($cashSummary['out_ret']) }}</span>
+                </div>
+                @endif
+            </div>
+            {{-- Edit opening balance --}}
+            <form method="POST" action="{{ route('admin.bank-accounts.cash-opening') }}"
+                  class="px-5 pb-4 pt-1 border-t border-gray-100 flex items-end gap-2">
+                @csrf
+                <div class="flex-1">
+                    <label class="form-label text-xs">Opening Balance</label>
+                    <input type="number" name="cash_opening_balance" step="0.01" min="0"
+                           value="{{ $cashSummary['opening'] }}"
+                           class="form-input text-sm py-1.5">
+                </div>
+                <button type="submit" class="btn-outline btn-sm mb-0.5">Set</button>
+            </form>
+        </div>
+    </div>
+
+    {{-- Per-Bank Cards --}}
+    @foreach($banks as $bank)
+    <div class="card overflow-hidden" x-data="{ open: false }">
+        <div class="px-5 pt-5 pb-4">
+            <div class="flex items-start justify-between">
+                <div class="min-w-0 pr-2">
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide truncate">{{ $bank->label }}</p>
+                    <p class="text-3xl font-bold mt-1 {{ $bank->computed_balance >= 0 ? 'text-gray-900' : 'text-red-600' }}">
+                        Rs. {{ number_format($bank->computed_balance) }}
+                    </p>
+                    <p class="text-xs text-gray-400 mt-0.5">{{ $bank->bank_name }} &bull; {{ $bank->account_title }}</p>
+                </div>
+                <div class="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+                    <i class="fas fa-university text-blue-600 text-lg"></i>
+                </div>
+            </div>
+
+            <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <div class="bg-green-50 rounded-lg px-3 py-2">
+                    <p class="text-green-700 font-medium">Total In</p>
+                    <p class="text-green-900 font-bold text-sm">Rs. {{ number_format($bank->computed_in) }}</p>
+                </div>
+                <div class="bg-red-50 rounded-lg px-3 py-2">
+                    <p class="text-red-700 font-medium">Total Out</p>
+                    <p class="text-red-900 font-bold text-sm">Rs. {{ number_format($bank->computed_out) }}</p>
+                </div>
+            </div>
+        </div>
+
+        <button @click="open = !open"
+                class="w-full flex items-center justify-between px-5 py-2.5 bg-gray-50 border-t border-gray-100 text-xs text-gray-500 hover:bg-gray-100 transition">
+            <span>Breakdown &amp; Edit</span>
+            <i class="fas fa-chevron-down transition-transform" :class="open && 'rotate-180'"></i>
+        </button>
+        <div x-show="open" x-collapse class="border-t border-gray-100">
+            <div class="px-5 py-3 space-y-1.5 text-xs text-gray-600">
+                @if($bank->opening_balance)
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Opening balance</span>
+                    <span class="font-medium">Rs. {{ number_format($bank->opening_balance) }}</span>
+                </div>
+                @endif
+                <div class="flex justify-between text-green-700">
+                    <span>+ Sales received</span>
+                    <span>Rs. {{ number_format($bank->computed_in) }}</span>
+                </div>
+                <div class="border-t border-gray-100 my-1"></div>
+                <div class="flex justify-between text-red-600">
+                    <span>− Purchases paid</span>
+                    <span>Rs. {{ number_format($bank->computed_out) }}</span>
+                </div>
+            </div>
+            {{-- Edit bank account --}}
+            <div class="px-5 pb-4 pt-1 border-t border-gray-100">
+                <button onclick="openEdit({{ $bank->id }}, {{ json_encode($bank) }})"
+                        class="btn-outline btn-sm w-full"><i class="fas fa-pencil-alt mr-1.5"></i>Edit Account</button>
+                <form method="POST" action="{{ route('admin.bank-accounts.destroy', $bank) }}"
+                      onsubmit="return confirm('Delete this bank account?')" class="mt-2">
+                    @csrf @method('DELETE')
+                    <button type="submit" class="btn-danger btn-sm w-full"><i class="fas fa-trash mr-1.5"></i>Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endforeach
+
+</div>
+
+{{-- Unattributed note --}}
+@if($unattributedEcomBank > 0 || $unattributedExpenseBank > 0)
+<div class="mb-6 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 text-sm">
+    <p class="font-semibold mb-1"><i class="fas fa-info-circle mr-1.5"></i>Unattributed Bank Transactions</p>
+    <p class="text-xs text-amber-700">
+        The following amounts are via bank but not linked to a specific account
+        — include them in your opening balances when reconciling:
+    </p>
+    <ul class="mt-2 space-y-0.5 text-xs">
+        @if($unattributedEcomBank > 0)
+        <li><span class="font-medium">Ecom bank transfers received:</span> Rs. {{ number_format($unattributedEcomBank) }}</li>
+        @endif
+        @if($unattributedExpenseBank > 0)
+        <li><span class="font-medium">Expenses via bank/card:</span> Rs. {{ number_format($unattributedExpenseBank) }}</li>
+        @endif
+    </ul>
+</div>
+@endif
+
+{{-- ── Bank Account Management ────────────────────────────────────────────── --}}
+<div class="mb-4">
+    <h2 class="text-base font-semibold text-gray-800">Manage Bank Accounts</h2>
+    <p class="text-xs text-gray-500 mt-0.5">Add or edit accounts that appear in POS and purchase payment dropdowns.</p>
+</div>
 
 <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
@@ -40,6 +222,10 @@
                     @if($bank->iban)
                     <div class="text-xs text-gray-400 font-mono mt-0.5">IBAN: {{ $bank->iban }}</div>
                     @endif
+                    <div class="text-xs text-gray-400 mt-0.5">
+                        Opening: Rs. {{ number_format($bank->opening_balance) }}
+                        &bull; Balance: <span class="{{ $bank->computed_balance >= 0 ? 'text-green-700' : 'text-red-600' }} font-semibold">Rs. {{ number_format($bank->computed_balance) }}</span>
+                    </div>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
                     <button onclick="openEdit({{ $bank->id }}, {{ json_encode($bank) }})"
@@ -95,6 +281,12 @@
                     <input type="text" name="iban" id="f-iban" placeholder="PK36HABB0000000123456702"
                            class="form-input font-mono">
                 </div>
+                <div>
+                    <label class="form-label">Opening Balance <span class="text-gray-400 font-normal text-xs">(Rs.)</span></label>
+                    <input type="number" name="opening_balance" id="f-opening-balance" value="0" min="0" step="0.01"
+                           class="form-input">
+                    <p class="form-hint">Set this to the bank balance at the time you started tracking — it will be added to computed inflows/outflows.</p>
+                </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="form-label">Sort Order</label>
@@ -127,13 +319,14 @@ function openEdit(id, bank) {
     document.getElementById('bank-form').action       = '/admin/bank-accounts/' + id;
     document.getElementById('method-field').innerHTML = '<input type="hidden" name="_method" value="PUT">';
 
-    document.getElementById('f-label').value          = bank.label;
-    document.getElementById('f-bank-name').value      = bank.bank_name;
-    document.getElementById('f-account-title').value  = bank.account_title;
-    document.getElementById('f-account-number').value = bank.account_number ?? '';
-    document.getElementById('f-iban').value           = bank.iban ?? '';
-    document.getElementById('f-sort-order').value     = bank.sort_order;
-    document.getElementById('f-is-active').checked    = bank.is_active == 1;
+    document.getElementById('f-label').value            = bank.label;
+    document.getElementById('f-bank-name').value        = bank.bank_name;
+    document.getElementById('f-account-title').value    = bank.account_title;
+    document.getElementById('f-account-number').value   = bank.account_number ?? '';
+    document.getElementById('f-iban').value             = bank.iban ?? '';
+    document.getElementById('f-opening-balance').value  = bank.opening_balance ?? 0;
+    document.getElementById('f-sort-order').value       = bank.sort_order;
+    document.getElementById('f-is-active').checked      = bank.is_active == 1;
 
     document.getElementById('form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -145,6 +338,7 @@ function resetForm() {
     document.getElementById('method-field').innerHTML = '';
     document.getElementById('bank-form').reset();
     document.getElementById('f-is-active').checked    = true;
+    document.getElementById('f-opening-balance').value = 0;
 }
 </script>
 @endpush
