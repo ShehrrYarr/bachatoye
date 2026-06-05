@@ -158,8 +158,14 @@ class ProductController extends Controller
 
     public function show(Product $product)
     {
-        $product->load(['images', 'videos', 'socialLinks', 'colors', 'category', 'brand']);
-        return view('admin.products.show', compact('product'));
+        $product->load(['images', 'videos', 'socialLinks', 'colors', 'category', 'brand', 'stockMovements']);
+
+        $purchaseHistory = \App\Models\PurchaseItem::where('product_id', $product->id)
+            ->with(['purchase' => fn($q) => $q->with('vendor')])
+            ->latest()
+            ->get();
+
+        return view('admin.products.show', compact('product', 'purchaseHistory'));
     }
 
     public function edit(Product $product)

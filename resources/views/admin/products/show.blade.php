@@ -212,6 +212,115 @@
                 @endif
             </div>
         </div>
+        {{-- Purchase History --}}
+        <div class="card">
+            <div class="card-header">
+                <h2 class="font-semibold text-gray-800">Purchase History</h2>
+                @if($purchaseHistory->count())
+                <span class="text-xs text-gray-400">{{ $purchaseHistory->count() }} purchase line(s)</span>
+                @endif
+            </div>
+            <div class="card-body">
+                @if($purchaseHistory->count())
+
+                {{-- Summary row --}}
+                @php
+                    $totalUnitsBought = $purchaseHistory->sum('quantity');
+                    $totalSpent       = $purchaseHistory->sum('line_total');
+                    $vendorNames      = $purchaseHistory->map(fn($i) => $i->purchase?->vendor?->name)->filter()->unique()->values();
+                @endphp
+                <div class="grid grid-cols-3 gap-3 mb-4">
+                    <div class="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 text-center">
+                        <div class="text-lg font-bold text-blue-700">{{ number_format($totalUnitsBought) }}</div>
+                        <div class="text-xs text-blue-500">Total Units In</div>
+                    </div>
+                    <div class="bg-green-50 border border-green-100 rounded-xl px-3 py-2.5 text-center">
+                        <div class="text-lg font-bold text-green-700">Rs. {{ number_format($totalSpent) }}</div>
+                        <div class="text-xs text-green-500">Total Cost</div>
+                    </div>
+                    <div class="bg-purple-50 border border-purple-100 rounded-xl px-3 py-2.5 text-center">
+                        <div class="text-lg font-bold text-purple-700">{{ $vendorNames->count() }}</div>
+                        <div class="text-xs text-purple-500">Vendor(s)</div>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto rounded-xl border border-gray-100">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                            <tr>
+                                <th class="text-left px-3 py-2.5 font-semibold">Date</th>
+                                <th class="text-left px-3 py-2.5 font-semibold">Reference</th>
+                                <th class="text-left px-3 py-2.5 font-semibold">Vendor</th>
+                                <th class="text-left px-3 py-2.5 font-semibold">Color</th>
+                                <th class="text-right px-3 py-2.5 font-semibold">Qty</th>
+                                <th class="text-right px-3 py-2.5 font-semibold">Unit Cost</th>
+                                <th class="text-right px-3 py-2.5 font-semibold">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-50">
+                            @foreach($purchaseHistory as $item)
+                            @php $purchase = $item->purchase; @endphp
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-3 py-2.5 text-xs text-gray-500 whitespace-nowrap">
+                                    {{ $purchase?->purchase_date?->format('d M Y') ?? '—' }}
+                                </td>
+                                <td class="px-3 py-2.5">
+                                    @if($purchase)
+                                    <a href="{{ route('admin.purchases.show', $purchase) }}"
+                                       class="font-mono text-xs text-primary-600 hover:underline">
+                                        {{ $purchase->reference ?? 'PO-'.$purchase->id }}
+                                    </a>
+                                    @else
+                                    <span class="text-xs text-gray-400">—</span>
+                                    @endif
+                                </td>
+                                <td class="px-3 py-2.5 text-xs font-medium text-gray-700">
+                                    {{ $purchase?->vendor?->name ?? '—' }}
+                                </td>
+                                <td class="px-3 py-2.5">
+                                    @if($item->color_name)
+                                    <span class="inline-flex items-center gap-1 text-xs text-gray-600">
+                                        <span class="w-3 h-3 rounded-full border border-gray-300 shrink-0 inline-block"
+                                              style="background: {{ optional(\App\Models\ProductColor::find($item->color_id))->hex_code ?? '#e5e7eb' }}"></span>
+                                        {{ $item->color_name }}
+                                    </span>
+                                    @else
+                                    <span class="text-xs text-gray-400">—</span>
+                                    @endif
+                                </td>
+                                <td class="px-3 py-2.5 text-right">
+                                    <span class="font-semibold text-blue-700">+{{ number_format($item->quantity) }}</span>
+                                </td>
+                                <td class="px-3 py-2.5 text-right text-xs text-gray-600">
+                                    Rs. {{ number_format($item->unit_cost) }}
+                                </td>
+                                <td class="px-3 py-2.5 text-right font-semibold text-gray-800">
+                                    Rs. {{ number_format($item->line_total) }}
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                        <tfoot class="bg-gray-50 border-t-2 border-gray-200">
+                            <tr>
+                                <td colspan="4" class="px-3 py-2.5 text-xs font-bold text-gray-600">
+                                    {{ $purchaseHistory->count() }} lines · {{ $vendorNames->join(', ') ?: '—' }}
+                                </td>
+                                <td class="px-3 py-2.5 text-right font-bold text-blue-700">
+                                    +{{ number_format($totalUnitsBought) }}
+                                </td>
+                                <td class="px-3 py-2.5"></td>
+                                <td class="px-3 py-2.5 text-right font-bold text-gray-900">
+                                    Rs. {{ number_format($totalSpent) }}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                @else
+                <p class="text-sm text-gray-400">No purchases recorded for this product yet.</p>
+                @endif
+            </div>
+        </div>
     </div>
 
     {{-- Sidebar details --}}
