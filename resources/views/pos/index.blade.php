@@ -1372,6 +1372,11 @@ function posStats() {
                 if (data.success) {
                     this.orders.splice(idx, 1);
                     await this.refresh();
+                    if (this.searchQuery.length > 0) {
+                        await this.searchProducts();
+                    } else if (this.selectedCategory) {
+                        this.loadProducts();
+                    }
                 } else {
                     alert(data.error || 'Delete failed.');
                 }
