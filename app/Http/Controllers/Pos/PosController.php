@@ -190,6 +190,7 @@ class PosController extends Controller
             ->with(['order', 'items'])
             ->get()
             ->map(fn($r) => [
+                'id'            => $r->id,
                 'time'          => $r->created_at->format('H:i'),
                 'return_number' => $r->return_number,
                 'order_number'  => $r->order?->order_number ?? '—',
