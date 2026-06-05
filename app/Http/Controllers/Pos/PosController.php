@@ -380,6 +380,7 @@ class PosController extends Controller
             'notes'               => 'nullable|string|max:500',
             'exchange_item_name'  => 'nullable|string|max:200',
             'exchange_value'      => 'nullable|numeric|min:0',
+            'promise_date'        => 'nullable|date',
         ]);
 
         DB::beginTransaction();
@@ -533,6 +534,7 @@ class PosController extends Controller
                     'amount'        => $khataDue,
                     'balance_after' => $newBal,
                     'description'   => $description,
+                    'promise_date'  => $request->promise_date ?: null,
                     'reference'     => $order->order_number,
                     'user_id'       => Auth::id(),
                 ]);
@@ -716,6 +718,7 @@ class PosController extends Controller
             'customer_id'         => 'nullable|exists:customers,id',
             'discount'            => 'nullable|numeric|min:0',
             'notes'               => 'nullable|string|max:500',
+            'promise_date'        => 'nullable|date',
         ]);
 
         DB::beginTransaction();
@@ -902,6 +905,7 @@ class PosController extends Controller
                     'amount'        => $khataDue,
                     'balance_after' => $newBal,
                     'description'   => "Edited Sale — {$order->order_number} | Total: Rs.{$newTotal} | Items: {$itemsList}",
+                    'promise_date'  => $request->promise_date ?: null,
                     'reference'     => $order->order_number,
                     'user_id'       => Auth::id(),
                 ]);

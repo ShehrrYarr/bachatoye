@@ -7,6 +7,9 @@
     <p class="text-sm text-gray-500 mt-0.5">{{ now()->format('l, d F Y') }}</p>
 </div>
 
+{{-- Khata Reminders --}}
+@include('admin.partials.khata-reminders')
+
 {{-- Quick access buttons --}}
 <div class="flex flex-wrap gap-3 mb-6">
     @can('pos.access')

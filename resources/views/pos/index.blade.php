@@ -391,6 +391,21 @@
                 </div>
             </div>
 
+            {{-- Promise date for Khata / Partial --}}
+            <div x-show="paymentMethod === 'khata' || paymentMethod === 'partial'"
+                 class="space-y-1 bg-purple-50 border border-purple-200 rounded-xl p-2">
+                <div class="text-xs font-semibold text-purple-700 mb-1">
+                    <i class="fas fa-calendar-check mr-1"></i> Promise Date
+                    <span class="font-normal text-purple-500">(optional)</span>
+                </div>
+                <input type="date" x-model="promiseDate"
+                       :min="new Date().toISOString().split('T')[0]"
+                       class="w-full text-sm border border-purple-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-purple-400 bg-white">
+                <p class="text-[10px] text-purple-500 leading-tight">
+                    When customer promises to pay — a reminder will appear 5 days before.
+                </p>
+            </div>
+
             {{-- Split payment: cash + bank --}}
             <div x-show="paymentMethod === 'split'" class="space-y-1 bg-teal-50 border border-teal-200 rounded-xl p-2">
                 <div class="text-xs font-semibold text-teal-700 mb-1">
@@ -983,6 +998,7 @@ function posApp() {
         paymentMethod: 'cash',
         cashReceived: 0,
         partialAmountPaid: 0,
+        promiseDate: '',
         splitCash: 0,
         splitBank: 0,
         bankAccountId: null,
@@ -1147,6 +1163,7 @@ function posApp() {
             this.splitBank = 0;
             this.bankAccountId = null;
             this.partialAmountPaid = 0;
+            this.promiseDate = '';
             this.recalculate();
         },
 
@@ -1170,11 +1187,15 @@ function posApp() {
             this.paymentMethod = method;
             if (method === 'cash') {
                 this.cashReceived = Math.ceil(this.total / 100) * 100;
+                this.promiseDate = '';
             } else if (method === 'partial') {
                 this.partialAmountPaid = 0;
             } else if (method === 'split') {
                 this.splitCash = Math.ceil(this.total / 100) * 100;
                 this.splitBank = 0;
+                this.promiseDate = '';
+            } else if (method === 'bank_transfer') {
+                this.promiseDate = '';
             }
         },
 
@@ -1242,6 +1263,7 @@ function posApp() {
                         customer_id: this.selectedCustomer?.id || null,
                         notes: this.orderNotes || null,
                         cash_received: this.cashReceived,
+                        promise_date: ['khata','partial'].includes(this.paymentMethod) ? (this.promiseDate || null) : null,
                         exchange_item_name: null,
                         exchange_value: 0,
                     })

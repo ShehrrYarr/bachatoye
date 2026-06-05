@@ -10,7 +10,7 @@ class AccountLedger extends Model
 
     protected $fillable = [
         'customer_id', 'type', 'payment_method', 'bank_account_id', 'amount', 'balance_after',
-        'description', 'reference', 'user_id',
+        'description', 'promise_date', 'reference', 'user_id',
     ];
 
     protected function casts(): array
@@ -18,6 +18,7 @@ class AccountLedger extends Model
         return [
             'amount'        => 'decimal:2',
             'balance_after' => 'decimal:2',
+            'promise_date'  => 'date',
         ];
     }
 

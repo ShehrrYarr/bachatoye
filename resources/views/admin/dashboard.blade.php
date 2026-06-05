@@ -5,6 +5,9 @@
 @section('content')
 <div class="space-y-6">
 
+    {{-- Khata Reminders --}}
+    @include('admin.partials.khata-reminders')
+
     {{-- Stat Cards --}}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <a href="{{ route('admin.reports.sales', ['period' => 'today', 'source' => 'pos']) }}"

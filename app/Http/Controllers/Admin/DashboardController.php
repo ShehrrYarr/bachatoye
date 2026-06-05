@@ -146,10 +146,19 @@ class DashboardController extends Controller
         $todayPurchasesList = Purchase::whereDate('purchase_date', today())
             ->with(['vendor', 'items'])->latest()->get();
 
+        // ── Khata payment reminders (promise dates within 5 days + overdue) ─
+        $khataReminders = AccountLedger::where('type', 'debit')
+            ->whereNotNull('promise_date')
+            ->where('promise_date', '<=', today()->addDays(5))
+            ->whereHas('customer', fn($q) => $q->where('credit_balance', '<', 0))
+            ->with('customer')
+            ->orderBy('promise_date')
+            ->get();
+
         return view('admin.dashboard', compact(
             'stats', 'recentOrders', 'lowStockItems', 'posChart', 'ecomChart', 'todayReport',
             'todayPosOrders', 'todayKhataEntries', 'todayExpensesList', 'todayReturnsList',
-            'todayPurchasesList'
+            'todayPurchasesList', 'khataReminders'
         ));
     }
 
@@ -432,11 +441,20 @@ class DashboardController extends Controller
             ? Purchase::whereDate('purchase_date', today())->with(['vendor', 'items'])->latest()->get()
             : collect();
 
+        // ── Khata payment reminders ───────────────────────────────────────
+        $khataReminders = AccountLedger::where('type', 'debit')
+            ->whereNotNull('promise_date')
+            ->where('promise_date', '<=', today()->addDays(5))
+            ->whereHas('customer', fn($q) => $q->where('credit_balance', '<', 0))
+            ->with('customer')
+            ->orderBy('promise_date')
+            ->get();
+
         return view('salesman.dashboard', compact(
             'todaySales', 'todayOrders', 'monthSales', 'lowStockCount',
             'recentOrders', 'lowStockItems', 'pendingOrders',
             'todayReport', 'todayPosOrders', 'todayReturnsList',
-            'todayKhataEntries', 'todayPurchasesList'
+            'todayKhataEntries', 'todayPurchasesList', 'khataReminders'
         ));
     }
 }
