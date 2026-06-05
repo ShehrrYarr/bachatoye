@@ -348,11 +348,19 @@
             <div class="space-y-3">
                 <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Basic Info</p>
 
-                <div>
-                    <label class="form-label !text-xs">Name <span class="text-red-500">*</span></label>
-                    <input type="text" x-model="form.name" class="form-input !py-1.5 !text-sm"
-                           placeholder="e.g. Samsung A55 Back Cover">
-                    <p x-show="errors.name" x-text="errors.name" class="text-red-500 text-xs mt-0.5"></p>
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="col-span-2">
+                        <label class="form-label !text-xs">Name <span class="text-red-500">*</span></label>
+                        <input type="text" x-model="form.name" class="form-input !py-1.5 !text-sm"
+                               placeholder="e.g. Samsung A55 Back Cover">
+                        <p x-show="errors.name" x-text="errors.name" class="text-red-500 text-xs mt-0.5"></p>
+                    </div>
+                    <div>
+                        <label class="form-label !text-xs">SKU</label>
+                        <input type="text" x-model="form.sku" class="form-input !py-1.5 !text-sm font-mono"
+                               placeholder="e.g. SAM-A55-BC">
+                        <p x-show="errors.sku" x-text="errors.sku" class="text-red-500 text-xs mt-0.5"></p>
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
@@ -708,6 +716,7 @@ function purchaseCreateModal() {
         errors: {},
         form: {
             name: '',
+            sku: '',
             category_id: '',
             subcategory_id: '',
             brand_id: '',
@@ -735,6 +744,7 @@ function purchaseCreateModal() {
             this.subcategories = [];
             this.form = {
                 name:                this.$store.quickCreate.prefillName || '',
+                sku:                 '',
                 category_id:         '',
                 subcategory_id:      '',
                 brand_id:            '',
@@ -793,7 +803,7 @@ function purchaseCreateModal() {
 
                 // Scalar fields
                 const fields = [
-                    'name','category_id','subcategory_id','brand_id','short_description',
+                    'name','sku','category_id','subcategory_id','brand_id','short_description',
                     'barcode','cost_price','price','compare_price','low_stock_threshold',
                     'video_embed_url',
                 ];

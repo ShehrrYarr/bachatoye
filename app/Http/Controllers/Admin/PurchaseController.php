@@ -58,6 +58,7 @@ class PurchaseController extends Controller
     {
         $data = $request->validate([
             'name'                => 'required|string|max:255',
+            'sku'                 => 'nullable|string|max:100|unique:products,sku',
             'category_id'         => 'nullable|exists:categories,id',
             'subcategory_id'      => 'nullable|exists:categories,id',
             'brand_id'            => 'nullable|exists:brands,id',
@@ -93,6 +94,7 @@ class PurchaseController extends Controller
         $product = Product::create([
             'name'                => $data['name'],
             'slug'                => $slug,
+            'sku'                 => $data['sku'] ?? null,
             'category_id'         => $data['category_id'] ?? null,
             'subcategory_id'      => $data['subcategory_id'] ?? null,
             'brand_id'            => $data['brand_id'] ?? null,
