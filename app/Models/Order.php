@@ -39,7 +39,7 @@ class Order extends Model
     {
         static::creating(function (Order $order) {
             if (!$order->order_number) {
-                $max  = (int) static::max('id');
+                $max  = (int) static::withTrashed()->max('id');
                 $next = str_pad($max + 1, 4, '0', STR_PAD_LEFT);
                 $order->order_number = 'ORD-' . $next;
             }
