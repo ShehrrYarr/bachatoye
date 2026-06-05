@@ -1023,6 +1023,13 @@ function posApp() {
         async init() {
             this.$refs.barcodeInput?.focus();
             // Start on category grid — no products loaded until category selected or searched
+            window.addEventListener('pos:sale-deleted', () => {
+                if (this.searchQuery.length > 0) {
+                    this.searchProducts();
+                } else if (this.selectedCategory) {
+                    this.loadProducts();
+                }
+            });
         },
 
         async loadProducts() {
@@ -1372,11 +1379,7 @@ function posStats() {
                 if (data.success) {
                     this.orders.splice(idx, 1);
                     await this.refresh();
-                    if (this.searchQuery.length > 0) {
-                        await this.searchProducts();
-                    } else if (this.selectedCategory) {
-                        this.loadProducts();
-                    }
+                    window.dispatchEvent(new CustomEvent('pos:sale-deleted'));
                 } else {
                     alert(data.error || 'Delete failed.');
                 }
