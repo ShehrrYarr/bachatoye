@@ -553,6 +553,10 @@ class PosController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::error('POS store() failed: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
             return response()->json(['error' => 'Order failed: ' . $e->getMessage()], 500);
         }
     }

@@ -1278,7 +1278,7 @@ function posApp() {
                     if (this.selectedCategory) this.loadProducts(); // reload same category
                     window.dispatchEvent(new CustomEvent('pos:order-placed'));
                 } else {
-                    alert(data.message || 'Order failed. Please try again.');
+                    alert(data.error || data.message || 'Order failed. Please try again.');
                 }
             } catch(e) { alert('Network error. Please try again.'); }
             this.processingOrder = false;
