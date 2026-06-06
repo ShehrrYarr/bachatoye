@@ -1,27 +1,50 @@
 @extends('layouts.admin')
-@section('title', 'Record Purchase')
+@section('title', 'Edit Purchase')
 
 @section('content')
-@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
+@php
+    $rPrefix        = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+    $categoriesJson = json_encode($categories->map(function($c) {
+        return [
+            'id'       => $c->id,
+            'name'     => $c->name,
+            'children' => $c->children->map(fn($s) => ['id' => $s->id, 'name' => $s->name])->values(),
+        ];
+    })->values());
+@endphp
+
 <div class="flex items-center gap-3 mb-6">
-    <a href="{{ route("{$rPrefix}.purchases.index") }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
-    <h1 class="text-xl font-bold text-gray-900">Record Purchase</h1>
+    <a href="{{ route('admin.purchases.show', $purchase) }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
+    <h1 class="text-xl font-bold text-gray-900">Edit Purchase</h1>
+    @if($purchase->reference)
+        <span class="font-mono text-sm text-gray-400">{{ $purchase->reference }}</span>
+    @endif
 </div>
 
-<form method="POST" action="{{ route("{$rPrefix}.purchases.store") }}"
-      x-data="purchaseForm()" @submit.prevent="submitForm"
+@if($errors->has('items'))
+<div class="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm flex items-start gap-2">
+    <i class="fas fa-exclamation-circle mt-0.5 shrink-0"></i>
+    <span>{{ $errors->first('items') }}</span>
+</div>
+@endif
+
+<form method="POST" action="{{ route('admin.purchases.update', $purchase) }}"
+      x-data="purchaseForm()"
+      @submit.prevent="submitForm"
       @product-created.window="onProductCreated($event.detail)">
     @csrf
+    @method('PUT')
 
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
         {{-- Left: items --}}
         <div class="xl:col-span-2 space-y-5">
 
-            {{-- Product search & add --}}
             <div class="card">
-                <div class="card-header"><h2 class="font-semibold text-gray-800">Add Products</h2></div>
+                <div class="card-header"><h2 class="font-semibold text-gray-800">Products</h2></div>
                 <div class="card-body space-y-3">
+
+                    {{-- Search --}}
                     <div class="flex gap-2">
                         <div class="relative flex-1">
                             <input type="text" x-model="searchQuery" @input.debounce.300ms="searchProducts()"
@@ -30,11 +53,8 @@
                                    class="form-input pl-9">
                             <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
 
-                            {{-- Search dropdown --}}
                             <div x-show="showDropdown && searchQuery.length >= 2"
                                  class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-30 max-h-72 overflow-y-auto">
-
-                                {{-- Existing results --}}
                                 <template x-for="p in searchResults" :key="p.id">
                                     <button type="button" @click="addProduct(p)"
                                             class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 text-left transition-colors border-b border-gray-100 last:border-0">
@@ -51,13 +71,9 @@
                                         </div>
                                     </button>
                                 </template>
-
-                                {{-- No results message --}}
                                 <div x-show="searchResults.length === 0" class="px-4 py-2.5 text-xs text-gray-400 border-b border-gray-100">
                                     No existing products found
                                 </div>
-
-                                {{-- Always show "Create new product" option --}}
                                 <button type="button" @click="openCreateModal()"
                                         class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-green-50 text-left transition-colors text-green-700">
                                     <div class="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center shrink-0">
@@ -76,7 +92,6 @@
                     <div x-show="items.length > 0" class="space-y-3">
                         <template x-for="(item, i) in items" :key="item.id">
                             <div class="border border-gray-200 rounded-xl p-4 bg-white">
-                                {{-- Product header row --}}
                                 <div class="flex items-start justify-between gap-3">
                                     <div>
                                         <div class="font-semibold text-gray-800" x-text="item.name"></div>
@@ -88,7 +103,6 @@
                                     </button>
                                 </div>
 
-                                {{-- Unit cost --}}
                                 <div class="mt-3 flex items-center gap-2">
                                     <label class="text-xs text-gray-500 whitespace-nowrap">Unit Cost (Rs.)</label>
                                     <input type="number" x-model.number="item.unit_cost" @input="recalc()"
@@ -96,7 +110,6 @@
                                            class="w-32 text-right border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500">
                                 </div>
 
-                                {{-- Non-colored: single qty --}}
                                 <template x-if="!item.has_colors">
                                     <div class="mt-3 flex items-center justify-between">
                                         <div class="flex items-center gap-2">
@@ -111,12 +124,9 @@
                                     </div>
                                 </template>
 
-                                {{-- Colored: per-color qty rows --}}
                                 <template x-if="item.has_colors">
                                     <div class="mt-3">
-                                        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                                            Quantity by Color
-                                        </div>
+                                        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Quantity by Color</div>
                                         <div class="space-y-1">
                                             <template x-for="(clr, ci) in item.colors" :key="clr.id">
                                                 <div class="flex items-center gap-3 py-2 border-t border-gray-100 first:border-t-0">
@@ -132,14 +142,9 @@
                                                 </div>
                                             </template>
                                         </div>
-                                        {{-- Color totals footer --}}
                                         <div class="flex items-center justify-between pt-2 mt-1 border-t border-gray-200 text-sm font-semibold">
-                                            <span class="text-gray-500">
-                                                Total: <span x-text="item.quantity" class="text-gray-800"></span> items
-                                            </span>
-                                            <span class="text-gray-800">
-                                                Rs. <span x-text="(item.quantity * item.unit_cost).toLocaleString()"></span>
-                                            </span>
+                                            <span class="text-gray-500">Total: <span x-text="item.quantity" class="text-gray-800"></span> items</span>
+                                            <span class="text-gray-800">Rs. <span x-text="(item.quantity * item.unit_cost).toLocaleString()"></span></span>
                                         </div>
                                     </div>
                                 </template>
@@ -147,7 +152,6 @@
                         </template>
                     </div>
 
-                    {{-- Hidden container for flattened form fields (populated by submitForm) --}}
                     <div id="flatItemsContainer"></div>
 
                     <div x-show="items.length === 0" class="text-center py-8 text-gray-400">
@@ -161,7 +165,8 @@
             <div class="card">
                 <div class="card-header"><h2 class="font-semibold text-gray-800">Notes</h2></div>
                 <div class="card-body">
-                    <textarea name="notes" rows="2" class="form-textarea" placeholder="Optional notes about this purchase..."></textarea>
+                    <textarea name="notes" rows="2" class="form-textarea"
+                              placeholder="Optional notes...">{{ old('notes', $purchase->notes) }}</textarea>
                 </div>
             </div>
         </div>
@@ -177,10 +182,11 @@
                         class="form-select mb-2" required>
                     <option value="">— Select a Vendor —</option>
                     @foreach($vendors as $v)
-                    <option value="{{ $v->id }}" {{ request('vendor_id') == $v->id ? 'selected' : '' }}>{{ $v->name }}{{ $v->company ? ' ('.$v->company.')' : '' }}</option>
+                    <option value="{{ $v->id }}" {{ old('vendor_id', $purchase->vendor_id) == $v->id ? 'selected' : '' }}>
+                        {{ $v->name }}{{ $v->company ? ' ('.$v->company.')' : '' }}
+                    </option>
                     @endforeach
                 </select>
-                <p x-show="!vendorId" class="text-xs text-red-500 mt-1">A vendor must be selected to record a purchase.</p>
                 <div x-show="vendorBalance != null" class="text-xs text-gray-500 flex justify-between mt-1">
                     <span>Current balance owed:</span>
                     <span class="font-semibold" :class="vendorBalance > 0 ? 'text-red-600' : 'text-green-600'"
@@ -188,14 +194,16 @@
                 </div>
                 <div class="mt-3">
                     <label class="form-label text-sm">Reference / Invoice #</label>
-                    <input type="text" name="reference" class="form-input" placeholder="Bill number from vendor">
+                    <input type="text" name="reference" class="form-input" placeholder="Bill number from vendor"
+                           value="{{ old('reference', $purchase->reference) }}">
                 </div>
             </div>
 
-            {{-- Purchase date --}}
+            {{-- Date --}}
             <div class="card p-5">
                 <label class="form-label">Purchase Date *</label>
-                <input type="date" name="purchase_date" value="{{ date('Y-m-d') }}" class="form-input" required>
+                <input type="date" name="purchase_date" class="form-input" required
+                       value="{{ old('purchase_date', $purchase->purchase_date->format('Y-m-d')) }}">
             </div>
 
             {{-- Payment --}}
@@ -225,14 +233,13 @@
                 </div>
                 <input type="hidden" name="payment_method" :value="payMethod">
 
-                {{-- Bank account selector --}}
                 @if($bankAccounts->count())
                 <div x-show="payMethod === 'bank_transfer'" class="mt-2 space-y-1">
                     <label class="form-label text-sm"><i class="fas fa-university mr-1 text-blue-500"></i>Select Bank Account *</label>
                     <select name="bank_account_id" class="form-select text-sm">
                         <option value="">— Choose bank account —</option>
                         @foreach($bankAccounts as $bank)
-                        <option value="{{ $bank->id }}">
+                        <option value="{{ $bank->id }}" {{ $purchase->bank_account_id == $bank->id ? 'selected' : '' }}>
                             {{ $bank->label }} — {{ $bank->bank_name }}{{ $bank->account_number ? ' · '.$bank->account_number : '' }}
                         </option>
                         @endforeach
@@ -255,10 +262,10 @@
                     Full amount will be added to vendor's Khata
                 </div>
                 <div x-show="payMethod === 'cash'" class="mt-2 p-2 bg-green-50 rounded-lg text-xs text-green-700">
-                    <i class="fas fa-money-bill-wave mr-1"></i>Paid in full by cash — no Khata entry
+                    Paid in full by cash — no Khata entry
                 </div>
                 <div x-show="payMethod === 'bank_transfer'" class="mt-2 p-2 bg-blue-50 rounded-lg text-xs text-blue-700">
-                    <i class="fas fa-university mr-1"></i>Paid in full via bank transfer — no Khata entry
+                    Paid in full via bank transfer — no Khata entry
                 </div>
             </div>
 
@@ -278,10 +285,6 @@
                         <span>Total</span>
                         <span x-text="'Rs. ' + total.toLocaleString()"></span>
                     </div>
-                    <div x-show="payMethod === 'cash' || payMethod === 'bank_transfer'" class="flex justify-between text-green-600 font-semibold">
-                        <span>Paying Now</span>
-                        <span x-text="'Rs. ' + total.toLocaleString()"></span>
-                    </div>
                     <div x-show="payMethod === 'partial'" class="flex justify-between text-orange-600 font-semibold">
                         <span>On Credit</span>
                         <span x-text="'Rs. ' + Math.max(0, total - amountPaid).toLocaleString()"></span>
@@ -295,55 +298,32 @@
                 <button type="submit" :disabled="items.length === 0"
                         class="btn-primary w-full justify-center mt-4 btn-lg"
                         :class="items.length === 0 ? 'opacity-50 cursor-not-allowed' : ''">
-                    <i class="fas fa-save mr-2"></i> Save Purchase
+                    <i class="fas fa-save mr-2"></i> Save Changes
                 </button>
-                <p class="text-xs text-gray-400 text-center mt-2">Stock will be updated automatically</p>
+                <p class="text-xs text-gray-400 text-center mt-2">Stock and ledger will be updated automatically</p>
             </div>
         </div>
     </div>
-
 </form>
 
-{{-- ── Quick Create Product Modal ─────────────────────────────────────── --}}
-{{-- Build categories JSON in a PHP block to avoid Blade bracket-parsing issues --}}
-@php
-    $categoriesJson = json_encode($categories->map(function($c) {
-        return [
-            'id'       => $c->id,
-            'name'     => $c->name,
-            'children' => $c->children->map(function($s) {
-                return ['id' => $s->id, 'name' => $s->name];
-            })->values(),
-        ];
-    })->values());
-@endphp
-<script>
-    const _categoriesData = {!! $categoriesJson !!};
-</script>
+{{-- ── Quick Create Product Modal (same as create.blade.php) ─────────── --}}
+<script>const _categoriesJson = {!! $categoriesJson !!};</script>
 
 <div x-data="purchaseCreateModal()"
      x-show="$store.quickCreate.open"
      x-transition.opacity
      class="fixed inset-0 z-50 overflow-y-auto"
      style="display:none;">
-
     <div class="absolute inset-0 bg-black/50" @click="close()"></div>
-
     <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-auto my-8 flex flex-col z-10">
-
-        {{-- Header --}}
         <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 shrink-0">
             <h2 class="font-bold text-gray-900 flex items-center gap-2">
                 <i class="fas fa-plus-circle text-green-500"></i> Create New Product
             </h2>
-            <button type="button" @click="close()" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times"></i>
-            </button>
+            <button type="button" @click="close()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
         </div>
-
+        {{-- Re-use the same modal body as in create.blade.php --}}
         @include('admin.purchases._quick-create-modal-body')
-
-        {{-- Footer --}}
         <div class="px-5 py-3 border-t border-gray-200 flex gap-3 justify-end shrink-0">
             <button type="button" @click="close()" class="btn-outline btn-sm">Cancel</button>
             <button type="button" @click="save()" :disabled="saving"
@@ -358,51 +338,50 @@
 
 @push('scripts')
 <script>
-// Shared store so the modal can talk to the purchase form
 document.addEventListener('alpine:init', () => {
-    Alpine.store('quickCreate', {
-        open: false,
-        prefillName: '',
-    });
+    Alpine.store('quickCreate', { open: false, prefillName: '' });
 });
+
+const _existingItems = @json($existingItems);
 
 function purchaseForm() {
     return {
-        items: [],
-        searchQuery: '',
-        searchResults: [],
+        items:        _existingItems,
+        searchQuery:  '',
+        searchResults:[],
         showDropdown: false,
-        payMethod: 'cash',
-        amountPaid: 0,
-        total: 0,
-        vendorId: '{{ request('vendor_id', '') }}',
+        payMethod:    '{{ old('payment_method', $purchase->payment_method) }}',
+        amountPaid:   {{ old('amount_paid', $purchase->amount_paid) }},
+        total:        0,
+        vendorId:     '{{ old('vendor_id', $purchase->vendor_id) }}',
         vendorBalance: null,
+
+        init() {
+            this.recalc();
+            if (this.vendorId) this.loadVendor();
+        },
 
         async searchProducts() {
             if (this.searchQuery.length < 2) { this.searchResults = []; return; }
-            const res = await fetch(`/{{ auth()->user()->hasRole('admin') ? 'admin' : 'salesman' }}/api/products/search?q=${encodeURIComponent(this.searchQuery)}`);
+            const res = await fetch(`/admin/api/products/search?q=${encodeURIComponent(this.searchQuery)}`);
             this.searchResults = await res.json();
-            this.showDropdown = true;
+            this.showDropdown  = true;
         },
 
         openCreateModal() {
             this.showDropdown = false;
             this.$store.quickCreate.prefillName = this.searchQuery;
             this.$store.quickCreate.open = true;
-            this.searchQuery = '';
+            this.searchQuery  = '';
             this.searchResults = [];
         },
 
         addProduct(p) {
-            // Prevent duplicate
             if (this.items.find(i => i.id === p.id)) {
                 alert(`"${p.name}" is already in the list.`);
-                this.searchQuery = '';
-                this.searchResults = [];
-                this.showDropdown = false;
+                this.searchQuery = ''; this.searchResults = []; this.showDropdown = false;
                 return;
             }
-
             const hasColors = Array.isArray(p.colors) && p.colors.length > 0;
             this.items.push({
                 id:         p.id,
@@ -410,25 +389,14 @@ function purchaseForm() {
                 sku:        p.sku || '',
                 unit_cost:  parseFloat(p.cost_price) || 0,
                 has_colors: hasColors,
-                colors:     hasColors ? p.colors.map(c => ({
-                                id:       c.id,
-                                name:     c.name,
-                                hex_code: c.hex_code || '',
-                                quantity: 0,
-                            })) : [],
+                colors:     hasColors ? p.colors.map(c => ({ id: c.id, name: c.name, hex_code: c.hex_code || '', quantity: 0 })) : [],
                 quantity:   hasColors ? 0 : 1,
             });
-
-            this.searchQuery  = '';
-            this.searchResults = [];
-            this.showDropdown = false;
+            this.searchQuery = ''; this.searchResults = []; this.showDropdown = false;
             this.recalc();
         },
 
-        removeItem(i) {
-            this.items.splice(i, 1);
-            this.recalc();
-        },
+        removeItem(i) { this.items.splice(i, 1); this.recalc(); },
 
         recalc() {
             this.items.forEach(item => {
@@ -446,66 +414,35 @@ function purchaseForm() {
             this.vendorBalance = data.balance;
         },
 
-        // Called by the modal after a product is created — add it to the list
-        onProductCreated(p) {
-            this.addProduct(p);
-        },
+        onProductCreated(p) { this.addProduct(p); },
 
         submitForm() {
-            if (!this.vendorId) {
-                alert('Please select a vendor before saving the purchase.');
-                return;
-            }
-            if (this.items.length === 0) {
-                alert('Please add at least one product.');
-                return;
-            }
-
-            // Validate colored products have at least one non-zero color qty
+            if (!this.vendorId) { alert('Please select a vendor.'); return; }
+            if (this.items.length === 0) { alert('Please add at least one product.'); return; }
             for (const item of this.items) {
                 if (item.has_colors && item.quantity === 0) {
-                    alert(`Please enter at least one color quantity for: ${item.name}`);
-                    return;
+                    alert(`Please enter at least one color quantity for: ${item.name}`); return;
                 }
             }
-
-            // Flatten into individual purchase line items
             const flatItems = [];
             this.items.forEach(item => {
                 if (item.has_colors) {
-                    item.colors
-                        .filter(c => (parseInt(c.quantity) || 0) > 0)
-                        .forEach(c => {
-                            flatItems.push({
-                                product_id: item.id,
-                                quantity:   parseInt(c.quantity),
-                                unit_cost:  item.unit_cost,
-                                color_id:   c.id,
-                                color_name: c.name,
-                            });
-                        });
-                } else {
-                    flatItems.push({
-                        product_id: item.id,
-                        quantity:   item.quantity,
-                        unit_cost:  item.unit_cost,
+                    item.colors.filter(c => (parseInt(c.quantity) || 0) > 0).forEach(c => {
+                        flatItems.push({ product_id: item.id, quantity: parseInt(c.quantity), unit_cost: item.unit_cost, color_id: c.id, color_name: c.name });
                     });
+                } else {
+                    flatItems.push({ product_id: item.id, quantity: item.quantity, unit_cost: item.unit_cost });
                 }
             });
-
-            // Inject hidden fields into the form
             const container = document.getElementById('flatItemsContainer');
             container.innerHTML = '';
             flatItems.forEach((row, i) => {
                 Object.entries(row).forEach(([key, val]) => {
                     const input = document.createElement('input');
-                    input.type  = 'hidden';
-                    input.name  = `items[${i}][${key}]`;
-                    input.value = val;
+                    input.type = 'hidden'; input.name = `items[${i}][${key}]`; input.value = val;
                     container.appendChild(input);
                 });
             });
-
             this.$el.submit();
         }
     };
@@ -513,153 +450,51 @@ function purchaseForm() {
 
 function purchaseCreateModal() {
     return {
-        saving: false,
-        colors: [],
-        imageFiles: [],
-        imagePreviews: [],
-        subcategories: [],
-        errors: {},
-        form: {
-            name: '',
-            sku: '',
-            category_id: '',
-            subcategory_id: '',
-            brand_id: '',
-            short_description: '',
-            barcode: '',
-            cost_price: '',
-            price: '',
-            compare_price: '',
-            low_stock_threshold: 5,
-            show_in_ecom: false,
-            video_embed_url: '',
-        },
-
-        init() {
-            this.$watch('$store.quickCreate.open', (val) => {
-                if (val) this.reset();
-            });
-        },
-
+        saving: false, colors: [], imageFiles: [], imagePreviews: [], subcategories: [], errors: {},
+        form: { name:'', sku:'', category_id:'', subcategory_id:'', brand_id:'', short_description:'', barcode:'', cost_price:'', price:'', compare_price:'', low_stock_threshold:5, show_in_ecom:false, video_embed_url:'' },
+        init() { this.$watch('$store.quickCreate.open', val => { if (val) this.reset(); }); },
         reset() {
-            this.errors        = {};
-            this.colors        = [];
-            this.imageFiles    = [];
-            this.imagePreviews = [];
-            this.subcategories = [];
-            this.form = {
-                name:                this.$store.quickCreate.prefillName || '',
-                sku:                 '',
-                category_id:         '',
-                subcategory_id:      '',
-                brand_id:            '',
-                short_description:   '',
-                barcode:             '',
-                cost_price:          '',
-                price:               '',
-                compare_price:       '',
-                low_stock_threshold: 5,
-                show_in_ecom:        false,
-                video_embed_url:     '',
-            };
+            this.errors = {}; this.colors = []; this.imageFiles = []; this.imagePreviews = []; this.subcategories = [];
+            this.form = { name: this.$store.quickCreate.prefillName || '', sku:'', category_id:'', subcategory_id:'', brand_id:'', short_description:'', barcode:'', cost_price:'', price:'', compare_price:'', low_stock_threshold:5, show_in_ecom:false, video_embed_url:'' };
         },
-
         onCategoryChange() {
             this.form.subcategory_id = '';
-            const cat = _categoriesData.find(c => c.id == this.form.category_id);
+            const cat = _categoriesJson.find(c => c.id == this.form.category_id);
             this.subcategories = cat ? cat.children : [];
         },
-
-        addColor() {
-            this.colors.push({ name: '', hex_code: '#3b82f6' });
-        },
-
-        onImagesChange(e) {
-            const files = Array.from(e.target.files);
-            this.imageFiles    = files;
-            this.imagePreviews = files.map(f => URL.createObjectURL(f));
-        },
-
-        removeImage(i) {
-            this.imagePreviews.splice(i, 1);
-            this.imageFiles.splice(i, 1);
-        },
-
-        async generateBarcode() {
-            const res  = await fetch('{{ route("{$rPrefix}.products.generate_barcode") }}');
-            const data = await res.json();
-            this.form.barcode = data.barcode;
-        },
-
-        close() {
-            this.$store.quickCreate.open = false;
-        },
-
+        addColor() { this.colors.push({ name: '', hex_code: '#3b82f6' }); },
+        onImagesChange(e) { const files = Array.from(e.target.files); this.imageFiles = files; this.imagePreviews = files.map(f => URL.createObjectURL(f)); },
+        removeImage(i) { this.imagePreviews.splice(i, 1); this.imageFiles.splice(i, 1); },
+        async generateBarcode() { const res = await fetch('/admin/products/generate-barcode'); const data = await res.json(); this.form.barcode = data.barcode; },
+        close() { this.$store.quickCreate.open = false; },
         async save() {
             this.errors = {};
-            if (!this.form.name.trim())    { this.errors.name       = 'Required'; return; }
-            if (!this.form.cost_price)     { this.errors.cost_price = 'Required'; return; }
-            if (!this.form.price)          { this.errors.price      = 'Required'; return; }
-
+            if (!this.form.name.trim())  { this.errors.name = 'Required'; return; }
+            if (!this.form.cost_price)   { this.errors.cost_price = 'Required'; return; }
+            if (!this.form.price)        { this.errors.price = 'Required'; return; }
             this.saving = true;
             try {
-                // Use FormData so image files are included
                 const fd = new FormData();
-
-                // Scalar fields
-                const fields = [
-                    'name','sku','category_id','subcategory_id','brand_id','short_description',
-                    'barcode','cost_price','price','compare_price','low_stock_threshold',
-                    'video_embed_url',
-                ];
-                fields.forEach(k => {
-                    if (this.form[k] !== '' && this.form[k] !== null && this.form[k] !== undefined) {
-                        fd.append(k, this.form[k]);
-                    }
-                });
+                ['name','sku','category_id','subcategory_id','brand_id','short_description','barcode','cost_price','price','compare_price','low_stock_threshold','video_embed_url']
+                    .forEach(k => { if (this.form[k] !== '' && this.form[k] != null) fd.append(k, this.form[k]); });
                 fd.append('show_in_ecom', this.form.show_in_ecom ? '1' : '0');
-
-                // Images
                 this.imageFiles.forEach(f => fd.append('images[]', f));
-
-                // Colors (only rows with a name)
-                this.colors.filter(c => c.name.trim()).forEach((c, i) => {
-                    fd.append(`colors[${i}][name]`,     c.name);
-                    fd.append(`colors[${i}][hex_code]`, c.hex_code || '');
-                });
-
-                const res = await fetch('{{ route("{$rPrefix}.api.products.quick-create") }}', {
+                this.colors.filter(c => c.name.trim()).forEach((c, i) => { fd.append(`colors[${i}][name]`, c.name); fd.append(`colors[${i}][hex_code]`, c.hex_code || ''); });
+                const res = await fetch('/admin/api/products/quick-create', {
                     method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept':       'application/json',
-                    },
+                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json' },
                     body: fd,
                 });
-
                 const data = await res.json();
-
                 if (!res.ok) {
-                    if (data.errors) {
-                        Object.entries(data.errors).forEach(([k, msgs]) => {
-                            this.errors[k] = msgs[0];
-                        });
-                    } else {
-                        this.errors.general = data.message || 'Something went wrong.';
-                    }
+                    if (data.errors) Object.entries(data.errors).forEach(([k, msgs]) => { this.errors[k] = msgs[0]; });
+                    else this.errors.general = data.message || 'Something went wrong.';
                     return;
                 }
-
-                // Hand off to purchaseForm to add to the list
                 this.$dispatch('product-created', data);
                 this.close();
-
-            } catch (e) {
-                this.errors.general = 'Network error. Please try again.';
-            } finally {
-                this.saving = false;
-            }
-        },
+            } finally { this.saving = false; }
+        }
     };
 }
 </script>

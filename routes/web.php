@@ -166,6 +166,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::get('purchases/create', [Admin\PurchaseController::class, 'create'])->name('purchases.create');
     Route::post('purchases', [Admin\PurchaseController::class, 'store'])->name('purchases.store');
     Route::get('purchases/{purchase}', [Admin\PurchaseController::class, 'show'])->name('purchases.show');
+    Route::get('purchases/{purchase}/edit', [Admin\PurchaseController::class, 'edit'])->name('purchases.edit');
+    Route::put('purchases/{purchase}', [Admin\PurchaseController::class, 'update'])->name('purchases.update');
+    Route::delete('purchases/{purchase}', [Admin\PurchaseController::class, 'destroy'])->name('purchases.destroy');
     Route::get('reports/purchases', [Admin\PurchaseController::class, 'report'])->name('reports.purchases');
 
     // Expenses

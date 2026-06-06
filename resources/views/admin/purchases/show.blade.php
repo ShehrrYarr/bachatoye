@@ -3,6 +3,14 @@
 
 @section('content')
 @php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
+
+@if($errors->has('delete'))
+<div class="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm flex items-start gap-2">
+    <i class="fas fa-exclamation-circle mt-0.5 shrink-0"></i>
+    <span>{{ $errors->first('delete') }}</span>
+</div>
+@endif
+
 <div class="flex items-center justify-between mb-6">
     <div class="flex items-center gap-3">
         <a href="{{ route("{$rPrefix}.purchases.index") }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
@@ -17,6 +25,20 @@
             {{ ucfirst($purchase->payment_status) }}
         </span>
     </div>
+    @if(auth()->user()->hasRole('admin'))
+    <div class="flex items-center gap-2">
+        <a href="{{ route('admin.purchases.edit', $purchase) }}" class="btn-outline btn-sm">
+            <i class="fas fa-edit mr-1"></i> Edit
+        </a>
+        <form method="POST" action="{{ route('admin.purchases.destroy', $purchase) }}"
+              onsubmit="return confirm('Delete this purchase? Stock and vendor ledger will be reversed. This cannot be undone.')">
+            @csrf @method('DELETE')
+            <button type="submit" class="btn-danger btn-sm">
+                <i class="fas fa-trash mr-1"></i> Delete
+            </button>
+        </form>
+    </div>
+    @endif
     <div class="text-sm text-gray-500">{{ $purchase->purchase_date->format('d M Y') }}</div>
 </div>
 

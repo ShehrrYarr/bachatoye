@@ -80,9 +80,23 @@
                         </span>
                     </td>
                     <td>
-                        <a href="{{ route("{$rPrefix}.purchases.show", $purchase) }}" class="btn-outline btn-sm">
-                            <i class="fas fa-eye"></i>
-                        </a>
+                        <div class="flex items-center gap-1.5">
+                            <a href="{{ route("{$rPrefix}.purchases.show", $purchase) }}" class="btn-outline btn-sm">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            @if(auth()->user()->hasRole('admin'))
+                            <a href="{{ route('admin.purchases.edit', $purchase) }}" class="btn-outline btn-sm text-blue-600 border-blue-200 hover:bg-blue-50">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <form method="POST" action="{{ route('admin.purchases.destroy', $purchase) }}"
+                                  onsubmit="return confirm('Delete purchase {{ $purchase->reference ?? 'PUR-'.$purchase->id }}? Stock and vendor ledger will be reversed.')">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="btn-outline btn-sm text-red-600 border-red-200 hover:bg-red-50">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                            @endif
+                        </div>
                     </td>
                 </tr>
                 @empty

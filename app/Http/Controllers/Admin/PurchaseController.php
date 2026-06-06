@@ -285,6 +285,296 @@ class PurchaseController extends Controller
         return view('admin.purchases.show', compact('purchase'));
     }
 
+    public function edit(Purchase $purchase)
+    {
+        $purchase->load(['items.product.colors', 'vendor']);
+        $vendors      = Vendor::orderBy('name')->get();
+        $bankAccounts = BankAccount::active()->orderBy('sort_order')->get();
+        $categories   = Category::active()->whereNull('parent_id')
+            ->with(['children' => fn($q) => $q->active()->orderBy('name')->select('id', 'name', 'parent_id')])
+            ->orderBy('name')->get(['id', 'name']);
+        $brands = Brand::orderBy('name')->get(['id', 'name']);
+
+        // Group purchase items back into the Alpine item format (one entry per product,
+        // with per-color quantity rows when colors are present).
+        $grouped = [];
+        foreach ($purchase->items as $item) {
+            $pid = $item->product_id;
+            if (!isset($grouped[$pid])) {
+                $grouped[$pid] = [
+                    'id'         => $pid,
+                    'name'       => $item->product_name,
+                    'sku'        => $item->product?->sku ?? '',
+                    'unit_cost'  => (float) $item->unit_cost,
+                    'has_colors' => false,
+                    'colors'     => [],
+                    'quantity'   => 0,
+                ];
+            }
+            if ($item->color_id) {
+                $hex = $item->product?->colors->find($item->color_id)?->hex_code ?? '';
+                $grouped[$pid]['has_colors']  = true;
+                $grouped[$pid]['colors'][]    = [
+                    'id'       => $item->color_id,
+                    'name'     => $item->color_name,
+                    'hex_code' => $hex,
+                    'quantity' => (int) $item->quantity,
+                ];
+                $grouped[$pid]['quantity'] += (int) $item->quantity;
+            } else {
+                $grouped[$pid]['quantity'] = (int) $item->quantity;
+            }
+        }
+        $existingItems = array_values($grouped);
+
+        return view('admin.purchases.edit', compact(
+            'purchase', 'vendors', 'bankAccounts', 'categories', 'brands', 'existingItems'
+        ));
+    }
+
+    public function update(Request $request, Purchase $purchase)
+    {
+        $request->validate([
+            'purchase_date'       => 'required|date',
+            'vendor_id'           => 'required|exists:vendors,id',
+            'reference'           => 'nullable|string|max:100',
+            'payment_method'      => 'required|in:cash,bank_transfer,credit,partial',
+            'bank_account_id'     => 'nullable|exists:bank_accounts,id',
+            'amount_paid'         => 'nullable|numeric|min:0',
+            'notes'               => 'nullable|string|max:1000',
+            'items'               => 'required|array|min:1',
+            'items.*.product_id'  => 'required|exists:products,id',
+            'items.*.quantity'    => 'required|integer|min:1',
+            'items.*.unit_cost'   => 'required|numeric|min:0',
+            'items.*.color_id'    => 'nullable|exists:product_colors,id',
+            'items.*.color_name'  => 'nullable|string|max:100',
+        ]);
+
+        try {
+            DB::transaction(function () use ($request, $purchase) {
+                $purchase->load('items');
+
+                // ── 1. Guard: verify stock reversal won't go negative ─────
+                foreach ($purchase->items as $old) {
+                    $product = Product::find($old->product_id);
+                    if (!$product) continue;
+
+                    if ($old->color_id) {
+                        $color = ProductColor::find($old->color_id);
+                        if ($color && ($color->stock_quantity - $old->quantity) < 0) {
+                            throw new \RuntimeException(
+                                "Cannot update: reversing {$old->quantity} units of \"{$product->name}\" ({$old->color_name}) would make its color stock negative (current: {$color->stock_quantity})."
+                            );
+                        }
+                    } elseif (($product->stock_quantity - $old->quantity) < 0) {
+                        throw new \RuntimeException(
+                            "Cannot update: reversing {$old->quantity} units of \"{$product->name}\" would make stock negative (current: {$product->stock_quantity})."
+                        );
+                    }
+                }
+
+                // ── 2. Reverse old stock ───────────────────────────────────
+                foreach ($purchase->items as $old) {
+                    $product = Product::find($old->product_id);
+                    if (!$product) continue;
+
+                    if ($old->color_id) {
+                        ProductColor::where('id', $old->color_id)->decrement('stock_quantity', $old->quantity);
+                    }
+                    $before = (int) $product->stock_quantity;
+                    $after  = $before - (int) $old->quantity;
+                    $product->decrement('stock_quantity', $old->quantity);
+
+                    StockMovement::create([
+                        'product_id'      => $product->id,
+                        'type'            => 'adjustment',
+                        'quantity'        => -(int) $old->quantity,
+                        'before_quantity' => $before,
+                        'after_quantity'  => $after,
+                        'reference'       => $purchase->reference ?? 'PUR-'.$purchase->id,
+                        'note'            => 'Purchase edit — old stock reversed',
+                        'user_id'         => auth()->id(),
+                    ]);
+                }
+
+                // ── 3. Reverse old vendor ledger for this purchase ────────
+                $oldCredit = VendorLedger::where('purchase_id', $purchase->id)->where('type', 'credit')->sum('amount');
+                if ($oldCredit > 0) {
+                    $oldVendor = Vendor::find($purchase->vendor_id);
+                    $oldVendor?->decrement('balance', $oldCredit);
+                }
+                VendorLedger::where('purchase_id', $purchase->id)->delete();
+
+                // ── 4. Delete old items ───────────────────────────────────
+                $purchase->items()->delete();
+
+                // ── 5. Recalculate totals from new items ──────────────────
+                $newItems   = $request->items;
+                $subtotal   = collect($newItems)->sum(fn($i) => $i['quantity'] * $i['unit_cost']);
+                $total      = $subtotal;
+                $payMethod  = $request->payment_method;
+                $bankAccId  = $payMethod === 'bank_transfer' ? ($request->bank_account_id ?: null) : null;
+                $amountPaid = match ($payMethod) {
+                    'cash', 'bank_transfer' => $total,
+                    'credit'                => 0.0,
+                    'partial'               => min((float)($request->amount_paid ?? 0), $total),
+                };
+                $payStatus = match (true) {
+                    $amountPaid >= $total => 'paid',
+                    $amountPaid > 0       => 'partial',
+                    default               => 'unpaid',
+                };
+
+                // ── 6. Update purchase record ─────────────────────────────
+                $purchase->update([
+                    'reference'       => $request->reference,
+                    'vendor_id'       => $request->vendor_id,
+                    'purchase_date'   => $request->purchase_date,
+                    'subtotal'        => $subtotal,
+                    'total'           => $total,
+                    'payment_method'  => $payMethod,
+                    'bank_account_id' => $bankAccId,
+                    'amount_paid'     => $amountPaid,
+                    'payment_status'  => $payStatus,
+                    'notes'           => $request->notes,
+                ]);
+
+                // ── 7. Apply new items ────────────────────────────────────
+                foreach ($newItems as $row) {
+                    $product   = Product::find($row['product_id']);
+                    if (!$product) continue;
+                    $colorId   = !empty($row['color_id'])   ? (int)$row['color_id']   : null;
+                    $colorName = !empty($row['color_name']) ? $row['color_name']       : null;
+                    $lineTotal = $row['quantity'] * $row['unit_cost'];
+
+                    $purchase->items()->create([
+                        'product_id'   => $product->id,
+                        'product_name' => $product->name,
+                        'color_id'     => $colorId,
+                        'color_name'   => $colorName,
+                        'quantity'     => $row['quantity'],
+                        'unit_cost'    => $row['unit_cost'],
+                        'line_total'   => $lineTotal,
+                    ]);
+
+                    if ($colorId) {
+                        ProductColor::where('id', $colorId)->increment('stock_quantity', $row['quantity']);
+                    }
+
+                    $product->refresh();
+                    $before = (int) $product->stock_quantity;
+                    $after  = $before + (int) $row['quantity'];
+                    $product->increment('stock_quantity', $row['quantity']);
+                    $product->update(['cost_price' => $row['unit_cost']]);
+
+                    StockMovement::create([
+                        'product_id'      => $product->id,
+                        'type'            => 'purchase',
+                        'quantity'        => (int) $row['quantity'],
+                        'before_quantity' => $before,
+                        'after_quantity'  => $after,
+                        'reference'       => $purchase->reference ?? 'PUR-'.$purchase->id,
+                        'note'            => 'Purchase edit — new stock applied',
+                        'user_id'         => auth()->id(),
+                    ]);
+                }
+
+                // ── 8. New vendor ledger entry if on credit ───────────────
+                if ($payStatus !== 'paid') {
+                    $vendor  = Vendor::find($request->vendor_id);
+                    $owed    = $total - $amountPaid;
+                    $newBal  = (float)$vendor->balance + $owed;
+                    VendorLedger::create([
+                        'vendor_id'     => $vendor->id,
+                        'purchase_id'   => $purchase->id,
+                        'type'          => 'credit',
+                        'amount'        => $owed,
+                        'balance_after' => $newBal,
+                        'description'   => $payStatus === 'partial'
+                            ? "Partial payment — Rs.{$amountPaid} paid, Rs.{$owed} on credit (edited)"
+                            : "Purchase on credit (edited)",
+                        'created_by'    => auth()->id(),
+                    ]);
+                    $vendor->update(['balance' => $newBal]);
+                }
+            });
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['items' => $e->getMessage()])->withInput();
+        }
+
+        return redirect()->route('admin.purchases.show', $purchase)
+            ->with('success', 'Purchase updated — stock and ledger adjusted.');
+    }
+
+    public function destroy(Purchase $purchase)
+    {
+        try {
+            DB::transaction(function () use ($purchase) {
+                $purchase->load('items');
+
+                // ── 1. Guard: verify stock reversal won't go negative ─────
+                foreach ($purchase->items as $item) {
+                    $product = Product::find($item->product_id);
+                    if (!$product) continue;
+
+                    if ($item->color_id) {
+                        $color = ProductColor::find($item->color_id);
+                        if ($color && ($color->stock_quantity - $item->quantity) < 0) {
+                            throw new \RuntimeException(
+                                "Cannot delete: reversing {$item->quantity} units of \"{$product->name}\" ({$item->color_name}) would make its color stock negative (current: {$color->stock_quantity}). Adjust stock first."
+                            );
+                        }
+                    } elseif (($product->stock_quantity - $item->quantity) < 0) {
+                        throw new \RuntimeException(
+                            "Cannot delete: reversing {$item->quantity} units of \"{$product->name}\" would make stock negative (current: {$product->stock_quantity}). Adjust stock first."
+                        );
+                    }
+                }
+
+                // ── 2. Reverse stock ──────────────────────────────────────
+                foreach ($purchase->items as $item) {
+                    $product = Product::find($item->product_id);
+                    if (!$product) continue;
+
+                    if ($item->color_id) {
+                        ProductColor::where('id', $item->color_id)->decrement('stock_quantity', $item->quantity);
+                    }
+                    $before = (int) $product->stock_quantity;
+                    $after  = $before - (int) $item->quantity;
+                    $product->decrement('stock_quantity', $item->quantity);
+
+                    StockMovement::create([
+                        'product_id'      => $product->id,
+                        'type'            => 'adjustment',
+                        'quantity'        => -(int) $item->quantity,
+                        'before_quantity' => $before,
+                        'after_quantity'  => $after,
+                        'reference'       => $purchase->reference ?? 'PUR-'.$purchase->id,
+                        'note'            => 'Purchase deleted — stock reversed',
+                        'user_id'         => auth()->id(),
+                    ]);
+                }
+
+                // ── 3. Reverse vendor ledger ──────────────────────────────
+                $creditTotal = VendorLedger::where('purchase_id', $purchase->id)->where('type', 'credit')->sum('amount');
+                if ($creditTotal > 0 && $purchase->vendor_id) {
+                    $vendor = Vendor::find($purchase->vendor_id);
+                    $vendor?->decrement('balance', $creditTotal);
+                }
+                VendorLedger::where('purchase_id', $purchase->id)->delete();
+
+                // ── 4. Hard delete ────────────────────────────────────────
+                $purchase->items()->delete();
+                $purchase->delete();
+            });
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['delete' => $e->getMessage()]);
+        }
+
+        return redirect()->route('admin.purchases.index')
+            ->with('success', 'Purchase deleted — stock reversed and ledger updated.');
+    }
+
     public function report(Request $request)
     {
         $query = Purchase::with('vendor')->latest('purchase_date');
