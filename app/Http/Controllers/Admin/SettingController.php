@@ -23,8 +23,9 @@ class SettingController extends Controller
             'receipt_footer'      => Setting::get('receipt_footer'),
             'delivery_charge'     => Setting::get('delivery_charge', 150),
             'free_delivery_above' => Setting::get('free_delivery_above', 5000),
-            'low_stock_threshold' => Setting::get('low_stock_threshold', 5),
-            'logo'                => Setting::get('logo'),
+            'low_stock_threshold'       => Setting::get('low_stock_threshold', 5),
+            'stock_adjustment_enabled'  => Setting::get('stock_adjustment_enabled', '1'),
+            'logo'                      => Setting::get('logo'),
             'primary_color'       => Setting::get('primary_color',   '#e11d48'),
             'secondary_color'     => Setting::get('secondary_color', '#be123c'),
             'use_gradient'        => Setting::get('use_gradient',    '1'),
@@ -56,7 +57,8 @@ class SettingController extends Controller
             'receipt_footer'      => 'nullable|string|max:255',
             'delivery_charge'     => 'required|numeric|min:0',
             'free_delivery_above' => 'required|numeric|min:0',
-            'low_stock_threshold'     => 'required|integer|min:1',
+            'low_stock_threshold'      => 'required|integer|min:1',
+            'stock_adjustment_enabled' => 'nullable|in:0,1',
             'banner_slider_interval'   => 'required|integer|min:2|max:15',
             'product_image_interval'     => 'required|integer|min:2|max:10',
             'announcement_enabled'       => 'nullable|in:0,1',
@@ -87,8 +89,9 @@ class SettingController extends Controller
         }
 
         // Normalise checkboxes (unchecked = not sent = '0')
-        $data['use_gradient']          = $request->input('use_gradient', '0');
-        $data['announcement_enabled']  = $request->input('announcement_enabled', '0');
+        $data['use_gradient']              = $request->input('use_gradient', '0');
+        $data['announcement_enabled']      = $request->input('announcement_enabled', '0');
+        $data['stock_adjustment_enabled']  = $request->input('stock_adjustment_enabled', '0');
 
         Setting::setMany($data);
         return back()->with('success', 'Settings saved.');

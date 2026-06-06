@@ -165,7 +165,9 @@ class ProductController extends Controller
             ->latest()
             ->get();
 
-        return view('admin.products.show', compact('product', 'purchaseHistory'));
+        $stockAdjustmentEnabled = \App\Models\Setting::get('stock_adjustment_enabled', '1') == '1';
+
+        return view('admin.products.show', compact('product', 'purchaseHistory', 'stockAdjustmentEnabled'));
     }
 
     public function edit(Product $product)

@@ -452,9 +452,11 @@
                 <i class="fas fa-barcode mr-2"></i> Print Barcode
             </a>
             @endif
+            @if($stockAdjustmentEnabled)
             <a href="{{ route('admin.inventory.adjust.form', $product) }}" class="btn-outline justify-center">
                 <i class="fas fa-cubes mr-2"></i> Adjust Stock
             </a>
+            @endif
             <form method="POST" action="{{ route('admin.products.destroy', $product) }}"
                   onsubmit="return confirm('Delete this product permanently?')">
                 @csrf @method('DELETE')

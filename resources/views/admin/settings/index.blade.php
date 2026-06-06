@@ -89,6 +89,31 @@
             </div>
         </div>
 
+        {{-- Inventory --}}
+        <div class="card">
+            <div class="card-header"><h2 class="font-semibold text-gray-800">Inventory</h2></div>
+            <div class="card-body space-y-4">
+                <div class="flex items-start gap-3">
+                    <div class="pt-0.5">
+                        <input type="hidden" name="stock_adjustment_enabled" value="0">
+                        <input type="checkbox" name="stock_adjustment_enabled" id="stock_adjustment_enabled" value="1"
+                               class="w-4 h-4 text-primary-600 rounded cursor-pointer"
+                               {{ \App\Models\Setting::get('stock_adjustment_enabled', '1') == '1' ? 'checked' : '' }}>
+                    </div>
+                    <div>
+                        <label for="stock_adjustment_enabled" class="text-sm font-medium text-gray-700 cursor-pointer">
+                            Enable Stock Adjustment
+                        </label>
+                        <p class="text-xs text-gray-400 mt-0.5">
+                            When enabled, an <strong>Adjust Stock</strong> button appears on every product's detail page,
+                            allowing admins to manually increase or decrease stock quantities.
+                            Disable this to prevent accidental adjustments.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         {{-- Banner Slider --}}
         <div class="card">
             <div class="card-header"><h2 class="font-semibold text-gray-800">Banner Slider</h2></div>
