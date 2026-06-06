@@ -107,8 +107,14 @@
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
                     <template x-for="product in displayProducts" :key="product.id">
                         <div @click="addToCart(product)"
-                             class="pos-product-tile"
+                             class="pos-product-tile relative"
                              :class="product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'">
+                            {{-- Serialized badge --}}
+                            <template x-if="product.is_serialized">
+                                <span class="absolute top-1.5 right-1.5 bg-indigo-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none flex items-center gap-0.5 z-10">
+                                    <i class="fas fa-barcode"></i> IMEI
+                                </span>
+                            </template>
                             <div class="h-20 bg-gray-100 rounded-lg overflow-hidden mb-2">
                                 <img :src="product.image" :alt="product.name" class="w-full h-full object-cover">
                             </div>
@@ -489,6 +495,54 @@
             </button>
         </div>
     </div>
+
+    {{-- Serial Prompt Modal — appears when a serialized product tile is clicked --}}
+    <template x-teleport="body">
+        <div x-show="serialPromptProduct" x-transition
+             class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+             @keydown.window.escape="serialPromptProduct = null">
+            <div class="bg-white rounded-2xl shadow-2xl p-6 w-96">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
+                        <i class="fas fa-barcode text-indigo-600 text-lg"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 class="font-bold text-gray-900 text-base truncate" x-text="serialPromptProduct?.name"></h3>
+                        <p class="text-xs text-gray-500">Scan or type the IMEI / Serial number</p>
+                    </div>
+                </div>
+
+                <input type="text"
+                       id="serialPromptInput"
+                       x-model="serialPromptInput"
+                       @keydown.enter.prevent="confirmSerialPrompt()"
+                       @keydown.escape="serialPromptProduct = null"
+                       placeholder="Scan barcode or type IMEI..."
+                       autocomplete="off"
+                       class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">
+
+                <div x-show="serialPromptError" class="mt-2 flex items-start gap-1.5 text-xs text-red-600">
+                    <i class="fas fa-exclamation-circle mt-0.5 shrink-0"></i>
+                    <span x-text="serialPromptError"></span>
+                </div>
+
+                <div class="flex gap-2 mt-4">
+                    <button @click="serialPromptProduct = null"
+                            class="flex-1 py-2.5 px-4 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+                        Cancel
+                    </button>
+                    <button @click="confirmSerialPrompt()"
+                            :disabled="serialPromptLoading"
+                            class="flex-1 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
+                            :class="serialPromptLoading ? 'opacity-70 cursor-wait' : ''">
+                        <i class="fas fa-spinner fa-spin" x-show="serialPromptLoading"></i>
+                        <i class="fas fa-plus" x-show="!serialPromptLoading"></i>
+                        <span x-text="serialPromptLoading ? 'Checking...' : 'Add to Cart'"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </template>
 
     {{-- Color Picker Modal — kept inside posApp() so it can access colorPickerProduct --}}
     <template x-teleport="body">
@@ -1030,6 +1084,11 @@ function posApp() {
         showCostPrice: false,
         colorPickerProduct: null,
 
+        // Serial prompt (shown when a serialized product tile is clicked)
+        serialPromptProduct: null,
+        serialPromptInput:   '',
+        serialPromptError:   '',
+        serialPromptLoading: false,
 
         // Customer
         customerSearch: '',
@@ -1151,12 +1210,53 @@ function posApp() {
 
         addToCart(product) {
             if (product.stock <= 0) return;
+
+            // Serialized products require IMEI / serial entry — never add directly
+            if (product.is_serialized) {
+                this.serialPromptProduct = product;
+                this.serialPromptInput   = '';
+                this.serialPromptError   = '';
+                this.serialPromptLoading = false;
+                setTimeout(() => document.getElementById('serialPromptInput')?.focus(), 80);
+                return;
+            }
+
             // If product has colors, show color picker first
             if (product.colors && product.colors.length > 0) {
                 this.colorPickerProduct = product;
                 return;
             }
             this.doAddToCart(product, null, null, product.stock);
+        },
+
+        async confirmSerialPrompt() {
+            const sn = (this.serialPromptInput || '').trim();
+            if (!sn) {
+                this.serialPromptError = 'Please enter or scan the IMEI / serial number.';
+                return;
+            }
+            this.serialPromptLoading = true;
+            this.serialPromptError   = '';
+            try {
+                const res  = await fetch(`/pos/product/barcode/${encodeURIComponent(sn)}`);
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data.is_serialized && data.serial_number) {
+                    // Verify the serial belongs to the product the salesman clicked
+                    if (data.id !== this.serialPromptProduct.id) {
+                        this.serialPromptError = `This serial belongs to a different product: ${data.name}. Please scan the correct IMEI.`;
+                    } else {
+                        this.addSerializedToCart(data, data.serial_number, data.serial_id);
+                        this.serialPromptProduct = null;
+                        this.serialPromptInput   = '';
+                        this.$refs.barcodeInput?.focus();
+                    }
+                } else {
+                    this.serialPromptError = data.error || 'Serial not found or already sold. Register it in a purchase first.';
+                }
+            } catch(e) {
+                this.serialPromptError = 'Network error. Please try again.';
+            }
+            this.serialPromptLoading = false;
         },
 
         selectColorAndAdd(color) {

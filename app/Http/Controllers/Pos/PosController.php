@@ -295,6 +295,7 @@ class PosController extends Controller
                                         : $p->stock_quantity,
                 'image'            => $p->primary_image_url,
                 'exchange_eligible' => (bool)($p->category?->section?->exchange_enabled),
+                'is_serialized'    => (bool) $p->is_serialized,
                 'colors'           => $p->colors->map(fn($c) => [
                     'id'             => $c->id,
                     'name'           => $c->name,
