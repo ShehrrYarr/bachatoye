@@ -100,8 +100,7 @@
         @endphp
         @if($serializedItems->isNotEmpty())
         @php
-            use App\Models\SerialNumber;
-            $purchaseSerials = SerialNumber::where('purchase_id', $purchase->id)
+            $purchaseSerials = \App\Models\SerialNumber::where('purchase_id', $purchase->id)
                 ->with('product')
                 ->get()
                 ->groupBy('purchase_item_id');
