@@ -31,17 +31,46 @@ Route::prefix('cart')->name('cart.')->group(function () {
     Route::delete('/coupon', [Ecom\CouponController::class, 'remove'])->name('coupon.remove');
 });
 
-// Checkout (guest only — no login required)
-Route::prefix('checkout')->name('checkout.')->group(function () {
+// Checkout
+Route::prefix('checkout')->name('checkout.')->middleware('customer.checkout')->group(function () {
     Route::get('/', [Ecom\CheckoutController::class, 'index'])->name('index');
     Route::post('/', [Ecom\CheckoutController::class, 'store'])->name('store');
-    Route::get('/success/{order}', [Ecom\CheckoutController::class, 'success'])->name('success');
-    Route::post('/upload-proof/{order}', [Ecom\CheckoutController::class, 'uploadProof'])->name('upload_proof');
+    Route::get('/success/{order}', [Ecom\CheckoutController::class, 'success'])->name('success')->withoutMiddleware('customer.checkout');
+    Route::post('/upload-proof/{order}', [Ecom\CheckoutController::class, 'uploadProof'])->name('upload_proof')->withoutMiddleware('customer.checkout');
 });
 
 // Order tracking (public — no login needed)
 Route::get('/track-order', [Ecom\OrderTrackingController::class, 'index'])->name('order.track');
 Route::post('/track-order', [Ecom\OrderTrackingController::class, 'track'])->name('order.track.result');
+
+/*
+|--------------------------------------------------------------------------
+| Customer Account Routes
+|--------------------------------------------------------------------------
+*/
+Route::prefix('account')->name('account.')->group(function () {
+
+    // Guest-only (redirect logged-in customers to dashboard)
+    Route::middleware('guest:customer')->group(function () {
+        Route::get('/login', [Ecom\CustomerAuthController::class, 'showLogin'])->name('login');
+        Route::post('/login', [Ecom\CustomerAuthController::class, 'login'])->name('login.post');
+        Route::get('/register', [Ecom\CustomerAuthController::class, 'showRegister'])->name('register');
+        Route::post('/register', [Ecom\CustomerAuthController::class, 'register'])->name('register.post');
+        Route::get('/forgot-password', [Ecom\CustomerPasswordController::class, 'showForgot'])->name('password.forgot');
+        Route::post('/forgot-password/question', [Ecom\CustomerPasswordController::class, 'getQuestion'])->name('password.get-question');
+        Route::post('/reset-password', [Ecom\CustomerPasswordController::class, 'reset'])->name('password.reset');
+    });
+
+    // Auth-required
+    Route::middleware('customer.auth')->group(function () {
+        Route::get('/dashboard', [Ecom\CustomerDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/orders', [Ecom\CustomerDashboardController::class, 'orders'])->name('orders');
+        Route::get('/orders/{order}', [Ecom\CustomerDashboardController::class, 'showOrder'])->name('orders.show');
+        Route::get('/profile', [Ecom\CustomerDashboardController::class, 'editProfile'])->name('profile');
+        Route::post('/profile', [Ecom\CustomerDashboardController::class, 'updateProfile'])->name('profile.update');
+        Route::post('/logout', [Ecom\CustomerAuthController::class, 'logout'])->name('logout');
+    });
+});
 
 // Live product search (AJAX)
 Route::get('/api/products/search', [Ecom\ProductController::class, 'liveSearch'])->name('api.products.search');
@@ -134,6 +163,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     // Customers
     Route::resource('customers', Admin\CustomerController::class);
     Route::get('customers/{customer}/ledger', [Admin\CustomerController::class, 'ledger'])->name('customers.ledger');
+    // Customer Online Accounts
+    Route::get('customer-accounts', [Admin\CustomerAccountController::class, 'index'])->name('customer-accounts.index');
+    Route::patch('customer-accounts/{account}/toggle', [Admin\CustomerAccountController::class, 'toggle'])->name('customer-accounts.toggle');
     Route::get('customers/{customer}/ledger/print', [Admin\CustomerController::class, 'ledgerPrint'])->name('customers.ledger.print');
     Route::post('customers/{customer}/ledger', [Admin\CustomerController::class, 'addLedgerEntry'])->name('customers.ledger.add');
 

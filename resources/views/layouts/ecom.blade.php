@@ -91,6 +91,17 @@
                     <i class="fas fa-search"></i>
                 </button>
 
+                {{-- Account --}}
+                @auth('customer')
+                <a href="{{ route('account.dashboard') }}" class="relative p-2 text-gray-600 hover:text-primary-600 transition-colors" title="My Account">
+                    <i class="fas fa-user-circle text-lg"></i>
+                </a>
+                @else
+                <a href="{{ route('account.login') }}" class="relative p-2 text-gray-600 hover:text-primary-600 transition-colors" title="Sign In">
+                    <i class="fas fa-user text-lg"></i>
+                </a>
+                @endauth
+
                 {{-- Cart --}}
                 @php $cartCount = array_sum(array_column(session('cart', []), 'quantity')); @endphp
                 <a href="{{ route('cart.index') }}" class="relative p-2 text-gray-600 hover:text-primary-600 transition-colors">
@@ -128,6 +139,11 @@
             <a href="{{ route('products.index') }}" class="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg">All Products</a>
             <a href="{{ route('deals.index') }}" class="block px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg"><i class="fas fa-fire mr-1"></i>Deals</a>
             <a href="{{ route('order.track') }}" class="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg">Track Order</a>
+            @auth('customer')
+            <a href="{{ route('account.dashboard') }}" class="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"><i class="fas fa-user-circle mr-2 text-primary-500"></i>My Account</a>
+            @else
+            <a href="{{ route('account.login') }}" class="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"><i class="fas fa-user mr-2 text-gray-400"></i>Sign In / Register</a>
+            @endauth
         </nav>
     </div>
 </header>

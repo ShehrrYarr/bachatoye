@@ -25,6 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'role'               => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission'         => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+            'customer.auth'     => \App\Http\Middleware\CustomerAuth::class,
+            'customer.checkout' => \App\Http\Middleware\CustomerCheckoutGuard::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

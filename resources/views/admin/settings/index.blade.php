@@ -89,6 +89,38 @@
             </div>
         </div>
 
+        {{-- Customer Accounts --}}
+        <div class="card">
+            <div class="card-header"><h2 class="font-semibold text-gray-800">Customer Accounts</h2></div>
+            <div class="card-body space-y-4">
+                <div class="flex items-start gap-3">
+                    <div class="pt-0.5">
+                        <input type="hidden" name="customer_login_required" value="0">
+                        <input type="checkbox" name="customer_login_required" id="customer_login_required" value="1"
+                               class="w-4 h-4 text-primary-600 rounded cursor-pointer"
+                               {{ \App\Models\Setting::get('customer_login_required', '0') == '1' ? 'checked' : '' }}>
+                    </div>
+                    <div>
+                        <label for="customer_login_required" class="text-sm font-medium text-gray-700 cursor-pointer">
+                            Require Login to Checkout
+                        </label>
+                        <p class="text-xs text-gray-400 mt-0.5">
+                            When enabled, customers must log in or create an account before they can complete a checkout.
+                            When disabled, guest checkout is allowed.
+                        </p>
+                    </div>
+                </div>
+                <div class="pt-1">
+                    <a href="{{ route('admin.customer-accounts.index') }}"
+                       class="inline-flex items-center gap-2 text-sm text-primary-600 hover:underline font-medium">
+                        <i class="fas fa-users text-sm"></i>
+                        Manage Customer Accounts
+                        <i class="fas fa-arrow-right text-xs"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
         {{-- Inventory --}}
         <div class="card">
             <div class="card-header"><h2 class="font-semibold text-gray-800">Inventory</h2></div>

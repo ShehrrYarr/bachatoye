@@ -34,6 +34,7 @@ class CustomerController extends Controller
 
         $posCustomers = $posQuery
             ->withCount('orders')
+            ->with('account')
             ->latest()
             ->paginate(20, ['*'], 'pos_page')
             ->withQueryString();
@@ -42,6 +43,7 @@ class CustomerController extends Controller
         $onlineCustomers = (clone $base)
             ->where('source', 'online')
             ->withCount('orders')
+            ->with('account')
             ->latest()
             ->paginate(20, ['*'], 'online_page')
             ->withQueryString();

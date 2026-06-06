@@ -113,6 +113,7 @@
                     <th>Phone</th>
                     <th>City</th>
                     <th class="text-center">Orders</th>
+                    <th class="text-center">Account</th>
                     <th>Status</th>
                     <th class="text-right">Actions</th>
                 </tr>
@@ -127,6 +128,15 @@
                     <td class="text-sm font-mono">{{ $customer->phone }}</td>
                     <td class="text-sm text-gray-600">{{ $customer->city ?? '—' }}</td>
                     <td class="text-center text-sm">{{ $customer->orders_count }}</td>
+                    <td class="text-center">
+                        @if($customer->account)
+                            <span class="badge bg-blue-100 text-blue-700" title="{{ $customer->account->email }}">
+                                <i class="fas fa-user-check mr-1 text-xs"></i>Registered
+                            </span>
+                        @else
+                            <span class="text-gray-400 text-xs">Guest</span>
+                        @endif
+                    </td>
                     <td>
                         @if($customer->is_active)
                             <span class="badge bg-green-100 text-green-700">Active</span>
@@ -143,7 +153,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="6" class="text-center py-10 text-gray-400">
+                    <td colspan="7" class="text-center py-10 text-gray-400">
                         No online customers found.
                     </td>
                 </tr>
