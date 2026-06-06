@@ -357,18 +357,24 @@ class PosController extends Controller
                 return response()->json(['error' => 'Product not in your assigned sections.'], 404);
             }
 
+            // Use serial's own selling price if set, otherwise fall back to product price
+            $sellingPrice = $serial->selling_price ? (float) $serial->selling_price : $p->getDiscountedPrice();
+            $costPrice    = $serial->cost_price    ? (float) $serial->cost_price    : (float) $p->cost_price;
+
             return response()->json([
                 'id'               => $p->id,
                 'name'             => $p->name,
                 'barcode'          => $p->barcode,
-                'price'            => $p->getDiscountedPrice(),
-                'cost_price'       => $p->cost_price,
+                'price'            => $sellingPrice,
+                'cost_price'       => $costPrice,
                 'stock'            => 1,
                 'image'            => $p->primary_image_url,
                 'exchange_eligible' => (bool)($p->category?->section?->exchange_enabled),
                 'is_serialized'    => true,
                 'serial_number'    => $serial->serial_number,
                 'serial_id'        => $serial->id,
+                'selling_price'    => $sellingPrice,
+                'attributes'       => $serial->attributes ?? [],
                 'colors'           => [],
             ]);
         }

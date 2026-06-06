@@ -144,17 +144,47 @@
                                                     </div>
                                                     {{-- Serial inputs per color unit (serialized products) --}}
                                                     <template x-if="item.is_serialized && (clr.quantity || 0) > 0">
-                                                        <div class="pl-7 mt-2 space-y-1.5">
+                                                        <div class="pl-7 mt-2 space-y-2">
                                                             <template x-for="(csn, csi) in (clr.serials || [])" :key="csi">
-                                                                <div class="flex items-center gap-2">
-                                                                    <span class="text-xs text-gray-400 w-5 text-right shrink-0" x-text="(csi+1) + '.'"></span>
+                                                                <div class="border border-gray-200 rounded-xl p-2.5 bg-gray-50 space-y-2">
+                                                                    <div class="text-[10px] font-semibold text-gray-400 uppercase" x-text="`Unit ${csi+1}`"></div>
                                                                     <input type="text"
-                                                                           x-model="clr.serials[csi]"
+                                                                           x-model="clr.serials[csi].serial"
                                                                            :placeholder="`IMEI / Serial #${csi+1}`"
                                                                            @keydown.enter.prevent="focusNextSerial($event)"
                                                                            data-serial-input
-                                                                           class="flex-1 border rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
-                                                                           :class="clr.serials[csi] && clr.serials[csi].trim() ? 'border-green-400 bg-green-50' : 'border-gray-300'">
+                                                                           class="w-full border rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+                                                                           :class="csn.serial && csn.serial.trim() ? 'border-green-400 bg-green-50' : 'border-gray-300 bg-white'">
+                                                                    <div class="grid grid-cols-2 gap-2">
+                                                                        <div>
+                                                                            <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Cost (Rs.)</label>
+                                                                            <input type="number" x-model.number="clr.serials[csi].cost_price"
+                                                                                   min="0" step="1" placeholder="0"
+                                                                                   class="w-full border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                                                                        </div>
+                                                                        <div>
+                                                                            <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Price (Rs.)</label>
+                                                                            <input type="number" x-model.number="clr.serials[csi].selling_price"
+                                                                                   min="0" step="1" placeholder="0"
+                                                                                   class="w-full border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                                                                        </div>
+                                                                    </div>
+                                                                    @if(count($serialAttributeDefs) > 0)
+                                                                    <div class="grid grid-cols-2 gap-2">
+                                                                        @foreach($serialAttributeDefs as $attrDef)
+                                                                        <div>
+                                                                            <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">{{ $attrDef->name }}</label>
+                                                                            <select x-model="clr.serials[csi].attributes['{{ $attrDef->name }}']"
+                                                                                    class="w-full border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                                                                                <option value="">— Select —</option>
+                                                                                @foreach($attrDef->options as $opt)
+                                                                                <option value="{{ $opt }}">{{ $opt }}</option>
+                                                                                @endforeach
+                                                                            </select>
+                                                                        </div>
+                                                                        @endforeach
+                                                                    </div>
+                                                                    @endif
                                                                 </div>
                                                             </template>
                                                         </div>
@@ -177,24 +207,61 @@
                                 {{-- Serial inputs for non-colored serialized items --}}
                                 <template x-if="item.is_serialized && !item.has_colors">
                                     <div class="mt-3 pt-3 border-t border-indigo-100">
-                                        <div class="flex items-center gap-2 mb-2">
+                                        <div class="flex items-center gap-2 mb-3">
                                             <i class="fas fa-barcode text-indigo-500 text-xs"></i>
                                             <span class="text-xs font-semibold text-indigo-700">Serial / IMEI Numbers</span>
                                             <span class="text-xs text-red-500 font-bold">*</span>
                                             <span class="text-xs text-gray-400"
-                                                  x-text="`(${item.serials.filter(s => s && s.trim()).length}/${item.quantity} entered)`"></span>
+                                                  x-text="`(${item.serials.filter(s => s.serial && s.serial.trim()).length}/${item.quantity} entered)`"></span>
                                         </div>
-                                        <div class="space-y-1.5">
+                                        <div class="space-y-3">
                                             <template x-for="(sn, si) in item.serials" :key="si">
-                                                <div class="flex items-center gap-2">
-                                                    <span class="text-xs text-gray-400 w-5 text-right shrink-0" x-text="(si+1) + '.'"></span>
+                                                <div class="border border-gray-200 rounded-xl p-3 bg-gray-50 space-y-2">
+                                                    {{-- Row header --}}
+                                                    <div class="text-xs font-semibold text-gray-500" x-text="`Unit ${si+1}`"></div>
+
+                                                    {{-- IMEI / Serial --}}
                                                     <input type="text"
-                                                           x-model="item.serials[si]"
+                                                           x-model="item.serials[si].serial"
                                                            :placeholder="`IMEI / Serial #${si+1}`"
                                                            @keydown.enter.prevent="focusNextSerial($event)"
                                                            data-serial-input
-                                                           class="flex-1 border rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
-                                                           :class="item.serials[si] && item.serials[si].trim() ? 'border-green-400 bg-green-50' : 'border-gray-300'">
+                                                           class="w-full border rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+                                                           :class="sn.serial && sn.serial.trim() ? 'border-green-400 bg-green-50' : 'border-gray-300 bg-white'">
+
+                                                    {{-- Cost + Selling price --}}
+                                                    <div class="grid grid-cols-2 gap-2">
+                                                        <div>
+                                                            <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Cost Price (Rs.)</label>
+                                                            <input type="number" x-model.number="item.serials[si].cost_price"
+                                                                   min="0" step="1" placeholder="0"
+                                                                   class="w-full border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                                                        </div>
+                                                        <div>
+                                                            <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Selling Price (Rs.)</label>
+                                                            <input type="number" x-model.number="item.serials[si].selling_price"
+                                                                   min="0" step="1" placeholder="0"
+                                                                   class="w-full border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                                                        </div>
+                                                    </div>
+
+                                                    {{-- Custom attribute dropdowns (rendered server-side) --}}
+                                                    @if(count($serialAttributeDefs) > 0)
+                                                    <div class="grid grid-cols-2 gap-2">
+                                                        @foreach($serialAttributeDefs as $attrDef)
+                                                        <div>
+                                                            <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">{{ $attrDef->name }}</label>
+                                                            <select x-model="item.serials[si].attributes['{{ $attrDef->name }}']"
+                                                                    class="w-full border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                                                                <option value="">— Select —</option>
+                                                                @foreach($attrDef->options as $opt)
+                                                                <option value="{{ $opt }}">{{ $opt }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
+                                                        @endforeach
+                                                    </div>
+                                                    @endif
                                                 </div>
                                             </template>
                                         </div>
@@ -375,7 +442,8 @@
     })->values());
 @endphp
 <script>
-    const _categoriesData = {!! $categoriesJson !!};
+    const _categoriesData    = {!! $categoriesJson !!};
+    const _serialAttrDefs    = {!! json_encode($serialAttributeDefs->map(fn($d) => ['name' => $d->name, 'options' => $d->options])->values()) !!};
 </script>
 
 <div x-data="purchaseCreateModal()"
@@ -477,7 +545,7 @@ function purchaseForm() {
                                    serials:  [],
                                })) : [],
                 quantity:      hasColors ? 0 : 1,
-                serials:       (!hasColors && isSerial) ? [''] : [],
+                serials:       (!hasColors && isSerial) ? [{ serial:'', cost_price:'', selling_price:'', attributes:{} }] : [],
             });
 
             this.searchQuery  = '';
@@ -500,17 +568,21 @@ function purchaseForm() {
             this.total = this.items.reduce((s, i) => s + (i.quantity * i.unit_cost), 0);
         },
 
+        newSerialRow() {
+            return { serial: '', cost_price: '', selling_price: '', attributes: {} };
+        },
+
         syncSerials(item) {
             if (!item.is_serialized) return;
             if (!item.has_colors) {
                 const qty = parseInt(item.quantity) || 0;
-                while (item.serials.length < qty) item.serials.push('');
+                while (item.serials.length < qty) item.serials.push(this.newSerialRow());
                 item.serials.splice(qty);
             } else {
                 item.colors.forEach(clr => {
                     if (!clr.serials) clr.serials = [];
                     const qty = parseInt(clr.quantity) || 0;
-                    while (clr.serials.length < qty) clr.serials.push('');
+                    while (clr.serials.length < qty) clr.serials.push(this.newSerialRow());
                     clr.serials.splice(qty);
                 });
             }
@@ -557,12 +629,12 @@ function purchaseForm() {
                 if (!item.is_serialized) continue;
 
                 if (!item.has_colors) {
-                    const filled = item.serials.filter(s => s && s.trim()).length;
+                    const filled = item.serials.filter(s => s.serial && s.serial.trim()).length;
                     if (filled < item.quantity) {
                         alert(`⚠️ Serial numbers required for: ${item.name}\n\nPlease enter all ${item.quantity} IMEI / Serial number(s).\n(${filled} of ${item.quantity} entered)`);
                         return;
                     }
-                    const unique = new Set(item.serials.map(s => s.trim().toUpperCase()));
+                    const unique = new Set(item.serials.map(s => s.serial.trim().toUpperCase()));
                     if (unique.size < item.quantity) {
                         alert(`Duplicate serial numbers found in: ${item.name}\nEach unit must have a unique serial.`);
                         return;
@@ -572,12 +644,12 @@ function purchaseForm() {
                         const qty = parseInt(clr.quantity) || 0;
                         if (qty === 0) continue;
                         const serials = clr.serials || [];
-                        const filled  = serials.filter(s => s && s.trim()).length;
+                        const filled  = serials.filter(s => s.serial && s.serial.trim()).length;
                         if (filled < qty) {
                             alert(`⚠️ Serial numbers required for: ${item.name} — ${clr.name}\n\nPlease enter all ${qty} IMEI / Serial number(s).\n(${filled} of ${qty} entered)`);
                             return;
                         }
-                        const unique = new Set(serials.map(s => s.trim().toUpperCase()));
+                        const unique = new Set(serials.map(s => s.serial.trim().toUpperCase()));
                         if (unique.size < qty) {
                             alert(`Duplicate serial numbers found in: ${item.name} — ${clr.name}`);
                             return;
@@ -599,12 +671,24 @@ function purchaseForm() {
                 container.appendChild(inp);
             };
             const injectSerials = (idx, serials) => {
-                (serials || []).forEach((sn, j) => {
-                    const inp = document.createElement('input');
-                    inp.type  = 'hidden';
-                    inp.name  = `items[${idx}][serials][${j}]`;
-                    inp.value = sn;
-                    container.appendChild(inp);
+                (serials || []).forEach((snObj, j) => {
+                    const mk = (key, val) => {
+                        const inp = document.createElement('input');
+                        inp.type  = 'hidden';
+                        inp.name  = `items[${idx}][serials][${j}][${key}]`;
+                        inp.value = val ?? '';
+                        container.appendChild(inp);
+                    };
+                    mk('serial',        snObj.serial        || '');
+                    mk('cost_price',    snObj.cost_price    || '');
+                    mk('selling_price', snObj.selling_price || '');
+                    Object.entries(snObj.attributes || {}).forEach(([k, v]) => {
+                        const inp = document.createElement('input');
+                        inp.type  = 'hidden';
+                        inp.name  = `items[${idx}][serials][${j}][attributes][${k}]`;
+                        inp.value = v || '';
+                        container.appendChild(inp);
+                    });
                 });
             };
 

@@ -9,6 +9,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductColor;
 use App\Models\Purchase;
+use App\Models\SerialAttributeDefinition;
 use App\Models\SerialNumber;
 use App\Models\StockMovement;
 use App\Models\Vendor;
@@ -51,8 +52,9 @@ class PurchaseController extends Controller
             ->with(['children' => fn($q) => $q->active()->orderBy('name')->select('id', 'name', 'parent_id')])
             ->orderBy('name')->get(['id', 'name']);
         $brands       = Brand::orderBy('name')->get(['id', 'name']);
-        $bankAccounts = BankAccount::active()->orderBy('sort_order')->get();
-        return view('admin.purchases.create', compact('vendors', 'products', 'categories', 'brands', 'bankAccounts'));
+        $bankAccounts      = BankAccount::active()->orderBy('sort_order')->get();
+        $serialAttributeDefs = SerialAttributeDefinition::activeOrdered();
+        return view('admin.purchases.create', compact('vendors', 'products', 'categories', 'brands', 'bankAccounts', 'serialAttributeDefs'));
     }
 
     public function quickCreateProduct(Request $request)
@@ -173,8 +175,12 @@ class PurchaseController extends Controller
             'items.*.unit_cost'   => 'required|numeric|min:0',
             'items.*.color_id'    => 'nullable|exists:product_colors,id',
             'items.*.color_name'  => 'nullable|string|max:100',
-            'items.*.serials'     => 'nullable|array',
-            'items.*.serials.*'   => 'nullable|string|max:100',
+            'items.*.serials'                   => 'nullable|array',
+            'items.*.serials.*.serial'          => 'nullable|string|max:100',
+            'items.*.serials.*.cost_price'      => 'nullable|numeric|min:0',
+            'items.*.serials.*.selling_price'   => 'nullable|numeric|min:0',
+            'items.*.serials.*.attributes'      => 'nullable|array',
+            'items.*.serials.*.attributes.*'    => 'nullable|string|max:200',
         ]);
 
         // Server-side serial validation for serialized products
@@ -183,7 +189,7 @@ class PurchaseController extends Controller
             if (!$product || !$product->is_serialized) continue;
 
             $serials = array_values(array_filter(
-                array_map('trim', $row['serials'] ?? []),
+                array_map(fn($s) => trim($s['serial'] ?? ''), $row['serials'] ?? []),
                 fn($s) => $s !== ''
             ));
 
@@ -256,12 +262,17 @@ class PurchaseController extends Controller
 
                 // Save serial numbers for serialized products
                 if ($product->is_serialized && !empty($row['serials'])) {
-                    foreach ($row['serials'] as $sn) {
-                        $sn = trim($sn);
+                    foreach ($row['serials'] as $snData) {
+                        $sn = trim($snData['serial'] ?? '');
                         if ($sn === '') continue;
                         SerialNumber::create([
                             'product_id'       => $product->id,
                             'serial_number'    => $sn,
+                            'cost_price'       => isset($snData['cost_price']) && is_numeric($snData['cost_price'])
+                                                  ? $snData['cost_price'] : null,
+                            'selling_price'    => isset($snData['selling_price']) && is_numeric($snData['selling_price'])
+                                                  ? $snData['selling_price'] : null,
+                            'attributes'       => !empty($snData['attributes']) ? $snData['attributes'] : null,
                             'status'           => 'in_stock',
                             'purchase_id'      => $purchase->id,
                             'purchase_item_id' => $purchaseItem->id,

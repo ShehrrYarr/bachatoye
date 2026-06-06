@@ -214,6 +214,18 @@
                     </dd>
                 </div>
                 @endif
+                @if($serial->cost_price)
+                <div class="flex justify-between border-t border-gray-100 pt-2">
+                    <dt class="text-gray-500">Cost Price</dt>
+                    <dd class="font-semibold text-gray-700">Rs. {{ number_format($serial->cost_price) }}</dd>
+                </div>
+                @endif
+                @if($serial->selling_price)
+                <div class="flex justify-between">
+                    <dt class="text-gray-500">Selling Price</dt>
+                    <dd class="font-semibold text-primary-700">Rs. {{ number_format($serial->selling_price) }}</dd>
+                </div>
+                @endif
                 <div class="flex justify-between border-t border-gray-100 pt-2">
                     <dt class="text-gray-500">Registered</dt>
                     <dd class="text-xs">{{ $serial->created_at->format('d M Y') }}</dd>
@@ -224,6 +236,26 @@
                 </div>
             </dl>
         </div>
+
+        @if(!empty($serial->attributes))
+        <div class="card p-5">
+            <h2 class="font-semibold text-gray-800 mb-3">Attributes</h2>
+            <dl class="space-y-2 text-sm">
+                @foreach($serial->attributes as $key => $value)
+                @if($value)
+                <div class="flex justify-between">
+                    <dt class="text-gray-500">{{ $key }}</dt>
+                    <dd class="font-semibold text-gray-800">
+                        <span class="bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full px-2.5 py-0.5 text-xs font-medium">
+                            {{ $value }}
+                        </span>
+                    </dd>
+                </div>
+                @endif
+                @endforeach
+            </dl>
+        </div>
+        @endif
 
         @if($serial->notes)
         <div class="card p-5">

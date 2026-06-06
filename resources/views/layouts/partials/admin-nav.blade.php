@@ -57,6 +57,12 @@
 <a href="{{ route('admin.purchases.index') }}" class="sidebar-link {{ $is('admin.purchases') ? 'active' : '' }}">
     <i class="fas fa-file-invoice-dollar"></i> Purchases
 </a>
+<a href="{{ route('admin.serials.lookup') }}" class="sidebar-link {{ $is('admin.serials.lookup') ? 'active' : '' }}">
+    <i class="fas fa-barcode"></i> Serial Lookup
+</a>
+<a href="{{ route('admin.serials.attributes.index') }}" class="sidebar-link {{ $is('admin.serials.attributes') ? 'active' : '' }}">
+    <i class="fas fa-tags"></i> Serial Attributes
+</a>
 
 <div class="pt-3 pb-1 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Finance</div>
 

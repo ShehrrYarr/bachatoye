@@ -207,6 +207,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::get('purchases/{purchase}/serials', [Admin\SerialController::class, 'showForPurchase'])->name('purchases.serials');
     Route::post('purchases/{purchase}/serials', [Admin\SerialController::class, 'storeForPurchase'])->name('purchases.serials.store');
     Route::get('serials/lookup', [Admin\SerialController::class, 'lookup'])->name('serials.lookup');
+    // Serial attribute definitions
+    Route::get('serials/attributes', [Admin\SerialAttributeController::class, 'index'])->name('serials.attributes.index');
+    Route::post('serials/attributes', [Admin\SerialAttributeController::class, 'store'])->name('serials.attributes.store');
+    Route::put('serials/attributes/{serialAttribute}', [Admin\SerialAttributeController::class, 'update'])->name('serials.attributes.update');
+    Route::delete('serials/attributes/{serialAttribute}', [Admin\SerialAttributeController::class, 'destroy'])->name('serials.attributes.destroy');
 
     // Expenses
     Route::resource('expenses', Admin\ExpenseController::class);

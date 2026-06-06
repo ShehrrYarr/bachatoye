@@ -212,13 +212,25 @@
                         <img :src="item.image" class="w-8 h-8 object-cover rounded-lg bg-gray-100 shrink-0 mt-0.5">
                         <div class="flex-1 min-w-0">
                             <div class="text-xs font-semibold text-gray-800 leading-tight line-clamp-1 mb-1" x-text="item.name"></div>
-                            {{-- IMEI badge for serialized items --}}
-                            <div x-show="item.is_serialized" class="mb-1">
-                                <span class="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md px-1.5 py-0.5 text-[10px] font-mono font-semibold">
-                                    <i class="fas fa-barcode text-[9px]"></i>
-                                    <span x-text="item.serial_number"></span>
-                                </span>
-                            </div>
+                            {{-- IMEI + attributes for serialized items --}}
+                            <template x-if="item.is_serialized">
+                                <div class="mb-1 space-y-1">
+                                    <span class="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md px-1.5 py-0.5 text-[10px] font-mono font-semibold">
+                                        <i class="fas fa-barcode text-[9px]"></i>
+                                        <span x-text="item.serial_number"></span>
+                                    </span>
+                                    <template x-if="item.attributes && Object.keys(item.attributes).length > 0">
+                                        <div class="flex flex-wrap gap-1">
+                                            <template x-for="[k, v] in Object.entries(item.attributes || {})" :key="k">
+                                                <span class="inline-flex items-center gap-0.5 bg-gray-100 text-gray-600 rounded px-1.5 py-0.5 text-[10px] font-medium"
+                                                      x-show="v && v.trim()">
+                                                    <span x-text="v"></span>
+                                                </span>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
                             <div class="flex items-center gap-2">
                                 {{-- Qty controls: hidden for serialized (always qty 1) --}}
                                 <template x-if="!item.is_serialized">
@@ -1189,6 +1201,10 @@ function posApp() {
                 alert(`Serial number ${serialNumber} is already in the cart.`);
                 return;
             }
+            // Use serial's own selling_price if available, fall back to product price
+            const price = (product.selling_price && parseFloat(product.selling_price) > 0)
+                          ? parseFloat(product.selling_price)
+                          : parseFloat(product.price);
             this.cart.push({
                 _key:             `${product.id}_s${serialNumber}`,
                 product_id:       product.id,
@@ -1196,13 +1212,14 @@ function posApp() {
                 color_name:       null,
                 name:             product.name,
                 image:            product.image,
-                price:            parseFloat(product.price),
+                price:            price,
                 cost_price:       parseFloat(product.cost_price) || 0,
                 quantity:         1,
                 stock:            1,
                 serial_number:    serialNumber,
                 serial_id:        serialId || null,
                 is_serialized:    true,
+                attributes:       product.attributes || {},
                 exchange_eligible: product.exchange_eligible || false,
             });
             this.recalculate();

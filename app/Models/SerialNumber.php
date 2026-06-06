@@ -9,6 +9,9 @@ class SerialNumber extends Model
     protected $fillable = [
         'product_id',
         'serial_number',
+        'cost_price',
+        'selling_price',
+        'attributes',
         'status',
         'purchase_id',
         'purchase_item_id',
@@ -21,7 +24,10 @@ class SerialNumber extends Model
     protected function casts(): array
     {
         return [
-            'status' => 'string',
+            'status'        => 'string',
+            'cost_price'    => 'decimal:2',
+            'selling_price' => 'decimal:2',
+            'attributes'    => 'array',
         ];
     }
 

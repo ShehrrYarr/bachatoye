@@ -145,11 +145,23 @@
                             };
                         @endphp
                         <a href="{{ route('admin.serials.lookup') }}?q={{ urlencode($sn->serial_number) }}"
-                           class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-mono font-semibold transition-colors hover:opacity-80 {{ $snColor }}"
+                           class="inline-flex flex-col px-2.5 py-1.5 rounded-lg border text-xs transition-colors hover:opacity-80 {{ $snColor }}"
                            title="{{ $snStatusLabel }}">
-                            <i class="fas fa-barcode text-[10px]"></i>
-                            {{ $sn->serial_number }}
-                            <span class="text-[10px] font-sans opacity-70">({{ $snStatusLabel }})</span>
+                            <span class="flex items-center gap-1.5 font-mono font-semibold">
+                                <i class="fas fa-barcode text-[10px]"></i>
+                                {{ $sn->serial_number }}
+                                <span class="text-[10px] font-sans opacity-70">({{ $snStatusLabel }})</span>
+                            </span>
+                            @if($sn->selling_price)
+                            <span class="text-[10px] font-sans font-semibold mt-0.5 opacity-80">
+                                Rs. {{ number_format($sn->selling_price) }}
+                            </span>
+                            @endif
+                            @if(!empty($sn->attributes))
+                            <span class="text-[10px] font-sans opacity-70 mt-0.5">
+                                {{ collect($sn->attributes)->filter()->implode(' · ') }}
+                            </span>
+                            @endif
                         </a>
                         @endforeach
                         @if($itemSerials->count() < $item->quantity)
