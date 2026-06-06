@@ -13,6 +13,7 @@
     </nav>
 
     <h1 class="text-2xl font-bold text-gray-900 mb-8">Checkout</h1>
+    @php $authCustomer = Auth::guard('customer')->check() ? Auth::guard('customer')->user()->customer : null; @endphp
 
     @if($errors->has('error'))
     <div class="mb-6 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
@@ -37,14 +38,14 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="form-label">Full Name <span class="text-red-500">*</span></label>
-                                <input type="text" name="name" value="{{ old('name') }}"
+                                <input type="text" name="name" value="{{ old('name', $authCustomer?->name) }}"
                                        class="form-input @error('name') border-red-500 @enderror"
                                        placeholder="Your full name" required>
                                 @error('name') <p class="form-error">{{ $message }}</p> @enderror
                             </div>
                             <div>
                                 <label class="form-label">Phone Number <span class="text-red-500">*</span></label>
-                                <input type="tel" name="phone" value="{{ old('phone') }}"
+                                <input type="tel" name="phone" value="{{ old('phone', $authCustomer?->phone) }}"
                                        class="form-input @error('phone') border-red-500 @enderror"
                                        placeholder="03XX-XXXXXXX" required>
                                 @error('phone') <p class="form-error">{{ $message }}</p> @enderror
@@ -54,12 +55,12 @@
                             <label class="form-label">Delivery Address <span class="text-red-500">*</span></label>
                             <textarea name="address" rows="2"
                                       class="form-textarea @error('address') border-red-500 @enderror"
-                                      placeholder="Street address, area, landmark" required>{{ old('address') }}</textarea>
+                                      placeholder="Street address, area, landmark" required>{{ old('address', $authCustomer?->address) }}</textarea>
                             @error('address') <p class="form-error">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <label class="form-label">City <span class="text-red-500">*</span></label>
-                            <input type="text" name="city" value="{{ old('city') }}"
+                            <input type="text" name="city" value="{{ old('city', $authCustomer?->city) }}"
                                    class="form-input @error('city') border-red-500 @enderror"
                                    placeholder="e.g. Lahore" required>
                             @error('city') <p class="form-error">{{ $message }}</p> @enderror
