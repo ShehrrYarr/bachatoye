@@ -100,6 +100,16 @@
                                x-model="trackInventory" class="w-4 h-4 text-primary-600 rounded">
                         <label for="track_inventory" class="text-sm font-medium text-gray-700 cursor-pointer">Track inventory</label>
                     </div>
+                    <div class="flex items-center gap-3 pl-1" x-show="trackInventory">
+                        <input type="hidden" name="is_serialized" value="0">
+                        <input type="checkbox" name="is_serialized" id="is_serialized" value="1"
+                               {{ old('is_serialized', $product->is_serialized) ? 'checked' : '' }}
+                               class="w-4 h-4 text-indigo-600 rounded">
+                        <label for="is_serialized" class="text-sm font-medium text-gray-700 cursor-pointer">
+                            <i class="fas fa-barcode text-indigo-500 mr-1 text-xs"></i>
+                            Serialized — track IMEI / Serial numbers per unit
+                        </label>
+                    </div>
                     <div x-show="trackInventory">
                         <label class="form-label">Low Stock Threshold</label>
                         <input type="number" name="low_stock_threshold" value="{{ old('low_stock_threshold', $product->low_stock_threshold) }}" min="0" class="form-input w-48">

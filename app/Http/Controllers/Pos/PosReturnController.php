@@ -7,8 +7,10 @@ use App\Models\AccountLedger;
 use App\Models\BankAccount;
 use App\Models\Customer;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\ReturnItem;
 use App\Models\ReturnOrder;
+use App\Models\SerialNumber;
 use App\Models\Setting;
 use App\Models\StockMovement;
 use Illuminate\Http\Request;
@@ -215,28 +217,44 @@ class PosReturnController extends Controller
                 ReturnItem::create(array_merge($item, ['return_id' => $returnOrder->id]));
 
                 // Restock
-                if ($request->boolean('restock', true) && $item['product_id']) {
-                    $product = \App\Models\Product::find($item['product_id']);
-                    $before  = $product->stock_quantity;
-                    $product->increment('stock_quantity', $item['quantity']);
+                if ($item['product_id']) {
+                    $shouldRestock = $request->boolean('restock', true);
+                    $product       = \App\Models\Product::find($item['product_id']);
 
-                    // Restore color stock if the order item was for a specific color
-                    if (!empty($item['color_id'])) {
-                        $color = \App\Models\ProductColor::find($item['color_id']);
-                        if ($color) {
-                            $color->increment('stock_quantity', $item['quantity']);
+                    if ($shouldRestock && $product) {
+                        $before = $product->stock_quantity;
+                        $product->increment('stock_quantity', $item['quantity']);
+
+                        // Restore color stock if the order item was for a specific color
+                        if (!empty($item['color_id'])) {
+                            $color = \App\Models\ProductColor::find($item['color_id']);
+                            if ($color) {
+                                $color->increment('stock_quantity', $item['quantity']);
+                            }
                         }
+
+                        StockMovement::create([
+                            'product_id'      => $product->id,
+                            'type'            => 'return',
+                            'quantity'        => $item['quantity'],
+                            'before_quantity' => $before,
+                            'after_quantity'  => $before + $item['quantity'],
+                            'reference'       => $returnOrder->return_number,
+                            'user_id'         => Auth::id(),
+                        ]);
                     }
 
-                    StockMovement::create([
-                        'product_id'      => $product->id,
-                        'type'            => 'return',
-                        'quantity'        => $item['quantity'],
-                        'before_quantity' => $before,
-                        'after_quantity'  => $before + $item['quantity'],
-                        'reference'       => $returnOrder->return_number,
-                        'user_id'         => Auth::id(),
-                    ]);
+                    // Update serial number status
+                    $orderItem = OrderItem::with('serialNumber')
+                        ->find($item['order_item_id']);
+                    if ($orderItem && $orderItem->serialNumber) {
+                        $orderItem->serialNumber->update([
+                            'status'          => $shouldRestock ? 'in_stock' : 'returned',
+                            'return_order_id' => $returnOrder->id,
+                            'order_id'        => $shouldRestock ? null : $orderItem->serialNumber->order_id,
+                            'order_item_id'   => $shouldRestock ? null : $orderItem->serialNumber->order_item_id,
+                        ]);
+                    }
                 }
             }
 

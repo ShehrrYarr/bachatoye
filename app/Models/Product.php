@@ -13,7 +13,7 @@ class Product extends Model
         'name', 'slug', 'sku', 'barcode', 'short_description', 'description',
         'price', 'cost_price', 'compare_price', 'stock_quantity',
         'low_stock_threshold', 'low_stock_dismissed', 'category_id', 'subcategory_id', 'brand_id',
-        'is_active', 'is_featured', 'show_in_ecom', 'track_inventory', 'free_delivery', 'cod_enabled',
+        'is_active', 'is_featured', 'show_in_ecom', 'track_inventory', 'is_serialized', 'free_delivery', 'cod_enabled',
     ];
 
     protected function casts(): array
@@ -26,6 +26,7 @@ class Product extends Model
             'is_featured'          => 'boolean',
             'show_in_ecom'         => 'boolean',
             'track_inventory'      => 'boolean',
+            'is_serialized'        => 'boolean',
             'low_stock_dismissed'  => 'boolean',
             'free_delivery'        => 'boolean',
             'cod_enabled'          => 'boolean',
@@ -85,6 +86,11 @@ class Product extends Model
     public function deals()
     {
         return $this->belongsToMany(Deal::class, 'deal_products');
+    }
+
+    public function serialNumbers()
+    {
+        return $this->hasMany(SerialNumber::class);
     }
 
     public function getPrimaryImageUrlAttribute(): string

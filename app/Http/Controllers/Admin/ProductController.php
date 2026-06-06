@@ -93,6 +93,7 @@ class ProductController extends Controller
             'is_featured'         => 'boolean',
             'show_in_ecom'        => 'boolean',
             'track_inventory'     => 'boolean',
+            'is_serialized'       => 'boolean',
             'free_delivery'       => 'boolean',
             'cod_enabled'         => 'boolean',
             'images'              => 'nullable|array',
@@ -105,6 +106,7 @@ class ProductController extends Controller
         $data['is_featured']     = $request->boolean('is_featured');
         $data['show_in_ecom']    = $request->boolean('show_in_ecom', true);
         $data['track_inventory'] = $request->boolean('track_inventory', true);
+        $data['is_serialized']   = $request->boolean('is_serialized');
         $data['free_delivery']   = $request->boolean('free_delivery');
         $data['cod_enabled']     = $request->boolean('cod_enabled');
         $data['stock_quantity']  = $data['stock_quantity'] ?? 0;
@@ -201,6 +203,7 @@ class ProductController extends Controller
             'is_featured'         => 'boolean',
             'show_in_ecom'        => 'boolean',
             'track_inventory'     => 'boolean',
+            'is_serialized'       => 'boolean',
             'free_delivery'       => 'boolean',
             'cod_enabled'         => 'boolean',
             'images'              => 'nullable|array',
@@ -213,6 +216,7 @@ class ProductController extends Controller
         $data['is_featured']     = $request->boolean('is_featured');
         $data['show_in_ecom']    = $request->boolean('show_in_ecom', true);
         $data['track_inventory'] = $request->boolean('track_inventory', true);
+        $data['is_serialized']   = $request->boolean('is_serialized');
         $data['free_delivery']   = $request->boolean('free_delivery');
         $data['cod_enabled']     = $request->boolean('cod_enabled');
 

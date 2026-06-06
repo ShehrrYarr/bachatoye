@@ -202,6 +202,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::put('purchases/{purchase}', [Admin\PurchaseController::class, 'update'])->name('purchases.update');
     Route::delete('purchases/{purchase}', [Admin\PurchaseController::class, 'destroy'])->name('purchases.destroy');
     Route::get('reports/purchases', [Admin\PurchaseController::class, 'report'])->name('reports.purchases');
+    // Serial number routes
+    Route::get('purchases/{purchase}/serials', [Admin\SerialController::class, 'showForPurchase'])->name('purchases.serials');
+    Route::post('purchases/{purchase}/serials', [Admin\SerialController::class, 'storeForPurchase'])->name('purchases.serials.store');
+    Route::get('serials/lookup', [Admin\SerialController::class, 'lookup'])->name('serials.lookup');
 
     // Expenses
     Route::resource('expenses', Admin\ExpenseController::class);
@@ -313,6 +317,13 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
         ->middleware('permission:purchases.manage')->name('purchases.store');
     Route::get('purchases/{purchase}', [Admin\PurchaseController::class, 'show'])
         ->middleware('permission:purchases.view')->name('purchases.show');
+    // Serial number routes for salesman
+    Route::get('purchases/{purchase}/serials', [Admin\SerialController::class, 'showForPurchase'])
+        ->middleware('permission:purchases.manage')->name('purchases.serials');
+    Route::post('purchases/{purchase}/serials', [Admin\SerialController::class, 'storeForPurchase'])
+        ->middleware('permission:purchases.manage')->name('purchases.serials.store');
+    Route::get('serials/lookup', [Admin\SerialController::class, 'lookup'])
+        ->middleware('permission:inventory.view')->name('serials.lookup');
 
     // Purchase-related API helpers (mirrors admin endpoints)
     Route::get('api/products/search', function (\Illuminate\Http\Request $request) {

@@ -206,14 +206,28 @@
                         <img :src="item.image" class="w-8 h-8 object-cover rounded-lg bg-gray-100 shrink-0 mt-0.5">
                         <div class="flex-1 min-w-0">
                             <div class="text-xs font-semibold text-gray-800 leading-tight line-clamp-1 mb-1" x-text="item.name"></div>
+                            {{-- IMEI badge for serialized items --}}
+                            <div x-show="item.is_serialized" class="mb-1">
+                                <span class="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md px-1.5 py-0.5 text-[10px] font-mono font-semibold">
+                                    <i class="fas fa-barcode text-[9px]"></i>
+                                    <span x-text="item.serial_number"></span>
+                                </span>
+                            </div>
                             <div class="flex items-center gap-2">
-                                {{-- Qty controls --}}
-                                <div class="flex items-center border border-gray-200 rounded-lg overflow-hidden">
-                                    <button @click="decreaseQty(index)" class="px-2 py-1 text-gray-500 hover:bg-gray-50 text-sm">–</button>
-                                    <input type="number" x-model.number="item.quantity" @change="updateQty(index)"
-                                           class="w-10 text-center text-xs font-semibold border-0 focus:outline-none py-1" min="1">
-                                    <button @click="increaseQty(index)" class="px-2 py-1 text-gray-500 hover:bg-gray-50 text-sm">+</button>
-                                </div>
+                                {{-- Qty controls: hidden for serialized (always qty 1) --}}
+                                <template x-if="!item.is_serialized">
+                                    <div class="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+                                        <button @click="decreaseQty(index)" class="px-2 py-1 text-gray-500 hover:bg-gray-50 text-sm">–</button>
+                                        <input type="number" x-model.number="item.quantity" @change="updateQty(index)"
+                                               class="w-10 text-center text-xs font-semibold border-0 focus:outline-none py-1" min="1">
+                                        <button @click="increaseQty(index)" class="px-2 py-1 text-gray-500 hover:bg-gray-50 text-sm">+</button>
+                                    </div>
+                                </template>
+                                <template x-if="item.is_serialized">
+                                    <div class="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-2 py-1">
+                                        <span class="text-xs font-semibold text-gray-500">Qty: 1</span>
+                                    </div>
+                                </template>
                                 {{-- Unit price editable --}}
                                 <div class="flex items-center gap-1 flex-1">
                                     <span class="text-xs text-gray-400">@</span>
@@ -1087,15 +1101,52 @@ function posApp() {
                 if (res.ok) {
                     const product = await res.json();
                     if (product && product.id) {
-                        this.addToCart(product);
+                        if (product.is_serialized && product.serial_number) {
+                            this.addSerializedToCart(product, product.serial_number, product.serial_id);
+                        } else {
+                            this.addToCart(product);
+                        }
                         this.searchQuery = '';
-                        // Stay in current category after scanning
                         if (this.selectedCategory) this.loadProducts();
+                        return;
+                    }
+                } else {
+                    // Show the error from the server (e.g. "IMEI not registered")
+                    const data = await res.json().catch(() => ({}));
+                    if (data.error) {
+                        alert(data.error);
+                        this.searchQuery = '';
                         return;
                     }
                 }
             } catch(e) {}
             this.searchProducts();
+        },
+
+        addSerializedToCart(product, serialNumber, serialId) {
+            // Check if this exact serial is already in cart
+            const existing = this.cart.find(i => i.serial_number === serialNumber);
+            if (existing) {
+                alert(`Serial number ${serialNumber} is already in the cart.`);
+                return;
+            }
+            this.cart.push({
+                _key:             `${product.id}_s${serialNumber}`,
+                product_id:       product.id,
+                color_id:         null,
+                color_name:       null,
+                name:             product.name,
+                image:            product.image,
+                price:            parseFloat(product.price),
+                cost_price:       parseFloat(product.cost_price) || 0,
+                quantity:         1,
+                stock:            1,
+                serial_number:    serialNumber,
+                serial_id:        serialId || null,
+                is_serialized:    true,
+                exchange_eligible: product.exchange_eligible || false,
+            });
+            this.recalculate();
         },
 
         addToCart(product) {
@@ -1268,7 +1319,7 @@ function posApp() {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
                     body: JSON.stringify({
-                        items: this.cart.map(i => ({ product_id: i.product_id, quantity: i.quantity, unit_price: i.price, color_id: i.color_id || null })),
+                        items: this.cart.map(i => ({ product_id: i.product_id, quantity: i.quantity, unit_price: i.price, color_id: i.color_id || null, serial_number: i.serial_number || null })),
                         discount: this.discountAmount,
                         payment_method: this.paymentMethod,
                         amount_paid: this.paymentMethod === 'partial' ? this.partialAmountPaid : null,

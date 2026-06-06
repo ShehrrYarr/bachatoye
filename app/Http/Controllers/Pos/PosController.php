@@ -11,6 +11,7 @@ use App\Models\ProductColor;
 use App\Models\OrderItem;
 use App\Models\PosSession;
 use App\Models\Product;
+use App\Models\SerialNumber;
 use App\Models\Setting;
 use App\Models\StockMovement;
 use Illuminate\Http\Request;
@@ -309,32 +310,71 @@ class PosController extends Controller
     {
         $allowedCategoryIds = Auth::user()->allowedCategoryIds();
 
+        // ── 1. Check product barcode first ────────────────────────────────────
         $product = Product::active()
             ->when($allowedCategoryIds !== null, fn($q) => $q->whereIn('category_id', $allowedCategoryIds))
             ->where('barcode', $barcode)
             ->with(['images', 'colors', 'category.section'])
             ->first();
 
-        if (!$product) {
-            return response()->json(['error' => 'Product not found.'], 404);
+        if ($product) {
+            return response()->json([
+                'id'               => $product->id,
+                'name'             => $product->name,
+                'barcode'          => $product->barcode,
+                'price'            => $product->getDiscountedPrice(),
+                'cost_price'       => $product->cost_price,
+                'stock'            => $product->stock_quantity,
+                'image'            => $product->primary_image_url,
+                'exchange_eligible' => (bool)($product->category?->section?->exchange_enabled),
+                'is_serialized'    => false,
+                'serial_number'    => null,
+                'serial_id'        => null,
+                'colors'           => $product->colors->map(fn($c) => [
+                    'id'             => $c->id,
+                    'name'           => $c->name,
+                    'hex_code'       => $c->hex_code,
+                    'stock_quantity' => $c->stock_quantity,
+                ])->values(),
+            ]);
+        }
+
+        // ── 2. Check serial number (IMEI) ─────────────────────────────────────
+        $serial = SerialNumber::where('serial_number', $barcode)
+            ->where('status', 'in_stock')
+            ->with(['product.images', 'product.category.section'])
+            ->first();
+
+        if ($serial) {
+            $p = $serial->product;
+
+            if (!$p || !$p->is_active) {
+                return response()->json(['error' => 'Product is not available.'], 404);
+            }
+
+            if ($allowedCategoryIds !== null && !in_array($p->category_id, $allowedCategoryIds)) {
+                return response()->json(['error' => 'Product not in your assigned sections.'], 404);
+            }
+
+            return response()->json([
+                'id'               => $p->id,
+                'name'             => $p->name,
+                'barcode'          => $p->barcode,
+                'price'            => $p->getDiscountedPrice(),
+                'cost_price'       => $p->cost_price,
+                'stock'            => 1,
+                'image'            => $p->primary_image_url,
+                'exchange_eligible' => (bool)($p->category?->section?->exchange_enabled),
+                'is_serialized'    => true,
+                'serial_number'    => $serial->serial_number,
+                'serial_id'        => $serial->id,
+                'colors'           => [],
+            ]);
         }
 
         return response()->json([
-            'id'               => $product->id,
-            'name'             => $product->name,
-            'barcode'          => $product->barcode,
-            'price'            => $product->getDiscountedPrice(),
-            'cost_price'       => $product->cost_price,
-            'stock'            => $product->stock_quantity,
-            'image'            => $product->primary_image_url,
-            'exchange_eligible' => (bool)($product->category?->section?->exchange_enabled),
-            'colors'           => $product->colors->map(fn($c) => [
-                'id'             => $c->id,
-                'name'           => $c->name,
-                'hex_code'       => $c->hex_code,
-                'stock_quantity' => $c->stock_quantity,
-            ])->values(),
-        ]);
+            'error' => 'Not found. If scanning an IMEI, ensure it is registered in a purchase first.',
+        ], 404);
     }
 
     public function searchCustomer(Request $request)
@@ -366,12 +406,13 @@ class PosController extends Controller
     public function createOrder(Request $request)
     {
         $request->validate([
-            'items'               => 'required|array|min:1',
-            'items.*.product_id'  => 'required|exists:products,id',
-            'items.*.quantity'    => 'required|integer|min:1',
-            'items.*.unit_price'  => 'required|numeric|min:0',
-            'items.*.color_id'    => 'nullable|exists:product_colors,id',
-            'payment_method'      => 'required|in:cash,bank_transfer,khata,partial,split',
+            'items'                 => 'required|array|min:1',
+            'items.*.product_id'    => 'required|exists:products,id',
+            'items.*.quantity'      => 'required|integer|min:1',
+            'items.*.unit_price'    => 'required|numeric|min:0',
+            'items.*.color_id'      => 'nullable|exists:product_colors,id',
+            'items.*.serial_number' => 'nullable|string|max:100',
+            'payment_method'        => 'required|in:cash,bank_transfer,khata,partial,split',
             'amount_paid'         => 'nullable|numeric|min:0',
             'cash_amount'         => 'nullable|numeric|min:0',
             'bank_amount'         => 'nullable|numeric|min:0',
@@ -391,8 +432,41 @@ class PosController extends Controller
             $subtotal = 0;
             $orderItems = [];
 
+            // Track serials being used in this order (prevent duplicates within one order)
+            $usedSerials = [];
+
             foreach ($request->items as $item) {
                 $product = Product::lockForUpdate()->find($item['product_id']);
+
+                // ── Serial number validation for serialized products ──────────
+                $serial = null;
+                if ($product->is_serialized) {
+                    $sn = trim($item['serial_number'] ?? '');
+                    if ($sn === '') {
+                        DB::rollBack();
+                        return response()->json([
+                            'error' => "Serial number required for serialized product: {$product->name}. Please scan the IMEI/serial number.",
+                        ], 422);
+                    }
+                    if (isset($usedSerials[$sn])) {
+                        DB::rollBack();
+                        return response()->json([
+                            'error' => "Duplicate serial number in this order: {$sn}",
+                        ], 422);
+                    }
+                    $serial = SerialNumber::where('serial_number', $sn)
+                        ->where('product_id', $product->id)
+                        ->where('status', 'in_stock')
+                        ->lockForUpdate()
+                        ->first();
+                    if (!$serial) {
+                        DB::rollBack();
+                        return response()->json([
+                            'error' => "Serial {$sn} is not in stock for product: {$product->name}. It may have already been sold or not been registered.",
+                        ], 422);
+                    }
+                    $usedSerials[$sn] = true;
+                }
 
                 // Resolve color (if specified)
                 $color     = null;
@@ -421,6 +495,7 @@ class PosController extends Controller
                     'qty'        => $item['quantity'],
                     'price'      => $item['unit_price'],
                     'line_total' => $lineTotal,
+                    'serial'     => $serial,
                 ];
             }
 
@@ -480,18 +555,28 @@ class PosController extends Controller
             ]);
 
             foreach ($orderItems as $item) {
-                OrderItem::create([
-                    'order_id'        => $order->id,
-                    'product_id'      => $item['product']->id,
-                    'product_name'    => $item['product']->name,
-                    'color_name'      => $item['color_name'],
-                    'color_id'        => $item['color']?->id,
-                    'product_barcode' => $item['product']->barcode,
-                    'unit_price'      => $item['price'],
-                    'cost_price'      => $item['product']->cost_price,
-                    'quantity'        => $item['qty'],
-                    'line_total'      => $item['line_total'],
+                $orderItem = OrderItem::create([
+                    'order_id'         => $order->id,
+                    'product_id'       => $item['product']->id,
+                    'product_name'     => $item['product']->name,
+                    'color_name'       => $item['color_name'],
+                    'color_id'         => $item['color']?->id,
+                    'product_barcode'  => $item['product']->barcode,
+                    'unit_price'       => $item['price'],
+                    'cost_price'       => $item['product']->cost_price,
+                    'quantity'         => $item['qty'],
+                    'line_total'       => $item['line_total'],
+                    'serial_number_id' => $item['serial']?->id,
                 ]);
+
+                // Mark serial number as sold
+                if ($item['serial']) {
+                    $item['serial']->update([
+                        'status'        => 'sold',
+                        'order_id'      => $order->id,
+                        'order_item_id' => $orderItem->id,
+                    ]);
+                }
 
                 // Decrement color stock (if applicable) and product total stock
                 if ($item['color']) {

@@ -9,6 +9,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductColor;
 use App\Models\Purchase;
+use App\Models\SerialNumber;
 use App\Models\StockMovement;
 use App\Models\Vendor;
 use App\Models\VendorLedger;
@@ -174,7 +175,7 @@ class PurchaseController extends Controller
             'items.*.color_name'  => 'nullable|string|max:100',
         ]);
 
-        DB::transaction(function () use ($request) {
+        $purchase = DB::transaction(function () use ($request) {
             $items   = $request->items;
             $subtotal = collect($items)->sum(fn($i) => $i['quantity'] * $i['unit_cost']);
             $total    = $subtotal;
@@ -273,15 +274,31 @@ class PurchaseController extends Controller
 
                 $vendor->update(['balance' => $newBal]);
             }
+
+            return $purchase;
         });
 
         $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+
+        // If any items belong to serialized products, redirect to serial registration
+        $hasSerializedItems = $purchase->items()
+            ->whereHas('product', fn($q) => $q->where('is_serialized', true))
+            ->exists();
+
+        if ($hasSerializedItems) {
+            return redirect()->route("{$rPrefix}.purchases.serials", $purchase)
+                ->with('success', 'Purchase recorded! Please register serial numbers for the serialized products below.');
+        }
+
         return redirect()->route("{$rPrefix}.purchases.index")->with('success', 'Purchase recorded and stock updated.');
     }
 
     public function show(Purchase $purchase)
     {
         $purchase->load(['vendor', 'items.product', 'createdBy']);
+
+        // Redirect to serial registration if newly created purchase has serialized items
+        // and serials haven't been registered yet
         return view('admin.purchases.show', compact('purchase'));
     }
 

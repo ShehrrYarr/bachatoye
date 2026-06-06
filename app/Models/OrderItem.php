@@ -9,7 +9,7 @@ class OrderItem extends Model
     protected $fillable = [
         'order_id', 'product_id', 'product_name', 'color_name', 'color_id', 'product_barcode',
         'unit_price', 'cost_price', 'quantity', 'free_quantity',
-        'discount_amount', 'line_total',
+        'discount_amount', 'line_total', 'serial_number_id',
     ];
 
     protected function casts(): array
@@ -30,6 +30,11 @@ class OrderItem extends Model
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function serialNumber()
+    {
+        return $this->belongsTo(SerialNumber::class);
     }
 
     public function returnItems()

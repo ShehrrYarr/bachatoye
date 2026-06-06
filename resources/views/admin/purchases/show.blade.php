@@ -93,6 +93,78 @@
             <div class="text-sm text-gray-600"><strong>Notes:</strong> {{ $purchase->notes }}</div>
         </div>
         @endif
+
+        {{-- Serial Numbers Section --}}
+        @php
+            $serializedItems = $purchase->items->filter(fn($i) => $i->product?->is_serialized);
+        @endphp
+        @if($serializedItems->isNotEmpty())
+        @php
+            use App\Models\SerialNumber;
+            $purchaseSerials = SerialNumber::where('purchase_id', $purchase->id)
+                ->with('product')
+                ->get()
+                ->groupBy('purchase_item_id');
+        @endphp
+        <div class="card mt-5">
+            <div class="card-header flex items-center justify-between">
+                <h2 class="font-semibold text-gray-800">
+                    <i class="fas fa-barcode text-indigo-500 mr-2"></i>Serial Numbers
+                </h2>
+                <a href="{{ route("{$rPrefix}.purchases.serials", $purchase) }}" class="btn-outline btn-sm">
+                    <i class="fas fa-edit mr-1"></i>Manage Serials
+                </a>
+            </div>
+            <div class="card-body space-y-4">
+                @foreach($serializedItems as $item)
+                @php $itemSerials = $purchaseSerials->get($item->id, collect()); @endphp
+                <div>
+                    <div class="text-sm font-semibold text-gray-700 mb-2">
+                        {{ $item->product_name }}
+                        <span class="text-gray-400 font-normal">({{ $item->quantity }} units)</span>
+                    </div>
+                    @if($itemSerials->isEmpty())
+                    <p class="text-xs text-orange-600 italic">
+                        <i class="fas fa-exclamation-circle mr-1"></i>No serials registered yet.
+                        <a href="{{ route("{$rPrefix}.purchases.serials", $purchase) }}" class="underline font-semibold">Register now</a>
+                    </p>
+                    @else
+                    <div class="flex flex-wrap gap-2">
+                        @foreach($itemSerials as $sn)
+                        @php
+                            $snColor = match($sn->status) {
+                                'in_stock' => 'bg-green-50 text-green-700 border-green-200',
+                                'sold'     => 'bg-blue-50 text-blue-700 border-blue-200',
+                                'returned' => 'bg-orange-50 text-orange-700 border-orange-200',
+                                default    => 'bg-gray-50 text-gray-600 border-gray-200',
+                            };
+                            $snStatusLabel = match($sn->status) {
+                                'in_stock' => 'In Stock',
+                                'sold'     => 'Sold',
+                                'returned' => 'Returned',
+                                default    => ucfirst($sn->status),
+                            };
+                        @endphp
+                        <a href="{{ route('admin.serials.lookup') }}?q={{ urlencode($sn->serial_number) }}"
+                           class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-mono font-semibold transition-colors hover:opacity-80 {{ $snColor }}"
+                           title="{{ $snStatusLabel }}">
+                            <i class="fas fa-barcode text-[10px]"></i>
+                            {{ $sn->serial_number }}
+                            <span class="text-[10px] font-sans opacity-70">({{ $snStatusLabel }})</span>
+                        </a>
+                        @endforeach
+                        @if($itemSerials->count() < $item->quantity)
+                        <span class="text-xs text-orange-500 italic self-center">
+                            {{ $item->quantity - $itemSerials->count() }} unit(s) without serial
+                        </span>
+                        @endif
+                    </div>
+                    @endif
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
     </div>
 
     {{-- Sidebar --}}
