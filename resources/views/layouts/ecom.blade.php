@@ -93,11 +93,21 @@
 
                 {{-- Account --}}
                 @auth('customer')
-                <a href="{{ route('account.dashboard') }}" class="relative p-2 text-gray-600 hover:text-primary-600 transition-colors" title="My Account">
+                <a href="{{ route('account.dashboard') }}"
+                   class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-100 transition-colors">
+                    <i class="fas fa-user-circle text-base"></i>
+                    <span class="hidden md:inline">{{ explode(' ', Auth::guard('customer')->user()->customer->name)[0] }}</span>
+                </a>
+                <a href="{{ route('account.dashboard') }}" class="sm:hidden p-2 text-gray-600 hover:text-primary-600 transition-colors" title="My Account">
                     <i class="fas fa-user-circle text-lg"></i>
                 </a>
                 @else
-                <a href="{{ route('account.login') }}" class="relative p-2 text-gray-600 hover:text-primary-600 transition-colors" title="Sign In">
+                <a href="{{ route('account.login') }}"
+                   class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl border text-sm font-medium transition-colors border-gray-300 text-gray-700 hover:border-primary-500 hover:text-primary-600 hover:bg-primary-50">
+                    <i class="fas fa-user text-sm"></i>
+                    <span>Login</span>
+                </a>
+                <a href="{{ route('account.login') }}" class="sm:hidden p-2 text-gray-600 hover:text-primary-600 transition-colors" title="Sign In">
                     <i class="fas fa-user text-lg"></i>
                 </a>
                 @endauth
