@@ -81,6 +81,12 @@ class InventoryController extends Controller
 
     public function adjustForm(Product $product)
     {
+        abort_if(
+            \App\Models\Setting::get('stock_adjustment_enabled', '1') != '1',
+            403,
+            'Stock adjustment is currently disabled. Enable it in Admin → Settings → Inventory.'
+        );
+
         $product->load('colors');
         $movements = $product->stockMovements()->with('user')->latest()->paginate(20);
         return view('admin.inventory.adjust', compact('product', 'movements'));
@@ -88,6 +94,12 @@ class InventoryController extends Controller
 
     public function adjust(Request $request, Product $product)
     {
+        abort_if(
+            \App\Models\Setting::get('stock_adjustment_enabled', '1') != '1',
+            403,
+            'Stock adjustment is currently disabled. Enable it in Admin → Settings → Inventory.'
+        );
+
         $product->load('colors');
         $hasColors = $product->colors->count() > 0;
 
