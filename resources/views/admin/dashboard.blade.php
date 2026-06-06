@@ -574,7 +574,7 @@
                                     <tbody class="divide-y divide-gray-50">
                                         @foreach($todayExpensesList as $exp)
                                         <tr class="hover:bg-gray-50">
-                                            <td class="px-4 py-3 text-xs font-medium text-gray-700">{{ $exp->category ?? '—' }}</td>
+                                            <td class="px-4 py-3 text-xs font-medium text-gray-700">{{ $exp->category?->name ?? '—' }}</td>
                                             <td class="px-4 py-3 text-xs text-gray-500 max-w-xs">{{ $exp->description ?: '—' }}</td>
                                             <td class="px-4 py-3 text-xs text-gray-500 capitalize">{{ str_replace('_',' ', $exp->payment_method ?? '') ?: '—' }}</td>
                                             <td class="px-4 py-3 text-right font-bold text-red-600">Rs. {{ number_format($exp->amount) }}</td>

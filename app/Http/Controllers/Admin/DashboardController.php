@@ -137,7 +137,7 @@ class DashboardController extends Controller
             ->with(['customer', 'user', 'bankAccount'])->latest()->get();
 
         $todayExpensesList = Expense::whereDate('expense_date', today())
-            ->latest()->get();
+            ->with('category')->latest()->get();
 
         $todayReturnsList = ReturnOrder::whereDate('created_at', today())
             ->whereIn('status', ['approved', 'completed'])
