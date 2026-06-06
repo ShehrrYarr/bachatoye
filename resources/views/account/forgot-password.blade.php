@@ -95,7 +95,7 @@ function forgotPassword() {
     return {
         step: {{ $errors->any() ? 2 : 1 }},
         email: '{{ old('email', '') }}',
-        question: '{{ session('_security_question', '') }}',
+        question: '{{ session('_reset_question', '') }}',
         loading: false,
         emailError: '',
 

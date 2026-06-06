@@ -24,6 +24,8 @@ class CustomerPasswordController extends Controller
             return response()->json(['error' => 'No account found with that email address.'], 404);
         }
 
+        session(['_reset_question' => $account->security_question]);
+
         return response()->json(['question' => $account->security_question]);
     }
 
@@ -48,6 +50,7 @@ class CustomerPasswordController extends Controller
         }
 
         $account->update(['password' => $data['password']]);
+        session()->forget('_reset_question');
 
         return redirect()->route('account.login')->with('success', 'Password reset successfully. You can now log in.');
     }

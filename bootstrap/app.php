@@ -15,6 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo(fn () => route('auth.login'));
 
         $middleware->redirectUsersTo(function () {
+            if (Auth::guard('customer')->check()) {
+                return route('account.dashboard');
+            }
             $user = Auth::user();
             return $user?->isAdmin()
                 ? route('admin.dashboard')
