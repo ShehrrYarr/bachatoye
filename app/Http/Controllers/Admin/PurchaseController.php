@@ -173,7 +173,37 @@ class PurchaseController extends Controller
             'items.*.unit_cost'   => 'required|numeric|min:0',
             'items.*.color_id'    => 'nullable|exists:product_colors,id',
             'items.*.color_name'  => 'nullable|string|max:100',
+            'items.*.serials'     => 'nullable|array',
+            'items.*.serials.*'   => 'nullable|string|max:100',
         ]);
+
+        // Server-side serial validation for serialized products
+        foreach ($request->items as $row) {
+            $product = Product::find($row['product_id']);
+            if (!$product || !$product->is_serialized) continue;
+
+            $serials = array_values(array_filter(
+                array_map('trim', $row['serials'] ?? []),
+                fn($s) => $s !== ''
+            ));
+
+            if (count($serials) < (int) $row['quantity']) {
+                return back()
+                    ->withErrors(['items' => "Please enter all {$row['quantity']} serial number(s) for: {$product->name}."])
+                    ->withInput();
+            }
+            if (count(array_unique($serials)) < count($serials)) {
+                return back()
+                    ->withErrors(['items' => "Duplicate serial numbers found for: {$product->name}."])
+                    ->withInput();
+            }
+            $existing = SerialNumber::whereIn('serial_number', $serials)->pluck('serial_number');
+            if ($existing->isNotEmpty()) {
+                return back()
+                    ->withErrors(['items' => "Serial number(s) already registered in the system: " . $existing->implode(', ')])
+                    ->withInput();
+            }
+        }
 
         $purchase = DB::transaction(function () use ($request) {
             $items   = $request->items;
@@ -214,7 +244,7 @@ class PurchaseController extends Controller
                 $colorId   = !empty($row['color_id']) ? (int) $row['color_id'] : null;
                 $colorName = !empty($row['color_name']) ? $row['color_name'] : null;
 
-                $purchase->items()->create([
+                $purchaseItem = $purchase->items()->create([
                     'product_id'   => $product->id,
                     'product_name' => $product->name,
                     'color_id'     => $colorId,
@@ -223,6 +253,21 @@ class PurchaseController extends Controller
                     'unit_cost'    => $row['unit_cost'],
                     'line_total'   => $lineTotal,
                 ]);
+
+                // Save serial numbers for serialized products
+                if ($product->is_serialized && !empty($row['serials'])) {
+                    foreach ($row['serials'] as $sn) {
+                        $sn = trim($sn);
+                        if ($sn === '') continue;
+                        SerialNumber::create([
+                            'product_id'       => $product->id,
+                            'serial_number'    => $sn,
+                            'status'           => 'in_stock',
+                            'purchase_id'      => $purchase->id,
+                            'purchase_item_id' => $purchaseItem->id,
+                        ]);
+                    }
+                }
 
                 // If a color is specified, increment its stock too
                 if ($colorId) {
@@ -279,18 +324,8 @@ class PurchaseController extends Controller
         });
 
         $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
-
-        // If any items belong to serialized products, redirect to serial registration
-        $hasSerializedItems = $purchase->items()
-            ->whereHas('product', fn($q) => $q->where('is_serialized', true))
-            ->exists();
-
-        if ($hasSerializedItems) {
-            return redirect()->route("{$rPrefix}.purchases.serials", $purchase)
-                ->with('success', 'Purchase recorded! Please register serial numbers for the serialized products below.');
-        }
-
-        return redirect()->route("{$rPrefix}.purchases.index")->with('success', 'Purchase recorded and stock updated.');
+        return redirect()->route("{$rPrefix}.purchases.show", $purchase)
+            ->with('success', 'Purchase recorded — stock and serial numbers updated.');
     }
 
     public function show(Purchase $purchase)

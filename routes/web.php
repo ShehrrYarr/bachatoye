@@ -181,13 +181,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
             ->orWhere('sku', 'like', "%{$q}%")
             ->orderBy('name')->limit(10)
             ->with('colors')
-            ->get(['id', 'name', 'sku', 'cost_price']);
+            ->get(['id', 'name', 'sku', 'cost_price', 'is_serialized']);
         return response()->json($products->map(fn($p) => [
-            'id'         => $p->id,
-            'name'       => $p->name,
-            'sku'        => $p->sku,
-            'cost_price' => $p->cost_price,
-            'colors'     => $p->colors->map(fn($c) => [
+            'id'            => $p->id,
+            'name'          => $p->name,
+            'sku'           => $p->sku,
+            'cost_price'    => $p->cost_price,
+            'is_serialized' => (bool) $p->is_serialized,
+            'colors'        => $p->colors->map(fn($c) => [
                 'id'       => $c->id,
                 'name'     => $c->name,
                 'hex_code' => $c->hex_code,
@@ -332,13 +333,14 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
         $products = \App\Models\Product::where('name', 'like', "%{$q}%")
             ->orWhere('sku', 'like', "%{$q}%")
             ->orderBy('name')->limit(10)->with('colors')
-            ->get(['id', 'name', 'sku', 'cost_price']);
+            ->get(['id', 'name', 'sku', 'cost_price', 'is_serialized']);
         return response()->json($products->map(fn($p) => [
-            'id'         => $p->id,
-            'name'       => $p->name,
-            'sku'        => $p->sku,
-            'cost_price' => $p->cost_price,
-            'colors'     => $p->colors->map(fn($c) => [
+            'id'            => $p->id,
+            'name'          => $p->name,
+            'sku'           => $p->sku,
+            'cost_price'    => $p->cost_price,
+            'is_serialized' => (bool) $p->is_serialized,
+            'colors'        => $p->colors->map(fn($c) => [
                 'id' => $c->id, 'name' => $c->name, 'hex_code' => $c->hex_code,
             ])->values(),
         ]));
