@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Section;
 use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 
@@ -105,6 +106,44 @@ class SettingController extends Controller
         $path = $request->file('logo')->store('settings', 'public');
         Setting::set('logo', $path);
         return back()->with('success', 'Logo updated.');
+    }
+
+    public function runMigrate()
+    {
+        try {
+            Artisan::call('migrate', ['--force' => true]);
+            $output = Artisan::output();
+            return response()->json([
+                'success' => true,
+                'output'  => trim($output) ?: 'Nothing to migrate — all migrations are already up to date.',
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'output'  => 'Error: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function runGitPull()
+    {
+        try {
+            $cwd    = base_path();
+            $cmd    = 'git -C ' . escapeshellarg($cwd) . ' pull origin master 2>&1';
+            $output = [];
+            $code   = 0;
+            exec($cmd, $output, $code);
+            $text = implode("\n", $output);
+            return response()->json([
+                'success' => $code === 0,
+                'output'  => trim($text) ?: '(no output)',
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'output'  => 'Error: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function updateAccount(Request $request)

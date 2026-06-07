@@ -562,4 +562,115 @@
         </button>
     </div>
 </form>
+{{-- ===== System Tools ===== --}}
+<h2 class="text-lg font-bold text-gray-900 mt-10 mb-1">System Tools</h2>
+<p class="text-sm text-gray-500 mb-4">Run server-side maintenance commands directly from the browser. Output is shown below each command.</p>
+
+<div class="max-w-2xl"
+     x-data="{
+         loading: null,
+         output: '',
+         ok: null,
+         cmdLabel: '',
+
+         async run(cmd) {
+             this.loading  = cmd;
+             this.output   = '';
+             this.ok       = null;
+             this.cmdLabel = cmd === 'migrate' ? 'php artisan migrate --force' : 'git pull origin master';
+
+             const urls = {
+                 migrate:  '{{ route('admin.system.migrate') }}',
+                 gitpull:  '{{ route('admin.system.git-pull') }}',
+             };
+
+             try {
+                 const res  = await fetch(urls[cmd], {
+                     method:  'POST',
+                     headers: {
+                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                         'Accept':       'application/json',
+                     },
+                 });
+                 const data = await res.json();
+                 this.output = data.output ?? '(no output)';
+                 this.ok     = data.success ?? res.ok;
+             } catch (e) {
+                 this.output = 'Request failed: ' + e.message;
+                 this.ok     = false;
+             } finally {
+                 this.loading = null;
+             }
+         }
+     }">
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="font-semibold text-gray-800"><i class="fas fa-terminal text-gray-500 mr-2"></i>Commands</h3>
+        </div>
+        <div class="card-body">
+
+            {{-- Buttons row --}}
+            <div class="flex flex-wrap gap-3">
+
+                {{-- Migrate --}}
+                <button type="button"
+                        @click="run('migrate')"
+                        :disabled="loading !== null"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border-2 border-indigo-500 bg-indigo-50 text-indigo-700 font-semibold text-sm hover:bg-indigo-100 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                    <template x-if="loading === 'migrate'">
+                        <svg class="animate-spin w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                        </svg>
+                    </template>
+                    <template x-if="loading !== 'migrate'">
+                        <i class="fas fa-database text-sm"></i>
+                    </template>
+                    <span x-text="loading === 'migrate' ? 'Running…' : 'Run Migrations'"></span>
+                </button>
+
+                {{-- Git Pull --}}
+                <button type="button"
+                        @click="run('gitpull')"
+                        :disabled="loading !== null"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-50 text-emerald-700 font-semibold text-sm hover:bg-emerald-100 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                    <template x-if="loading === 'gitpull'">
+                        <svg class="animate-spin w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                        </svg>
+                    </template>
+                    <template x-if="loading !== 'gitpull'">
+                        <i class="fab fa-git-alt text-sm"></i>
+                    </template>
+                    <span x-text="loading === 'gitpull' ? 'Pulling…' : 'Git Pull'"></span>
+                </button>
+            </div>
+
+            {{-- Output terminal --}}
+            <div x-show="output !== ''" x-transition class="mt-5">
+
+                {{-- Terminal header bar --}}
+                <div class="flex items-center justify-between bg-gray-800 rounded-t-xl px-4 py-2">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-red-500"></span>
+                        <span class="w-3 h-3 rounded-full bg-yellow-400"></span>
+                        <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                    </div>
+                    <span class="text-xs text-gray-400 font-mono" x-text="'$ ' + cmdLabel"></span>
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                          :class="ok ? 'bg-green-800 text-green-300' : 'bg-red-800 text-red-300'"
+                          x-text="ok ? '✓ OK' : '✗ Error'"></span>
+                </div>
+
+                {{-- Output body --}}
+                <pre class="bg-gray-900 text-gray-100 text-xs font-mono rounded-b-xl px-4 py-4 overflow-x-auto whitespace-pre-wrap max-h-80 overflow-y-auto leading-relaxed"
+                     x-text="output"></pre>
+            </div>
+
+        </div>
+    </div>
+</div>
+
 @endsection
