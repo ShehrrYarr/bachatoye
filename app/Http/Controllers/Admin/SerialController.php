@@ -45,8 +45,8 @@ class SerialController extends Controller
     public function storeForPurchase(Request $request, Purchase $purchase)
     {
         $request->validate([
-            'serials'                           => 'required|array',
-            'serials.*'                         => 'required|array',
+            'serials'                           => 'nullable|array',
+            'serials.*'                         => 'nullable|array',
             'serials.*.*.serial'                => 'nullable|string|max:100',
             'serials.*.*.cost_price'            => 'nullable|numeric|min:0',
             'serials.*.*.selling_price'         => 'nullable|numeric|min:0',
@@ -57,6 +57,13 @@ class SerialController extends Controller
         $purchase->load(['items.product']);
 
         $serializedItems = $purchase->items->filter(fn($i) => $i->product?->is_serialized);
+
+        // Nothing was submitted (e.g. all units are sold/locked)
+        if (empty($request->input('serials'))) {
+            $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+            return redirect()->route("{$rPrefix}.purchases.show", $purchase)
+                ->with('info', 'No serial numbers to save (all units are sold or were left blank).');
+        }
 
         $errors     = [];
         $toInsert   = [];
