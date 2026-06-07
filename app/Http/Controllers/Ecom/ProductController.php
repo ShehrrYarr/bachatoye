@@ -81,7 +81,7 @@ class ProductController extends Controller
         $attrOptions  = collect(); // [ ['value'=>'8 GB', 'price'=>35000, 'in_stock'=>true], ... ]
 
         if ($product->is_serialized) {
-            $primaryAttr = SerialAttributeDefinition::primary();
+            $primaryAttr = $product->primarySerialAttribute;
 
             if ($primaryAttr) {
                 $prices = ProductAttributePrice::where('product_id', $product->id)

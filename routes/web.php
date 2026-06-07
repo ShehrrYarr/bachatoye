@@ -211,7 +211,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::get('serials/attributes', [Admin\SerialAttributeController::class, 'index'])->name('serials.attributes.index');
     Route::post('serials/attributes', [Admin\SerialAttributeController::class, 'store'])->name('serials.attributes.store');
     Route::put('serials/attributes/{serialAttribute}', [Admin\SerialAttributeController::class, 'update'])->name('serials.attributes.update');
-    Route::post('serials/attributes/{serialAttribute}/make-primary', [Admin\SerialAttributeController::class, 'makePrimary'])->name('serials.attributes.make-primary');
     Route::delete('serials/attributes/{serialAttribute}', [Admin\SerialAttributeController::class, 'destroy'])->name('serials.attributes.destroy');
 
     // Expenses
@@ -251,7 +250,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('settings/account', [Admin\SettingController::class, 'updateAccount'])->name('settings.account');
     Route::post('settings/sections', [Admin\SettingController::class, 'updateSectionPermissions'])->name('settings.sections');
 
-    // Product attribute prices (primary attribute per-product pricing)
+    // Per-product store attribute selector + pricing
+    Route::post('products/{product}/primary-attribute', [Admin\ProductAttributePriceController::class, 'savePrimaryAttribute'])->name('products.primary-attribute.save');
     Route::post('products/{product}/attribute-prices', [Admin\ProductAttributePriceController::class, 'save'])->name('products.attribute-prices.save');
 
     // System tools (migrate + git pull) — admin only

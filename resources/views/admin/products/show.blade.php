@@ -468,31 +468,74 @@
     </div>
 </div>
 
-{{-- ===== Attribute Pricing (serialized products with a primary attribute) ===== --}}
-@if($product->is_serialized && $primaryAttr)
-<div class="mt-6 max-w-2xl">
+{{-- ===== Store Attribute Selector + Pricing (serialized products only) ===== --}}
+@if($product->is_serialized)
+<div class="mt-6 max-w-2xl space-y-4">
+
+    {{-- Flash for both attribute-select and price-save actions --}}
+    @if(session('attr_price_success'))
+    <div class="bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-2.5 text-sm flex items-center gap-2">
+        <i class="fas fa-check-circle shrink-0"></i> {{ session('attr_price_success') }}
+    </div>
+    @endif
+
+    {{-- ── Attribute selector card ── --}}
     <div class="card">
         <div class="card-header flex items-center justify-between">
             <div>
                 <h2 class="font-semibold text-gray-800">
-                    <i class="fas fa-star text-amber-500 mr-1.5"></i>Store Attribute Pricing
+                    <i class="fas fa-tags text-indigo-500 mr-1.5"></i>Store Attribute
                 </h2>
                 <p class="text-xs text-gray-400 mt-0.5">
-                    Set a selling price per <strong>{{ $primaryAttr->name }}</strong> option shown on the online store.
-                    Leave blank to hide that option.
+                    Which attribute should buyers see on this product's store page?
+                    (e.g. Memory, Storage, RAM)
                 </p>
             </div>
-            <a href="{{ route('admin.serials.attributes.index') }}" class="text-xs text-indigo-600 hover:underline">
-                Manage attributes →
+            <a href="{{ route('admin.serials.attributes.index') }}" class="text-xs text-indigo-600 hover:underline shrink-0">
+                Manage fields →
             </a>
         </div>
-
-        @if(session('attr_price_success'))
-        <div class="mx-5 mt-4 bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-2.5 text-sm flex items-center gap-2">
-            <i class="fas fa-check-circle shrink-0"></i> {{ session('attr_price_success') }}
+        <div class="card-body">
+            @if($attributeDefs->isEmpty())
+                <p class="text-sm text-gray-400">
+                    No attribute fields defined yet.
+                    <a href="{{ route('admin.serials.attributes.index') }}" class="text-indigo-600 underline">Create one first.</a>
+                </p>
+            @else
+            <form method="POST" action="{{ route('admin.products.primary-attribute.save', $product) }}" class="flex items-center gap-3 flex-wrap">
+                @csrf
+                <select name="primary_serial_attribute_id"
+                        class="form-select flex-1 min-w-[200px]"
+                        onchange="this.form.submit()">
+                    <option value="">— None (no attribute shown on store) —</option>
+                    @foreach($attributeDefs as $def)
+                    <option value="{{ $def->id }}"
+                            {{ $product->primary_serial_attribute_id == $def->id ? 'selected' : '' }}>
+                        {{ $def->name }}
+                        ({{ implode(', ', array_slice($def->options, 0, 4)) }}{{ count($def->options) > 4 ? '…' : '' }})
+                    </option>
+                    @endforeach
+                </select>
+                <button type="submit" class="btn-outline btn-sm shrink-0">
+                    <i class="fas fa-check mr-1"></i> Set
+                </button>
+            </form>
+            @endif
         </div>
-        @endif
+    </div>
 
+    {{-- ── Price-per-option card (only when an attribute is selected) ── --}}
+    @if($primaryAttr)
+    <div class="card">
+        <div class="card-header">
+            <h2 class="font-semibold text-gray-800">
+                <i class="fas fa-star text-amber-500 mr-1.5"></i>Prices per
+                <span class="text-indigo-600">{{ $primaryAttr->name }}</span> Option
+            </h2>
+            <p class="text-xs text-gray-400 mt-0.5">
+                Set a selling price for each option. Leave blank to hide that option from the store.
+            </p>
+        </div>
         <form method="POST" action="{{ route('admin.products.attribute-prices.save', $product) }}" class="card-body">
             @csrf
             <div class="space-y-3">
@@ -522,20 +565,8 @@
             </div>
         </form>
     </div>
-</div>
-@elseif($product->is_serialized && !$primaryAttr)
-<div class="mt-6 max-w-2xl">
-    <div class="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 text-sm text-amber-800 flex items-start gap-3">
-        <i class="fas fa-info-circle mt-0.5 shrink-0 text-amber-500"></i>
-        <div>
-            This is a serialized product. To show attribute-based pricing on the store
-            (e.g. Memory 6GB vs 8GB with different prices), first go to
-            <a href="{{ route('admin.serials.attributes.index') }}" class="font-semibold underline">
-                Serial Attribute Fields
-            </a>
-            and mark one attribute as <strong>Primary</strong>.
-        </div>
-    </div>
+    @endif
+
 </div>
 @endif
 

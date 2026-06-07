@@ -10,12 +10,31 @@ use Illuminate\Http\Request;
 
 class ProductAttributePriceController extends Controller
 {
+    /**
+     * Save (or clear) which attribute definition is the primary store selector for this product.
+     */
+    public function savePrimaryAttribute(Request $request, Product $product)
+    {
+        $request->validate([
+            'primary_serial_attribute_id' => 'nullable|exists:serial_attribute_definitions,id',
+        ]);
+
+        $product->update([
+            'primary_serial_attribute_id' => $request->input('primary_serial_attribute_id') ?: null,
+        ]);
+
+        return back()->with('attr_price_success', 'Store attribute updated.');
+    }
+
+    /**
+     * Save per-option prices for this product's chosen primary attribute.
+     */
     public function save(Request $request, Product $product)
     {
-        $attr = SerialAttributeDefinition::primary();
+        $attr = $product->is_serialized ? $product->primarySerialAttribute : null;
 
-        if (!$attr || !$product->is_serialized) {
-            return back()->withErrors(['attr' => 'No primary attribute defined or product is not serialized.']);
+        if (!$attr) {
+            return back()->withErrors(['attr' => 'No store attribute selected for this product.']);
         }
 
         $request->validate([
@@ -27,7 +46,6 @@ class ProductAttributePriceController extends Controller
             $price = $request->input("prices.{$option}");
 
             if ($price === null || $price === '') {
-                // Remove price entry if blank
                 ProductAttributePrice::where('product_id', $product->id)
                     ->where('serial_attribute_definition_id', $attr->id)
                     ->where('option_value', $option)

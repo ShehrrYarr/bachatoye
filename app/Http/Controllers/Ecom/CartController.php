@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductAttributePrice;
 use App\Models\ProductColor;
-use App\Models\SerialAttributeDefinition;
 use Illuminate\Http\Request;
 
 class CartController extends Controller
@@ -75,7 +74,7 @@ class CartController extends Controller
         $resolvedPrice      = $product->getDiscountedPrice();
 
         if ($selectedAttrOption && $product->is_serialized) {
-            $primaryAttr = SerialAttributeDefinition::primary();
+            $primaryAttr = $product->primarySerialAttribute;
             if ($primaryAttr) {
                 $attrPrice = ProductAttributePrice::where('product_id', $product->id)
                     ->where('serial_attribute_definition_id', $primaryAttr->id)

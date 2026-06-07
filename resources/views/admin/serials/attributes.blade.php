@@ -8,7 +8,11 @@
         <h1 class="text-xl font-bold text-gray-900">
             <i class="fas fa-tags text-indigo-500 mr-2"></i>Serial Attribute Fields
         </h1>
-        <p class="text-sm text-gray-500 mt-0.5">Define custom fields shown when entering serial / IMEI numbers. Mark one as <strong>Primary</strong> to show it as a price-selector on the store product page.</p>
+        <p class="text-sm text-gray-500 mt-0.5">
+            Define custom fields shown when entering serial / IMEI numbers (e.g. PTA Status, Memory, Storage).
+            To show one as a price-selector on the store, go to the <strong>Product page</strong> and choose it under
+            <em>Store Attribute</em>.
+        </p>
     </div>
 </div>
 
@@ -41,11 +45,6 @@
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-2 flex-wrap">
                                 <span class="font-semibold text-gray-800">{{ $def->name }}</span>
-                                @if($def->is_primary)
-                                <span class="inline-flex items-center gap-1 text-xs bg-amber-100 text-amber-700 border border-amber-300 px-2 py-0.5 rounded-full font-semibold">
-                                    <i class="fas fa-star text-[10px]"></i> Primary — shown on store
-                                </span>
-                                @endif
                                 @if(!$def->is_active)
                                 <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Inactive</span>
                                 @endif
@@ -58,26 +57,7 @@
                                 @endforeach
                             </div>
                         </div>
-                        <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                            @if(!$def->is_primary)
-                            <form method="POST" action="{{ route('admin.serials.attributes.make-primary', $def) }}">
-                                @csrf
-                                <button type="submit"
-                                        class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
-                                        title="Make this the primary attribute shown on the store product page">
-                                    <i class="fas fa-star text-[10px]"></i> Make Primary
-                                </button>
-                            </form>
-                            @else
-                            <form method="POST" action="{{ route('admin.serials.attributes.make-primary', $def) }}"
-                                  onsubmit="return confirm('Remove primary status? No attribute will be shown on the store until another is made primary.')">
-                                @csrf
-                                <button type="submit"
-                                        class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-amber-400 bg-amber-100 text-amber-800 hover:bg-amber-200 transition-colors">
-                                    <i class="fas fa-star text-[10px]"></i> Primary ✓
-                                </button>
-                            </form>
-                            @endif
+                        <div class="flex items-center gap-2 shrink-0">
                             <button @click="editing = true" class="btn-outline btn-sm">
                                 <i class="fas fa-edit mr-1"></i> Edit
                             </button>
@@ -126,7 +106,7 @@
         </div>
     </div>
 
-    {{-- Add new field --}}
+    {{-- Add new field + hint --}}
     <div>
         <div class="card p-5">
             <h2 class="font-semibold text-gray-800 mb-4">Add New Field</h2>
@@ -144,16 +124,16 @@
                 <div>
                     <label class="form-label">Field Name <span class="text-red-500">*</span></label>
                     <input type="text" name="name" value="{{ old('name') }}" required
-                           placeholder="e.g. PTA Status, Condition"
+                           placeholder="e.g. Memory, PTA Status, Condition"
                            class="form-input">
                     <p class="text-xs text-gray-400 mt-1">This label appears on every serial entry form</p>
                 </div>
                 <div>
                     <label class="form-label">Options <span class="text-red-500">*</span></label>
                     <input type="text" name="options" value="{{ old('options') }}" required
-                           placeholder="PTA Approved, Non-PTA, Factory Unlocked"
+                           placeholder="6 GB, 8 GB, 12 GB"
                            class="form-input font-mono text-sm">
-                    <p class="text-xs text-gray-400 mt-1">Comma-separated list of values the user can choose from</p>
+                    <p class="text-xs text-gray-400 mt-1">Comma-separated list of values</p>
                 </div>
                 <button type="submit" class="btn-primary w-full justify-center">
                     <i class="fas fa-plus mr-2"></i> Create Field
@@ -163,20 +143,38 @@
 
         <div class="card p-5 mt-4 bg-indigo-50 border border-indigo-100">
             <h3 class="font-semibold text-indigo-800 text-sm mb-2">
-                <i class="fas fa-lightbulb mr-1"></i> Examples
+                <i class="fas fa-lightbulb mr-1"></i> How per-product attributes work
             </h3>
-            <div class="space-y-3 text-xs text-indigo-700">
+            <div class="text-xs text-indigo-700 space-y-2 leading-relaxed">
+                <p>Each product can show a <strong>different</strong> attribute on the store page:</p>
+                <ul class="list-disc list-inside space-y-1 pl-1">
+                    <li>iPhone → <em>Memory</em> (6 GB, 8 GB…)</li>
+                    <li>Laptop → <em>Storage</em> (256 GB, 512 GB…)</li>
+                    <li>Tablet → <em>RAM</em> (4 GB, 8 GB…)</li>
+                </ul>
+                <p class="pt-1">
+                    Open a <strong>Product page</strong>, scroll to
+                    <em>Store Attribute</em>, pick from the dropdown and save.
+                </p>
+            </div>
+        </div>
+
+        <div class="card p-5 mt-4 bg-gray-50 border border-gray-100">
+            <h3 class="font-semibold text-gray-700 text-sm mb-2">
+                <i class="fas fa-list mr-1"></i> Examples
+            </h3>
+            <div class="space-y-3 text-xs text-gray-600">
                 <div>
                     <div class="font-semibold">PTA Status</div>
-                    <div class="text-indigo-500">PTA Approved, Non-PTA, Factory Unlocked, JV</div>
+                    <div class="text-gray-400">PTA Approved, Non-PTA, Factory Unlocked, JV</div>
                 </div>
                 <div>
                     <div class="font-semibold">Condition</div>
-                    <div class="text-indigo-500">New, Open Box, Used, Refurbished</div>
+                    <div class="text-gray-400">New, Open Box, Used, Refurbished</div>
                 </div>
                 <div>
                     <div class="font-semibold">Warranty</div>
-                    <div class="text-indigo-500">1 Year, 6 Months, No Warranty</div>
+                    <div class="text-gray-400">1 Year, 6 Months, No Warranty</div>
                 </div>
             </div>
         </div>

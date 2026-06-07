@@ -171,9 +171,10 @@ class ProductController extends Controller
 
         $stockAdjustmentEnabled = \App\Models\Setting::get('stock_adjustment_enabled', '1') == '1';
 
-        // Primary attribute pricing (for serialized products)
-        $primaryAttr      = $product->is_serialized ? SerialAttributeDefinition::primary() : null;
-        $attrPrices       = $primaryAttr
+        // Per-product primary attribute pricing (for serialized products)
+        $attributeDefs = $product->is_serialized ? SerialAttributeDefinition::activeOrdered() : collect();
+        $primaryAttr   = $product->is_serialized ? $product->primarySerialAttribute : null;
+        $attrPrices    = $primaryAttr
             ? ProductAttributePrice::where('product_id', $product->id)
                 ->where('serial_attribute_definition_id', $primaryAttr->id)
                 ->pluck('price', 'option_value')
@@ -181,7 +182,7 @@ class ProductController extends Controller
 
         return view('admin.products.show', compact(
             'product', 'purchaseHistory', 'stockAdjustmentEnabled',
-            'primaryAttr', 'attrPrices'
+            'attributeDefs', 'primaryAttr', 'attrPrices'
         ));
     }
 

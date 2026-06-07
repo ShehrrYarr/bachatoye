@@ -14,6 +14,7 @@ class Product extends Model
         'price', 'cost_price', 'compare_price', 'stock_quantity',
         'low_stock_threshold', 'low_stock_dismissed', 'category_id', 'subcategory_id', 'brand_id',
         'is_active', 'is_featured', 'show_in_ecom', 'track_inventory', 'is_serialized', 'free_delivery', 'cod_enabled',
+        'primary_serial_attribute_id',
     ];
 
     protected function casts(): array
@@ -91,6 +92,12 @@ class Product extends Model
     public function serialNumbers()
     {
         return $this->hasMany(SerialNumber::class);
+    }
+
+    /** The attribute definition chosen as the primary selector on the store page. */
+    public function primarySerialAttribute()
+    {
+        return $this->belongsTo(SerialAttributeDefinition::class, 'primary_serial_attribute_id');
     }
 
     public function getPrimaryImageUrlAttribute(): string
