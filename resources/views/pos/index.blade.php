@@ -44,6 +44,12 @@
                     Open Session
                 </button>
                 @endif
+                {{-- Held Orders badge (shown when at least 1 order is held) --}}
+                <button x-show="heldOrders.length > 0" @click="showHeldOrders = true"
+                        class="relative text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5">
+                    <i class="fas fa-layer-group"></i>
+                    <span x-text="'Held (' + heldOrders.length + ')'"></span>
+                </button>
                 <a href="{{ route('pos.return.index') }}"
                    class="text-xs bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1.5 rounded-lg font-medium transition-colors">
                     <i class="fas fa-undo mr-1"></i>Return
@@ -166,10 +172,18 @@
                     <i class="fas fa-eye mr-1"></i>Cost
                 </span>
             </div>
-            <button @click="clearCart()" x-show="cart.length > 0"
-                    class="text-xs text-red-400 hover:text-red-600 transition-colors">
-                <i class="fas fa-trash mr-1"></i> Clear
-            </button>
+            <div class="flex items-center gap-2">
+                {{-- Hold Order button --}}
+                <button @click="holdOrder()" x-show="cart.length > 0"
+                        title="Park this cart and start a new sale"
+                        class="text-xs text-amber-600 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-lg font-medium transition-colors flex items-center gap-1">
+                    <i class="fas fa-pause-circle"></i> Hold
+                </button>
+                <button @click="clearCart()" x-show="cart.length > 0"
+                        class="text-xs text-red-400 hover:text-red-600 transition-colors">
+                    <i class="fas fa-trash mr-1"></i> Clear
+                </button>
+            </div>
         </div>
 
         {{-- Customer section --}}
@@ -596,6 +610,115 @@
                     </template>
                 </div>
                 <button @click="colorPickerProduct = null" class="btn-outline w-full mt-4 justify-center text-sm">Cancel</button>
+            </div>
+        </div>
+    </template>
+
+    {{-- ── Held Orders Drawer ─────────────────────────────────────────────── --}}
+    <template x-teleport="body">
+        <div x-show="showHeldOrders"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center"
+             @keydown.window.escape="showHeldOrders = false">
+
+            <div class="bg-white w-full sm:w-96 rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col"
+                 style="max-height: 80vh;"
+                 @click.outside="showHeldOrders = false">
+
+                {{-- Header --}}
+                <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+                    <h3 class="font-bold text-gray-900 text-base flex items-center gap-2">
+                        <span class="w-7 h-7 bg-amber-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-layer-group text-amber-600 text-sm"></i>
+                        </span>
+                        Held Orders
+                        <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold"
+                              x-text="heldOrders.length"></span>
+                    </h3>
+                    <button @click="showHeldOrders = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+
+                {{-- Body --}}
+                <div class="flex-1 overflow-y-auto px-4 py-3">
+
+                    {{-- Empty state --}}
+                    <div x-show="heldOrders.length === 0" class="text-center py-12 text-gray-400">
+                        <i class="fas fa-inbox text-4xl mb-3"></i>
+                        <p class="text-sm font-medium">No held orders</p>
+                        <p class="text-xs mt-1 text-gray-300">Press <strong class="text-gray-400">Hold</strong> in the cart to park an order</p>
+                    </div>
+
+                    {{-- Held order cards --}}
+                    <div class="space-y-3">
+                        <template x-for="(held, idx) in heldOrders" :key="held.id">
+                            <div class="border border-amber-200 bg-amber-50 rounded-xl p-3.5">
+
+                                {{-- Top row: label + total --}}
+                                <div class="flex items-start justify-between gap-2 mb-2">
+                                    <div class="min-w-0">
+                                        <div class="font-semibold text-gray-800 text-sm truncate" x-text="held.label"></div>
+                                        <div class="text-[11px] text-gray-500 flex items-center gap-1.5 mt-0.5">
+                                            <i class="fas fa-clock text-[9px]"></i>
+                                            <span x-text="held.heldAt"></span>
+                                            <span class="text-gray-300">·</span>
+                                            <span x-text="held.itemCount + (held.itemCount === 1 ? ' item' : ' items')"></span>
+                                            <template x-if="held.customer">
+                                                <span class="flex items-center gap-0.5 text-blue-600">
+                                                    <span class="text-gray-300">·</span>
+                                                    <i class="fas fa-user text-[9px]"></i>
+                                                    <span x-text="held.customer.name"></span>
+                                                </span>
+                                            </template>
+                                        </div>
+                                    </div>
+                                    <div class="font-bold text-primary-700 text-sm shrink-0"
+                                         x-text="'Rs. ' + Number(held.total).toLocaleString()"></div>
+                                </div>
+
+                                {{-- Item preview --}}
+                                <div class="mb-3 space-y-0.5 pl-1 border-l-2 border-amber-200">
+                                    <template x-for="(item, j) in held.cart.slice(0, 3)" :key="j">
+                                        <div class="text-[11px] text-gray-600 flex items-center gap-1 truncate">
+                                            <span class="inline-block w-4 h-4 bg-white border border-amber-200 text-amber-700 rounded-full text-center leading-4 font-bold shrink-0 text-[9px]"
+                                                  x-text="item.quantity"></span>
+                                            <span class="truncate" x-text="item.name"></span>
+                                            <span class="ml-auto shrink-0 text-gray-400"
+                                                  x-text="'Rs. ' + Number(item.price * item.quantity).toLocaleString()"></span>
+                                        </div>
+                                    </template>
+                                    <div x-show="held.cart.length > 3"
+                                         class="text-[10px] text-amber-600 italic pl-5"
+                                         x-text="'+ ' + (held.cart.length - 3) + ' more item(s)'"></div>
+                                </div>
+
+                                {{-- Actions --}}
+                                <div class="flex gap-2">
+                                    <button @click="resumeHeldOrder(idx)"
+                                            class="flex-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold py-2 rounded-xl transition-colors flex items-center justify-center gap-1.5">
+                                        <i class="fas fa-play text-[10px]"></i> Resume
+                                    </button>
+                                    <button @click="deleteHeldOrder(idx)"
+                                            class="px-3.5 text-red-400 hover:text-red-600 border border-red-200 hover:border-red-400 hover:bg-red-50 rounded-xl text-xs transition-colors">
+                                        <i class="fas fa-trash text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                {{-- Footer tip --}}
+                <div class="px-5 py-3 border-t border-gray-100 shrink-0 text-[10px] text-gray-400 text-center">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Resuming an order with items in cart will auto-hold the current cart
+                </div>
             </div>
         </div>
     </template>
@@ -1122,12 +1245,18 @@ function posApp() {
         showNewCustomer: false,
         newCustomer: { name: '', phone: '', address: '' },
 
+        // Held orders (parked carts)
+        heldOrders: [],
+        showHeldOrders: false,
+
         // Session
         showOpenSession: false,
         showCloseSession: false,
 
         async init() {
             this.$refs.barcodeInput?.focus();
+            // Load held orders from localStorage
+            try { this.heldOrders = JSON.parse(localStorage.getItem('pos_held_orders') || '[]'); } catch(e) { this.heldOrders = []; }
             // Start on category grid — no products loaded until category selected or searched
             window.addEventListener('pos:sale-deleted', () => {
                 if (this.searchQuery.length > 0) {
@@ -1509,6 +1638,65 @@ function posApp() {
                 });
                 if (res.ok) { location.reload(); }
             } catch(e) {}
+        },
+
+        // ── Hold Order ──────────────────────────────────────────────────────
+        holdOrder() {
+            if (this.cart.length === 0) return;
+            const label = this.selectedCustomer?.name
+                || (this.orderNotes?.trim() ? this.orderNotes.substring(0, 24) : null)
+                || `Hold ${this.heldOrders.length + 1}`;
+            this.heldOrders.push({
+                id:           Date.now(),
+                label:        label,
+                cart:         JSON.parse(JSON.stringify(this.cart)),
+                customer:     this.selectedCustomer ? { ...this.selectedCustomer } : null,
+                discountType: this.discountType,
+                discountValue: this.discountValue,
+                paymentMethod: this.paymentMethod,
+                orderNotes:   this.orderNotes,
+                total:        this.total,
+                subtotal:     this.subtotal,
+                itemCount:    this.cart.reduce((s, i) => s + i.quantity, 0),
+                heldAt:       new Date().toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' }),
+            });
+            this._saveHeldOrders();
+            // Clear POS for the new customer
+            this.cart              = [];
+            this.selectedCustomer  = null;
+            this.discountType      = 'flat';
+            this.discountValue     = 0;
+            this.orderNotes        = '';
+            this.paymentMethod     = 'cash';
+            this.recalculate();
+            this.$refs.barcodeInput?.focus();
+        },
+
+        resumeHeldOrder(idx) {
+            // If something is already in the cart, auto-hold it first
+            if (this.cart.length > 0) this.holdOrder();
+            const held           = this.heldOrders[idx];
+            this.cart            = held.cart;
+            this.selectedCustomer = held.customer;
+            this.discountType    = held.discountType  || 'flat';
+            this.discountValue   = held.discountValue || 0;
+            this.paymentMethod   = held.paymentMethod || 'cash';
+            this.orderNotes      = held.orderNotes    || '';
+            this.heldOrders.splice(idx, 1);
+            this._saveHeldOrders();
+            this.showHeldOrders = false;
+            this.recalculate();
+            this.$refs.barcodeInput?.focus();
+        },
+
+        deleteHeldOrder(idx) {
+            if (!confirm('Remove this held order? It cannot be recovered.')) return;
+            this.heldOrders.splice(idx, 1);
+            this._saveHeldOrders();
+        },
+
+        _saveHeldOrders() {
+            try { localStorage.setItem('pos_held_orders', JSON.stringify(this.heldOrders)); } catch(e) {}
         },
     };
 }
