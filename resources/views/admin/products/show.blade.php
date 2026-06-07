@@ -524,6 +524,53 @@
         </div>
     </div>
 
+    {{-- ── Serial Entry Fields card (which attributes appear in purchase form) ── --}}
+    @if(!$attributeDefs->isEmpty())
+    <div class="card">
+        <div class="card-header flex items-center justify-between">
+            <div>
+                <h2 class="font-semibold text-gray-800">
+                    <i class="fas fa-list-check text-green-600 mr-1.5"></i>Serial Entry Fields
+                </h2>
+                <p class="text-xs text-gray-400 mt-0.5">
+                    Which attribute fields appear when entering IMEI / serial numbers for this product?
+                    Leave all unchecked to show every active field.
+                </p>
+            </div>
+        </div>
+        <form method="POST" action="{{ route('admin.products.serial-attributes.save', $product) }}" class="card-body">
+            @csrf
+            <div class="grid grid-cols-2 gap-x-6 gap-y-3">
+                @foreach($attributeDefs as $def)
+                <label class="flex items-center gap-2.5 cursor-pointer group">
+                    <input type="checkbox"
+                           name="serial_attribute_ids[]"
+                           value="{{ $def->id }}"
+                           {{ in_array($def->id, $product->serial_attribute_ids ?? []) ? 'checked' : '' }}
+                           class="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500">
+                    <span class="text-sm text-gray-700 group-hover:text-gray-900">{{ $def->name }}</span>
+                    <span class="text-xs text-gray-400 font-mono">
+                        {{ implode(', ', array_slice($def->options, 0, 3)) }}{{ count($def->options) > 3 ? '…' : '' }}
+                    </span>
+                </label>
+                @endforeach
+            </div>
+            <div class="mt-4 pt-4 border-t border-gray-100 flex items-center gap-3">
+                <button type="submit" class="btn-primary btn-sm">
+                    <i class="fas fa-save mr-1.5"></i> Save Field Selection
+                </button>
+                <span class="text-xs text-gray-400">
+                    @if($product->serial_attribute_ids && count($product->serial_attribute_ids))
+                        Showing {{ count($product->serial_attribute_ids) }} of {{ $attributeDefs->count() }} field(s)
+                    @else
+                        Showing all {{ $attributeDefs->count() }} field(s) (none selected = show all)
+                    @endif
+                </span>
+            </div>
+        </form>
+    </div>
+    @endif
+
     {{-- ── Price-per-option card (only when an attribute is selected) ── --}}
     @if($primaryAttr)
     <div class="card">

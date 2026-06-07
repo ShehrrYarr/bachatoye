@@ -27,6 +27,24 @@ class ProductAttributePriceController extends Controller
     }
 
     /**
+     * Save which attribute fields are shown when entering serial/IMEI numbers for this product.
+     * Empty selection = show all active fields (the default).
+     */
+    public function saveSerialAttributes(Request $request, Product $product)
+    {
+        $request->validate([
+            'serial_attribute_ids'   => 'nullable|array',
+            'serial_attribute_ids.*' => 'integer|exists:serial_attribute_definitions,id',
+        ]);
+
+        $product->update([
+            'serial_attribute_ids' => $request->input('serial_attribute_ids') ?: null,
+        ]);
+
+        return back()->with('attr_price_success', 'Serial entry fields saved.');
+    }
+
+    /**
      * Save per-option prices for this product's chosen primary attribute.
      */
     public function save(Request $request, Product $product)

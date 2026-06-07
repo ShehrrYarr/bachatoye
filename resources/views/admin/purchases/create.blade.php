@@ -169,22 +169,24 @@
                                                                                    class="w-full border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-indigo-400">
                                                                         </div>
                                                                     </div>
-                                                                    @if(count($serialAttributeDefs) > 0)
-                                                                    <div class="grid grid-cols-2 gap-2">
-                                                                        @foreach($serialAttributeDefs as $attrDef)
-                                                                        <div>
-                                                                            <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">{{ $attrDef->name }}</label>
-                                                                            <select x-model="clr.serials[csi].attributes['{{ $attrDef->name }}']"
-                                                                                    class="w-full border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400">
-                                                                                <option value="">— Select —</option>
-                                                                                @foreach($attrDef->options as $opt)
-                                                                                <option value="{{ $opt }}">{{ $opt }}</option>
-                                                                                @endforeach
-                                                                            </select>
+                                                                    {{-- Per-product attribute dropdowns (colored variant) --}}
+                                                                    <template x-if="item.attrDefs && item.attrDefs.length > 0">
+                                                                        <div class="grid grid-cols-2 gap-2">
+                                                                            <template x-for="(ad, adi) in item.attrDefs" :key="adi">
+                                                                                <div>
+                                                                                    <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide" x-text="ad.name"></label>
+                                                                                    <select class="w-full border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                                                                                            @change="clr.serials[csi].attributes[ad.name] = $event.target.value">
+                                                                                        <option value="">— Select —</option>
+                                                                                        <template x-for="(opt, oi) in ad.options" :key="oi">
+                                                                                            <option :value="opt" x-text="opt"
+                                                                                                    :selected="clr.serials[csi].attributes[ad.name] === opt"></option>
+                                                                                        </template>
+                                                                                    </select>
+                                                                                </div>
+                                                                            </template>
                                                                         </div>
-                                                                        @endforeach
-                                                                    </div>
-                                                                    @endif
+                                                                    </template>
 
                                                                     {{-- Extra freeform fields --}}
                                                                     <template x-for="(ef, efi) in csn.extraFields" :key="efi">
@@ -269,23 +271,24 @@
                                                         </div>
                                                     </div>
 
-                                                    {{-- Custom attribute dropdowns (rendered server-side) --}}
-                                                    @if(count($serialAttributeDefs) > 0)
-                                                    <div class="grid grid-cols-2 gap-2">
-                                                        @foreach($serialAttributeDefs as $attrDef)
-                                                        <div>
-                                                            <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">{{ $attrDef->name }}</label>
-                                                            <select x-model="item.serials[si].attributes['{{ $attrDef->name }}']"
-                                                                    class="w-full border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400">
-                                                                <option value="">— Select —</option>
-                                                                @foreach($attrDef->options as $opt)
-                                                                <option value="{{ $opt }}">{{ $opt }}</option>
-                                                                @endforeach
-                                                            </select>
+                                                    {{-- Custom attribute dropdowns (per-product, driven by Alpine) --}}
+                                                    <template x-if="item.attrDefs && item.attrDefs.length > 0">
+                                                        <div class="grid grid-cols-2 gap-2">
+                                                            <template x-for="(ad, adi) in item.attrDefs" :key="adi">
+                                                                <div>
+                                                                    <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide" x-text="ad.name"></label>
+                                                                    <select class="w-full border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                                                                            @change="item.serials[si].attributes[ad.name] = $event.target.value">
+                                                                        <option value="">— Select —</option>
+                                                                        <template x-for="(opt, oi) in ad.options" :key="oi">
+                                                                            <option :value="opt" x-text="opt"
+                                                                                    :selected="item.serials[si].attributes[ad.name] === opt"></option>
+                                                                        </template>
+                                                                    </select>
+                                                                </div>
+                                                            </template>
                                                         </div>
-                                                        @endforeach
-                                                    </div>
-                                                    @endif
+                                                    </template>
 
                                                     {{-- Extra freeform fields --}}
                                                     <template x-for="(ef, efi) in sn.extraFields" :key="efi">
@@ -578,6 +581,8 @@ function purchaseForm() {
 
             const hasColors  = Array.isArray(p.colors) && p.colors.length > 0;
             const isSerial   = p.is_serialized || false;
+            // Attribute defs for this product: either the subset the admin chose, or all active defs
+            const attrDefs   = isSerial ? (p.serial_attr_defs || []) : [];
             this.items.push({
                 id:            p.id,
                 name:          p.name,
@@ -585,6 +590,7 @@ function purchaseForm() {
                 unit_cost:     parseFloat(p.cost_price) || 0,
                 has_colors:    hasColors,
                 is_serialized: isSerial,
+                attrDefs:      attrDefs,
                 colors:        hasColors ? p.colors.map(c => ({
                                    id:       c.id,
                                    name:     c.name,

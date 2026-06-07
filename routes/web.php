@@ -177,18 +177,25 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::get('api/products/search', function (\Illuminate\Http\Request $request) {
         $q = $request->input('q', '');
         if (strlen($q) < 2) return response()->json([]);
+        $allDefs = \App\Models\SerialAttributeDefinition::activeOrdered()
+            ->map(fn($d) => ['id' => $d->id, 'name' => $d->name, 'options' => $d->options]);
         $products = \App\Models\Product::where('name', 'like', "%{$q}%")
             ->orWhere('sku', 'like', "%{$q}%")
             ->orderBy('name')->limit(10)
             ->with('colors')
-            ->get(['id', 'name', 'sku', 'cost_price', 'is_serialized']);
+            ->get(['id', 'name', 'sku', 'cost_price', 'is_serialized', 'serial_attribute_ids']);
         return response()->json($products->map(fn($p) => [
-            'id'            => $p->id,
-            'name'          => $p->name,
-            'sku'           => $p->sku,
-            'cost_price'    => $p->cost_price,
-            'is_serialized' => (bool) $p->is_serialized,
-            'colors'        => $p->colors->map(fn($c) => [
+            'id'               => $p->id,
+            'name'             => $p->name,
+            'sku'              => $p->sku,
+            'cost_price'       => $p->cost_price,
+            'is_serialized'    => (bool) $p->is_serialized,
+            'serial_attr_defs' => $p->is_serialized
+                ? ($p->serial_attribute_ids && count($p->serial_attribute_ids)
+                    ? $allDefs->filter(fn($d) => in_array($d['id'], $p->serial_attribute_ids))->values()
+                    : $allDefs->values())
+                : [],
+            'colors'           => $p->colors->map(fn($c) => [
                 'id'       => $c->id,
                 'name'     => $c->name,
                 'hex_code' => $c->hex_code,
@@ -250,8 +257,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('settings/account', [Admin\SettingController::class, 'updateAccount'])->name('settings.account');
     Route::post('settings/sections', [Admin\SettingController::class, 'updateSectionPermissions'])->name('settings.sections');
 
-    // Per-product store attribute selector + pricing
+    // Per-product store attribute selector + pricing + serial entry field selection
     Route::post('products/{product}/primary-attribute', [Admin\ProductAttributePriceController::class, 'savePrimaryAttribute'])->name('products.primary-attribute.save');
+    Route::post('products/{product}/serial-attributes', [Admin\ProductAttributePriceController::class, 'saveSerialAttributes'])->name('products.serial-attributes.save');
     Route::post('products/{product}/attribute-prices', [Admin\ProductAttributePriceController::class, 'save'])->name('products.attribute-prices.save');
 
     // System tools (migrate + git pull) — admin only
@@ -333,17 +341,24 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
     Route::get('api/products/search', function (\Illuminate\Http\Request $request) {
         $q = $request->input('q', '');
         if (strlen($q) < 2) return response()->json([]);
+        $allDefs = \App\Models\SerialAttributeDefinition::activeOrdered()
+            ->map(fn($d) => ['id' => $d->id, 'name' => $d->name, 'options' => $d->options]);
         $products = \App\Models\Product::where('name', 'like', "%{$q}%")
             ->orWhere('sku', 'like', "%{$q}%")
             ->orderBy('name')->limit(10)->with('colors')
-            ->get(['id', 'name', 'sku', 'cost_price', 'is_serialized']);
+            ->get(['id', 'name', 'sku', 'cost_price', 'is_serialized', 'serial_attribute_ids']);
         return response()->json($products->map(fn($p) => [
-            'id'            => $p->id,
-            'name'          => $p->name,
-            'sku'           => $p->sku,
-            'cost_price'    => $p->cost_price,
-            'is_serialized' => (bool) $p->is_serialized,
-            'colors'        => $p->colors->map(fn($c) => [
+            'id'               => $p->id,
+            'name'             => $p->name,
+            'sku'              => $p->sku,
+            'cost_price'       => $p->cost_price,
+            'is_serialized'    => (bool) $p->is_serialized,
+            'serial_attr_defs' => $p->is_serialized
+                ? ($p->serial_attribute_ids && count($p->serial_attribute_ids)
+                    ? $allDefs->filter(fn($d) => in_array($d['id'], $p->serial_attribute_ids))->values()
+                    : $allDefs->values())
+                : [],
+            'colors'           => $p->colors->map(fn($c) => [
                 'id' => $c->id, 'name' => $c->name, 'hex_code' => $c->hex_code,
             ])->values(),
         ]));

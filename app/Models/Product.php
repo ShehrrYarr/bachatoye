@@ -14,23 +14,24 @@ class Product extends Model
         'price', 'cost_price', 'compare_price', 'stock_quantity',
         'low_stock_threshold', 'low_stock_dismissed', 'category_id', 'subcategory_id', 'brand_id',
         'is_active', 'is_featured', 'show_in_ecom', 'track_inventory', 'is_serialized', 'free_delivery', 'cod_enabled',
-        'primary_serial_attribute_id',
+        'primary_serial_attribute_id', 'serial_attribute_ids',
     ];
 
     protected function casts(): array
     {
         return [
-            'price'                => 'decimal:2',
-            'cost_price'           => 'decimal:2',
-            'compare_price'        => 'decimal:2',
-            'is_active'            => 'boolean',
-            'is_featured'          => 'boolean',
-            'show_in_ecom'         => 'boolean',
-            'track_inventory'      => 'boolean',
-            'is_serialized'        => 'boolean',
-            'low_stock_dismissed'  => 'boolean',
-            'free_delivery'        => 'boolean',
-            'cod_enabled'          => 'boolean',
+            'price'                  => 'decimal:2',
+            'cost_price'             => 'decimal:2',
+            'compare_price'          => 'decimal:2',
+            'is_active'              => 'boolean',
+            'is_featured'            => 'boolean',
+            'show_in_ecom'           => 'boolean',
+            'track_inventory'        => 'boolean',
+            'is_serialized'          => 'boolean',
+            'low_stock_dismissed'    => 'boolean',
+            'free_delivery'          => 'boolean',
+            'cod_enabled'            => 'boolean',
+            'serial_attribute_ids'   => 'array',
         ];
     }
 
