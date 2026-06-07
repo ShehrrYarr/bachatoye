@@ -69,14 +69,15 @@
                 </div>
             </div>
 
-            {{-- Pricing --}}
-            <div class="card">
+            {{-- Pricing (hidden for serialized products — prices are per unit) --}}
+            <div class="card" x-show="!isSerial" x-cloak>
                 <div class="card-header"><h2 class="font-semibold text-gray-800">Pricing</h2></div>
                 <div class="card-body">
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                             <label class="form-label">Selling Price (Rs.) *</label>
-                            <input type="number" name="price" value="{{ old('price', $product->price) }}" step="0.01" min="0" class="form-input" required>
+                            <input type="number" name="price" value="{{ old('price', $product->price) }}" step="0.01" min="0"
+                                   class="form-input" :required="!isSerial">
                         </div>
                         <div>
                             <label class="form-label">Cost Price (Rs.)</label>
@@ -87,6 +88,19 @@
                             <input type="number" name="compare_price" value="{{ old('compare_price', $product->compare_price) }}" step="0.01" min="0" class="form-input">
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {{-- Pricing notice for serialized products --}}
+            <div class="card border border-indigo-200 bg-indigo-50/50" x-show="isSerial" x-cloak>
+                <div class="card-header bg-indigo-50 border-b border-indigo-100">
+                    <h2 class="font-semibold text-indigo-800 flex items-center gap-2">
+                        <i class="fas fa-info-circle text-indigo-500"></i> Pricing
+                    </h2>
+                </div>
+                <div class="card-body text-sm text-indigo-700 space-y-1">
+                    <p><i class="fas fa-tag mr-1 text-indigo-400"></i><strong>Selling price</strong> is entered per unit when recording a purchase (each IMEI / serial has its own price).</p>
+                    <p><i class="fas fa-store mr-1 text-indigo-400"></i>The <strong>online store price</strong> comes from the attribute prices you configure on the product page (e.g. 4GB → Rs. 35,000).</p>
                 </div>
             </div>
 

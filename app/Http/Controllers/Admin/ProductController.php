@@ -82,8 +82,8 @@ class ProductController extends Controller
             'name'                => 'required|string|max:255',
             'short_description'   => 'nullable|string|max:500',
             'description'         => 'nullable|string',
-            'price'               => 'required|numeric|min:0',
-            'cost_price'          => 'required|numeric|min:0',
+            'price'               => 'nullable|numeric|min:0',
+            'cost_price'          => 'nullable|numeric|min:0',
             'compare_price'       => 'nullable|numeric|min:0',
             'stock_quantity'      => 'nullable|integer|min:0',
             'low_stock_threshold' => 'required|integer|min:0',
@@ -116,6 +116,8 @@ class ProductController extends Controller
         $data['free_delivery']                = $request->boolean('free_delivery');
         $data['cod_enabled']                  = $request->boolean('cod_enabled');
         $data['stock_quantity']               = $data['stock_quantity'] ?? 0;
+        $data['price']                        = $data['price'] ?? 0;
+        $data['cost_price']                   = $data['cost_price'] ?? 0;
         $data['primary_serial_attribute_id']  = $request->boolean('is_serialized')
             ? ($request->input('primary_serial_attribute_id') ?: null)
             : null;
@@ -214,8 +216,8 @@ class ProductController extends Controller
             'name'                => 'required|string|max:255',
             'short_description'   => 'nullable|string|max:500',
             'description'         => 'nullable|string',
-            'price'               => 'required|numeric|min:0',
-            'cost_price'          => 'required|numeric|min:0',
+            'price'               => 'nullable|numeric|min:0',
+            'cost_price'          => 'nullable|numeric|min:0',
             'compare_price'       => 'nullable|numeric|min:0',
             'stock_quantity'      => 'nullable|integer|min:0',
             'low_stock_threshold' => 'required|integer|min:0',
@@ -247,6 +249,8 @@ class ProductController extends Controller
         $data['is_serialized']               = $request->boolean('is_serialized');
         $data['free_delivery']               = $request->boolean('free_delivery');
         $data['cod_enabled']                 = $request->boolean('cod_enabled');
+        $data['price']                       = $data['price'] ?? $product->price;
+        $data['cost_price']                  = $data['cost_price'] ?? $product->cost_price;
         $data['primary_serial_attribute_id'] = $request->boolean('is_serialized')
             ? ($request->input('primary_serial_attribute_id') ?: null)
             : null;
