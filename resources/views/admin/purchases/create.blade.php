@@ -593,7 +593,7 @@ function purchaseForm() {
                                    serials:  [],
                                })) : [],
                 quantity:      hasColors ? 0 : 1,
-                serials:       (!hasColors && isSerial) ? [{ serial:'', cost_price:'', selling_price:'', attributes:{} }] : [],
+                serials:       (!hasColors && isSerial) ? [{ serial:'', cost_price:'', selling_price:'', attributes:{}, extraFields:[] }] : [],
             });
 
             this.searchQuery  = '';
