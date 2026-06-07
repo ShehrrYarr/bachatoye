@@ -7,10 +7,12 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Deal;
 use App\Models\Product;
+use App\Models\ProductAttributePrice;
 use App\Models\ProductColor;
 use App\Models\ProductImage;
 use App\Models\ProductSocialLink;
 use App\Models\ProductVideo;
+use App\Models\SerialAttributeDefinition;
 use App\Services\BarcodeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -169,7 +171,18 @@ class ProductController extends Controller
 
         $stockAdjustmentEnabled = \App\Models\Setting::get('stock_adjustment_enabled', '1') == '1';
 
-        return view('admin.products.show', compact('product', 'purchaseHistory', 'stockAdjustmentEnabled'));
+        // Primary attribute pricing (for serialized products)
+        $primaryAttr      = $product->is_serialized ? SerialAttributeDefinition::primary() : null;
+        $attrPrices       = $primaryAttr
+            ? ProductAttributePrice::where('product_id', $product->id)
+                ->where('serial_attribute_definition_id', $primaryAttr->id)
+                ->pluck('price', 'option_value')
+            : collect();
+
+        return view('admin.products.show', compact(
+            'product', 'purchaseHistory', 'stockAdjustmentEnabled',
+            'primaryAttr', 'attrPrices'
+        ));
     }
 
     public function edit(Product $product)

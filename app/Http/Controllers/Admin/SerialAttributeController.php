@@ -58,13 +58,25 @@ class SerialAttributeController extends Controller
             return back()->withErrors(['options' => 'Please provide at least one option.'])->withInput();
         }
 
+        // If this one is being made primary, unmark all others first
+        if ($request->boolean('is_primary')) {
+            SerialAttributeDefinition::clearPrimary();
+        }
+
         $serialAttribute->update([
-            'name'      => $data['name'],
-            'options'   => $options,
-            'is_active' => $request->boolean('is_active', true),
+            'name'       => $data['name'],
+            'options'    => $options,
+            'is_active'  => $request->boolean('is_active', true),
+            'is_primary' => $request->boolean('is_primary'),
         ]);
 
         return back()->with('success', 'Attribute updated.');
+    }
+
+    public function makePrimary(SerialAttributeDefinition $serialAttribute)
+    {
+        $serialAttribute->makePrimary();
+        return back()->with('success', "\"{$serialAttribute->name}\" is now the primary attribute shown on the store.");
     }
 
     public function destroy(SerialAttributeDefinition $serialAttribute)

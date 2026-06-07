@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductAttributePrice;
 use App\Models\Section;
+use App\Models\SerialAttributeDefinition;
+use App\Models\SerialNumber;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
@@ -73,7 +76,37 @@ class ProductController extends Controller
 
         $deal = $product->getActiveDeal();
 
-        return view('ecom.products.show', compact('product', 'related', 'deal'));
+        // Primary attribute pricing for serialized products
+        $primaryAttr  = null;
+        $attrOptions  = collect(); // [ ['value'=>'8 GB', 'price'=>35000, 'in_stock'=>true], ... ]
+
+        if ($product->is_serialized) {
+            $primaryAttr = SerialAttributeDefinition::primary();
+
+            if ($primaryAttr) {
+                $prices = ProductAttributePrice::where('product_id', $product->id)
+                    ->where('serial_attribute_definition_id', $primaryAttr->id)
+                    ->pluck('price', 'option_value');
+
+                // Only expose options that have a price configured
+                foreach ($primaryAttr->options as $opt) {
+                    if (!$prices->has($opt)) continue;
+
+                    $inStock = SerialNumber::where('product_id', $product->id)
+                        ->where('status', 'in_stock')
+                        ->where("attributes->{$primaryAttr->name}", $opt)
+                        ->exists();
+
+                    $attrOptions->push([
+                        'value'    => $opt,
+                        'price'    => (float) $prices->get($opt),
+                        'in_stock' => $inStock,
+                    ]);
+                }
+            }
+        }
+
+        return view('ecom.products.show', compact('product', 'related', 'deal', 'primaryAttr', 'attrOptions'));
     }
 
     public function search(Request $request)

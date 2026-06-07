@@ -8,7 +8,7 @@
         <h1 class="text-xl font-bold text-gray-900">
             <i class="fas fa-tags text-indigo-500 mr-2"></i>Serial Attribute Fields
         </h1>
-        <p class="text-sm text-gray-500 mt-0.5">Define custom fields shown when entering serial / IMEI numbers</p>
+        <p class="text-sm text-gray-500 mt-0.5">Define custom fields shown when entering serial / IMEI numbers. Mark one as <strong>Primary</strong> to show it as a price-selector on the store product page.</p>
     </div>
 </div>
 
@@ -39,8 +39,13 @@
                     {{-- View mode --}}
                     <div x-show="!editing" class="flex items-start justify-between gap-4">
                         <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-2 flex-wrap">
                                 <span class="font-semibold text-gray-800">{{ $def->name }}</span>
+                                @if($def->is_primary)
+                                <span class="inline-flex items-center gap-1 text-xs bg-amber-100 text-amber-700 border border-amber-300 px-2 py-0.5 rounded-full font-semibold">
+                                    <i class="fas fa-star text-[10px]"></i> Primary — shown on store
+                                </span>
+                                @endif
                                 @if(!$def->is_active)
                                 <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Inactive</span>
                                 @endif
@@ -53,7 +58,26 @@
                                 @endforeach
                             </div>
                         </div>
-                        <div class="flex items-center gap-2 shrink-0">
+                        <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                            @if(!$def->is_primary)
+                            <form method="POST" action="{{ route('admin.serials.attributes.make-primary', $def) }}">
+                                @csrf
+                                <button type="submit"
+                                        class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
+                                        title="Make this the primary attribute shown on the store product page">
+                                    <i class="fas fa-star text-[10px]"></i> Make Primary
+                                </button>
+                            </form>
+                            @else
+                            <form method="POST" action="{{ route('admin.serials.attributes.make-primary', $def) }}"
+                                  onsubmit="return confirm('Remove primary status? No attribute will be shown on the store until another is made primary.')">
+                                @csrf
+                                <button type="submit"
+                                        class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-amber-400 bg-amber-100 text-amber-800 hover:bg-amber-200 transition-colors">
+                                    <i class="fas fa-star text-[10px]"></i> Primary ✓
+                                </button>
+                            </form>
+                            @endif
                             <button @click="editing = true" class="btn-outline btn-sm">
                                 <i class="fas fa-edit mr-1"></i> Edit
                             </button>

@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Ecom;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Models\ProductAttributePrice;
 use App\Models\ProductColor;
+use App\Models\SerialAttributeDefinition;
 use Illuminate\Http\Request;
 
 class CartController extends Controller
@@ -43,9 +45,10 @@ class CartController extends Controller
     public function add(Request $request)
     {
         $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'quantity'   => 'required|integer|min:1|max:100',
-            'color_id'   => 'nullable|exists:product_colors,id',
+            'product_id'          => 'required|exists:products,id',
+            'quantity'            => 'required|integer|min:1|max:100',
+            'color_id'            => 'nullable|exists:product_colors,id',
+            'selected_attr_option'=> 'nullable|string|max:100',
         ]);
 
         $product = Product::active()->inStock()->with('colors')->findOrFail($request->product_id);
@@ -67,8 +70,28 @@ class CartController extends Controller
             $colorName = $color->name;
         }
 
+        // Resolve attribute option price (for serialized products with primary attribute)
+        $selectedAttrOption = $request->input('selected_attr_option');
+        $resolvedPrice      = $product->getDiscountedPrice();
+
+        if ($selectedAttrOption && $product->is_serialized) {
+            $primaryAttr = SerialAttributeDefinition::primary();
+            if ($primaryAttr) {
+                $attrPrice = ProductAttributePrice::where('product_id', $product->id)
+                    ->where('serial_attribute_definition_id', $primaryAttr->id)
+                    ->where('option_value', $selectedAttrOption)
+                    ->value('price');
+                if ($attrPrice !== null) {
+                    $resolvedPrice = (float) $attrPrice;
+                }
+            }
+        }
+
         $cart = $this->cart();
-        $key  = $color ? "product_{$product->id}_color_{$color->id}" : "product_{$product->id}";
+        $attrSlug = $selectedAttrOption ? '_attr_' . md5($selectedAttrOption) : '';
+        $key  = $color
+            ? "product_{$product->id}_color_{$color->id}{$attrSlug}"
+            : "product_{$product->id}{$attrSlug}";
 
         $currentQty = $cart[$key]['quantity'] ?? 0;
         $newQty     = $currentQty + $request->quantity;
@@ -80,11 +103,12 @@ class CartController extends Controller
         }
 
         $cart[$key] = [
-            'product_id' => $product->id,
-            'color_id'   => $color?->id,
-            'color_name' => $colorName,
-            'quantity'   => $newQty,
-            'price'      => $product->getDiscountedPrice(),
+            'product_id'  => $product->id,
+            'color_id'    => $color?->id,
+            'color_name'  => $colorName,
+            'attr_option' => $selectedAttrOption,
+            'quantity'    => $newQty,
+            'price'       => $resolvedPrice,
         ];
 
         $this->saveCart($cart);
@@ -160,14 +184,15 @@ class CartController extends Controller
             $color = !empty($item['color_id']) ? $product->colors->find($item['color_id']) : null;
 
             return [
-                'row_id'     => $rowId,
-                'product'    => $product,
-                'color_id'   => $item['color_id'] ?? null,
-                'color_name' => $item['color_name'] ?? null,
-                'color_hex'  => $color?->hex_code ?? null,
-                'quantity'   => $item['quantity'],
-                'price'      => $item['price'],
-                'line_total' => $item['price'] * $item['quantity'],
+                'row_id'      => $rowId,
+                'product'     => $product,
+                'color_id'    => $item['color_id'] ?? null,
+                'color_name'  => $item['color_name'] ?? null,
+                'color_hex'   => $color?->hex_code ?? null,
+                'attr_option' => $item['attr_option'] ?? null,
+                'quantity'    => $item['quantity'],
+                'price'       => $item['price'],
+                'line_total'  => $item['price'] * $item['quantity'],
             ];
         })->filter()->values()->toArray();
     }

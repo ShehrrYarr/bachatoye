@@ -467,4 +467,76 @@
         </div>
     </div>
 </div>
+
+{{-- ===== Attribute Pricing (serialized products with a primary attribute) ===== --}}
+@if($product->is_serialized && $primaryAttr)
+<div class="mt-6 max-w-2xl">
+    <div class="card">
+        <div class="card-header flex items-center justify-between">
+            <div>
+                <h2 class="font-semibold text-gray-800">
+                    <i class="fas fa-star text-amber-500 mr-1.5"></i>Store Attribute Pricing
+                </h2>
+                <p class="text-xs text-gray-400 mt-0.5">
+                    Set a selling price per <strong>{{ $primaryAttr->name }}</strong> option shown on the online store.
+                    Leave blank to hide that option.
+                </p>
+            </div>
+            <a href="{{ route('admin.serials.attributes.index') }}" class="text-xs text-indigo-600 hover:underline">
+                Manage attributes →
+            </a>
+        </div>
+
+        @if(session('attr_price_success'))
+        <div class="mx-5 mt-4 bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-2.5 text-sm flex items-center gap-2">
+            <i class="fas fa-check-circle shrink-0"></i> {{ session('attr_price_success') }}
+        </div>
+        @endif
+
+        <form method="POST" action="{{ route('admin.products.attribute-prices.save', $product) }}" class="card-body">
+            @csrf
+            <div class="space-y-3">
+                @foreach($primaryAttr->options as $opt)
+                <div class="flex items-center gap-4">
+                    <span class="w-36 shrink-0 text-sm font-medium text-gray-700">{{ $opt }}</span>
+                    <div class="flex items-center gap-2 flex-1">
+                        <span class="text-sm text-gray-400 shrink-0">Rs.</span>
+                        <input type="number"
+                               name="prices[{{ $opt }}]"
+                               value="{{ $attrPrices->get($opt) !== null ? number_format($attrPrices->get($opt), 0, '.', '') : '' }}"
+                               min="0" step="1" placeholder="Leave blank to hide"
+                               class="form-input text-right w-40">
+                    </div>
+                    @if($attrPrices->has($opt))
+                    <span class="text-xs text-green-600 font-semibold shrink-0">✓ Set</span>
+                    @else
+                    <span class="text-xs text-gray-300 shrink-0">—</span>
+                    @endif
+                </div>
+                @endforeach
+            </div>
+            <div class="mt-5 pt-4 border-t border-gray-100">
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-save mr-2"></i> Save Attribute Prices
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+@elseif($product->is_serialized && !$primaryAttr)
+<div class="mt-6 max-w-2xl">
+    <div class="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 text-sm text-amber-800 flex items-start gap-3">
+        <i class="fas fa-info-circle mt-0.5 shrink-0 text-amber-500"></i>
+        <div>
+            This is a serialized product. To show attribute-based pricing on the store
+            (e.g. Memory 6GB vs 8GB with different prices), first go to
+            <a href="{{ route('admin.serials.attributes.index') }}" class="font-semibold underline">
+                Serial Attribute Fields
+            </a>
+            and mark one attribute as <strong>Primary</strong>.
+        </div>
+    </div>
+</div>
+@endif
+
 @endsection

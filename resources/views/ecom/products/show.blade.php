@@ -145,14 +145,25 @@
             <h1 class="text-2xl md:text-3xl font-bold text-gray-900 leading-snug mb-4">{{ $product->name }}</h1>
 
             {{-- Price --}}
+            @php
+                $finalPrice   = $product->getDiscountedPrice();
+                $hasDealDisc  = $deal && $deal->type !== 'buy_x_get_y' && $finalPrice < $product->price;
+                $comparePrice = $product->compare_price && $product->compare_price > $finalPrice ? $product->compare_price : null;
+                $strikePrice  = $hasDealDisc ? $product->price : $comparePrice;
+                $initialDisplayPrice = $firstInStockAttrOption ? $firstInStockAttrOption['price'] : $finalPrice;
+            @endphp
             <div class="flex items-baseline gap-3 flex-wrap mb-5">
-                @php
-                    $finalPrice   = $product->getDiscountedPrice();
-                    $hasDealDisc  = $deal && $deal->type !== 'buy_x_get_y' && $finalPrice < $product->price;
-                    $comparePrice = $product->compare_price && $product->compare_price > $finalPrice ? $product->compare_price : null;
-                    $strikePrice  = $hasDealDisc ? $product->price : $comparePrice;
-                @endphp
+                @if($attrOptions->isNotEmpty())
+                {{-- Reactive price — updates via 'attr-price-changed' window event --}}
+                <span class="text-3xl font-extrabold text-primary-700"
+                      x-data="{ displayPrice: {{ $initialDisplayPrice }} }"
+                      @attr-price-changed.window="displayPrice = $event.detail.price"
+                      x-text="'Rs. ' + Number(displayPrice).toLocaleString()">
+                    Rs. {{ number_format($initialDisplayPrice) }}
+                </span>
+                @else
                 <span class="text-3xl font-extrabold text-primary-700">Rs. {{ number_format($finalPrice) }}</span>
+                @endif
                 @if($strikePrice)
                     <span class="text-lg text-gray-400 line-through">Rs. {{ number_format($strikePrice) }}</span>
                 @endif
@@ -222,6 +233,8 @@
                 $productColors  = $product->colors;
                 $inStockColors  = $productColors->where('stock_quantity', '>', 0)->values();
                 $preSelected    = $inStockColors->count() === 1 ? $inStockColors->first() : null;
+                $basePrice      = $product->getDiscountedPrice();
+                $firstInStockAttrOption = $attrOptions->firstWhere('in_stock', true);
             @endphp
             <form method="POST" action="{{ route('cart.add') }}" class="mb-5"
                   x-data="{
@@ -229,11 +242,65 @@
                       selectedColorName: '{{ $preSelected ? addslashes($preSelected->name) : '' }}',
                       selectedColorStock: {{ $preSelected ? $preSelected->stock_quantity : 0 }},
                       hasColors: {{ $inStockColors->count() > 0 ? 'true' : 'false' }},
-                      canAdd() { return !this.hasColors || this.selectedColorId !== null; }
+                      hasAttr: {{ $attrOptions->isNotEmpty() ? 'true' : 'false' }},
+                      selectedAttrOption: {{ $firstInStockAttrOption ? "'".addslashes($firstInStockAttrOption['value'])."'" : 'null' }},
+                      selectedAttrPrice: {{ $firstInStockAttrOption ? $firstInStockAttrOption['price'] : $basePrice }},
+                      basePrice: {{ $basePrice }},
+                      displayPrice: {{ $firstInStockAttrOption ? $firstInStockAttrOption['price'] : $basePrice }},
+                      selectAttr(value, price) {
+                          this.selectedAttrOption = value;
+                          this.selectedAttrPrice  = price;
+                          this.displayPrice       = price;
+                          this.$dispatch('attr-price-changed', { price });
+                      },
+                      canAdd() {
+                          if (this.hasColors && !this.selectedColorId) return false;
+                          if (this.hasAttr && !this.selectedAttrOption) return false;
+                          return true;
+                      }
                   }">
                 @csrf
                 <input type="hidden" name="product_id" value="{{ $product->id }}">
                 <input type="hidden" name="color_id" :value="selectedColorId">
+                <input type="hidden" name="selected_attr_option" :value="selectedAttrOption">
+                <input type="hidden" name="selected_attr_price" :value="selectedAttrPrice">
+
+                {{-- Primary Attribute Selector (e.g. Memory: 6GB / 8GB) --}}
+                @if($attrOptions->isNotEmpty())
+                <div class="mb-5">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="text-sm font-semibold text-gray-700">{{ $primaryAttr->name }}:</span>
+                        <span class="text-sm text-gray-500" x-text="selectedAttrOption ?? 'Select an option'"></span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach($attrOptions as $opt)
+                        @if($opt['in_stock'])
+                        <button type="button"
+                                @click="selectAttr('{{ addslashes($opt['value']) }}', {{ $opt['price'] }})"
+                                :class="selectedAttrOption === '{{ addslashes($opt['value']) }}'
+                                    ? 'ring-2 ring-primary-500 ring-offset-2 border-primary-400 bg-primary-50 text-primary-700'
+                                    : 'ring-1 ring-gray-300 hover:ring-gray-400 bg-white text-gray-700'"
+                                class="flex flex-col items-center px-5 py-2.5 rounded-xl text-sm font-semibold transition-all border">
+                            <span>{{ $opt['value'] }}</span>
+                            <span class="text-xs font-bold mt-0.5"
+                                  :class="selectedAttrOption === '{{ addslashes($opt['value']) }}' ? 'text-primary-600' : 'text-gray-500'">
+                                Rs. {{ number_format($opt['price']) }}
+                            </span>
+                        </button>
+                        @else
+                        <div class="flex flex-col items-center px-5 py-2.5 rounded-xl text-sm font-medium border border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed">
+                            <span class="line-through">{{ $opt['value'] }}</span>
+                            <span class="text-xs mt-0.5">Out of Stock</span>
+                        </div>
+                        @endif
+                        @endforeach
+                    </div>
+                    <p x-show="hasAttr && !selectedAttrOption"
+                       class="text-xs text-red-500 mt-2 font-medium">
+                        Please select {{ $primaryAttr->name }} to continue.
+                    </p>
+                </div>
+                @endif
 
                 {{-- Color selector --}}
                 @if($productColors->count())
