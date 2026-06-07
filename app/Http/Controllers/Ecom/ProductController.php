@@ -64,7 +64,7 @@ class ProductController extends Controller
     public function show(string $slug)
     {
         $product = Product::active()->inStock()->ecomVisible()->with([
-            'images', 'videos', 'socialLinks', 'category', 'brand'
+            'images', 'videos', 'socialLinks', 'category', 'brand', 'primarySerialAttribute',
         ])->where('slug', $slug)->firstOrFail();
 
         $related = Product::active()->inStock()->ecomVisible()
@@ -76,21 +76,25 @@ class ProductController extends Controller
 
         $deal = $product->getActiveDeal();
 
-        // Primary attribute pricing for serialized products
-        $primaryAttr  = null;
-        $attrOptions  = collect(); // [ ['value'=>'8 GB', 'price'=>35000, 'in_stock'=>true], ... ]
+        // Per-product primary attribute options for the store page
+        $primaryAttr = null;
+        $attrOptions = collect(); // [ ['value'=>'8 GB', 'price'=>35000, 'in_stock'=>true], ... ]
 
         if ($product->is_serialized) {
-            $primaryAttr = $product->primarySerialAttribute;
+            $primaryAttr = $product->primarySerialAttribute; // already eager-loaded
 
             if ($primaryAttr) {
+                $basePrice = $product->getDiscountedPrice();
+
                 $prices = ProductAttributePrice::where('product_id', $product->id)
                     ->where('serial_attribute_definition_id', $primaryAttr->id)
                     ->pluck('price', 'option_value');
 
-                // Only expose options that have a price configured
+                // Show ALL options — fall back to product's base price when no per-option price is set
                 foreach ($primaryAttr->options as $opt) {
-                    if (!$prices->has($opt)) continue;
+                    $price = $prices->has($opt)
+                        ? (float) $prices->get($opt)
+                        : $basePrice;
 
                     $inStock = SerialNumber::where('product_id', $product->id)
                         ->where('status', 'in_stock')
@@ -99,7 +103,7 @@ class ProductController extends Controller
 
                     $attrOptions->push([
                         'value'    => $opt,
-                        'price'    => (float) $prices->get($opt),
+                        'price'    => $price,
                         'in_stock' => $inStock,
                     ]);
                 }

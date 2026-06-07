@@ -265,6 +265,18 @@
                 <input type="hidden" name="selected_attr_option" :value="selectedAttrOption">
                 <input type="hidden" name="selected_attr_price" :value="selectedAttrPrice">
 
+                {{-- Admin hint when product is serialized but no store attribute is configured --}}
+                @if($product->is_serialized && !$primaryAttr && auth()->check() && auth()->user()->hasRole('admin'))
+                <div class="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800 flex items-start gap-2">
+                    <i class="fas fa-info-circle mt-0.5 shrink-0 text-amber-500"></i>
+                    <span>
+                        <strong>Admin only:</strong> No store attribute selected for this product.
+                        <a href="{{ route('admin.products.show', $product) }}" class="underline font-semibold">Open product settings →</a>
+                        and pick a Store Attribute (e.g. Memory, Storage).
+                    </span>
+                </div>
+                @endif
+
                 {{-- Primary Attribute Selector (e.g. Memory: 6GB / 8GB) --}}
                 @if($attrOptions->isNotEmpty())
                 <div class="mb-5">
