@@ -105,20 +105,33 @@
 
             <div class="p-4 flex-1 overflow-y-auto">
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
-                    <template x-for="product in displayProducts" :key="product.id">
+                    <template x-for="product in displayProducts" :key="product._key || ('p_' + product.id)">
                         <div @click="addToCart(product)"
                              class="pos-product-tile relative"
-                             :class="product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'">
-                            {{-- Serialized badge --}}
-                            <template x-if="product.is_serialized">
+                             :class="[
+                                 product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
+                                 product.serial_number ? 'ring-2 ring-indigo-400 ring-offset-1' : '',
+                             ]">
+                            {{-- Generic IMEI badge (serialized product tile, no specific unit) --}}
+                            <template x-if="product.is_serialized && !product.serial_number">
                                 <span class="absolute top-1.5 right-1.5 bg-indigo-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none flex items-center gap-0.5 z-10">
                                     <i class="fas fa-barcode"></i> IMEI
+                                </span>
+                            </template>
+                            {{-- Specific-unit badge (IMEI search result) --}}
+                            <template x-if="product.serial_number">
+                                <span class="absolute top-1.5 right-1.5 bg-indigo-700 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-lg leading-none flex items-center gap-0.5 z-10">
+                                    <i class="fas fa-fingerprint text-[8px]"></i> Unit
                                 </span>
                             </template>
                             <div class="h-20 bg-gray-100 rounded-lg overflow-hidden mb-2">
                                 <img :src="product.image" :alt="product.name" class="w-full h-full object-cover">
                             </div>
                             <div class="text-xs font-semibold text-gray-800 leading-tight line-clamp-2 mb-1" x-text="product.name"></div>
+                            {{-- Show IMEI for serial search results --}}
+                            <template x-if="product.serial_number">
+                                <div class="text-[10px] font-mono text-indigo-600 mb-0.5 truncate" x-text="product.serial_number"></div>
+                            </template>
                             <div class="text-xs font-bold text-primary-700" x-text="`Rs. ${Number(product.price).toLocaleString()}`"></div>
                             <div class="text-xs mt-0.5" :class="product.stock <= 0 ? 'text-red-500' : 'text-gray-400'"
                                  x-text="product.stock <= 0 ? 'Out of Stock' : `Stock: ${product.stock}`"></div>
@@ -1228,7 +1241,17 @@ function posApp() {
         addToCart(product) {
             if (product.stock <= 0) return;
 
-            // Serialized products require IMEI / serial entry — never add directly
+            // IMEI search result — serial already known, add directly without prompt
+            if (product.is_serialized && product.serial_number) {
+                this.addSerializedToCart(product, product.serial_number, product.serial_id);
+                this.searchQuery    = '';
+                this.displayProducts = [];
+                if (this.selectedCategory) this.loadProducts();
+                this.$refs.barcodeInput?.focus();
+                return;
+            }
+
+            // Serialized product tile (no specific IMEI yet) — show IMEI prompt
             if (product.is_serialized) {
                 this.serialPromptProduct = product;
                 this.serialPromptInput   = '';

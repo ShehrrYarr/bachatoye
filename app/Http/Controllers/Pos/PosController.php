@@ -273,18 +273,12 @@ class PosController extends Controller
                 ->where('name', 'like', "%{$q}%")
                 ->orWhere('barcode', 'like', "%{$q}%")
                 ->orWhere('sku', 'like', "%{$q}%")
-                // Search purchase notes (IMEI numbers stored there)
-                ->orWhereIn('id', fn($sub) => $sub
-                    ->select('purchase_items.product_id')
-                    ->from('purchase_items')
-                    ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
-                    ->where('purchases.notes', 'like', "%{$q}%")
-                )
             )
             ->with(['images', 'colors', 'category.section'])
             ->limit($q ? 15 : 60)
             ->get()
             ->map(fn($p) => [
+                '_key'             => 'p_' . $p->id,
                 'id'               => $p->id,
                 'name'             => $p->name,
                 'barcode'          => $p->barcode,
@@ -296,6 +290,8 @@ class PosController extends Controller
                 'image'            => $p->primary_image_url,
                 'exchange_eligible' => (bool)($p->category?->section?->exchange_enabled),
                 'is_serialized'    => (bool) $p->is_serialized,
+                'serial_number'    => null,
+                'serial_id'        => null,
                 'colors'           => $p->colors->map(fn($c) => [
                     'id'             => $c->id,
                     'name'           => $c->name,
@@ -304,7 +300,43 @@ class PosController extends Controller
                 ])->values(),
             ]);
 
-        return response()->json($products);
+        // ── Serial (IMEI) search — appended when a search query is present ──
+        $serialResults = collect();
+        if ($q) {
+            $serialResults = SerialNumber::where('serial_number', 'like', "%{$q}%")
+                ->where('status', 'in_stock')
+                ->with(['product.images', 'product.category.section'])
+                ->limit(10)
+                ->get()
+                ->filter(fn($sn) => $sn->product && $sn->product->is_active)
+                ->when(
+                    $allowedCategoryIds !== null,
+                    fn($c) => $c->filter(fn($sn) => in_array($sn->product->category_id, $allowedCategoryIds))
+                )
+                ->map(function ($sn) {
+                    $p = $sn->product;
+                    $sellingPrice = $sn->selling_price ? (float) $sn->selling_price : $p->getDiscountedPrice();
+                    $costPrice    = $sn->cost_price    ? (float) $sn->cost_price    : (float) $p->cost_price;
+                    return [
+                        '_key'             => 's_' . $sn->id,
+                        'id'               => $p->id,
+                        'name'             => $p->name,
+                        'barcode'          => $p->barcode,
+                        'price'            => $sellingPrice,
+                        'cost_price'       => $costPrice,
+                        'stock'            => 1,
+                        'image'            => $p->primary_image_url,
+                        'exchange_eligible' => (bool)($p->category?->section?->exchange_enabled),
+                        'is_serialized'    => true,
+                        'serial_number'    => $sn->serial_number,
+                        'serial_id'        => $sn->id,
+                        'attributes'       => $sn->attributes ?? [],
+                        'colors'           => [],
+                    ];
+                });
+        }
+
+        return response()->json($products->concat($serialResults)->values());
     }
 
     public function getByBarcode(string $barcode)
