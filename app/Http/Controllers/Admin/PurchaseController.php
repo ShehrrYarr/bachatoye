@@ -213,7 +213,20 @@ class PurchaseController extends Controller
 
         $purchase = DB::transaction(function () use ($request) {
             $items   = $request->items;
-            $subtotal = collect($items)->sum(fn($i) => $i['quantity'] * $i['unit_cost']);
+
+            // Effective line cost: serialized products take the sum of their per-unit serial
+            // cost prices (the top-level unit cost field is hidden for them); everyone else
+            // uses quantity × unit_cost.
+            $lineCostFor = function ($row) {
+                $product = Product::find($row['product_id']);
+                if ($product && $product->is_serialized) {
+                    return (float) collect($row['serials'] ?? [])
+                        ->sum(fn($s) => is_numeric($s['cost_price'] ?? null) ? (float) $s['cost_price'] : 0.0);
+                }
+                return (float) $row['quantity'] * (float) $row['unit_cost'];
+            };
+
+            $subtotal = collect($items)->sum($lineCostFor);
             $total    = $subtotal;
 
             $payMethod    = $request->payment_method;
@@ -246,7 +259,12 @@ class PurchaseController extends Controller
 
             foreach ($items as $row) {
                 $product = Product::find($row['product_id']);
-                $lineTotal = $row['quantity'] * $row['unit_cost'];
+                $lineTotal = $lineCostFor($row);
+                // For serialized products derive the per-unit cost from the line total (the
+                // top-level unit cost field is hidden, so $row['unit_cost'] is 0 for them).
+                $unitCost  = ($product->is_serialized && (int) $row['quantity'] > 0)
+                    ? round($lineTotal / (int) $row['quantity'], 2)
+                    : (float) $row['unit_cost'];
                 $colorId   = !empty($row['color_id']) ? (int) $row['color_id'] : null;
                 $colorName = !empty($row['color_name']) ? $row['color_name'] : null;
 
@@ -256,7 +274,7 @@ class PurchaseController extends Controller
                     'color_id'     => $colorId,
                     'color_name'   => $colorName,
                     'quantity'     => $row['quantity'],
-                    'unit_cost'    => $row['unit_cost'],
+                    'unit_cost'    => $unitCost,
                     'line_total'   => $lineTotal,
                 ]);
 
@@ -291,7 +309,7 @@ class PurchaseController extends Controller
 
                 $product->increment('stock_quantity', $row['quantity']);
 
-                $updates = ['cost_price' => $row['unit_cost']];
+                $updates = ['cost_price' => $unitCost];
                 // Auto-clear dismissal if restocked above threshold
                 if ($after > $product->low_stock_threshold && $product->low_stock_dismissed) {
                     $updates['low_stock_dismissed'] = false;
