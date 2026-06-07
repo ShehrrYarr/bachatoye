@@ -614,7 +614,7 @@
         </div>
     </template>
 
-    {{-- ── Held Orders Drawer ─────────────────────────────────────────────── --}}
+    {{-- ── Held Orders Modal ─────────────────────────────────────────────── --}}
     <template x-teleport="body">
         <div x-show="showHeldOrders"
              x-transition:enter="transition ease-out duration-200"
@@ -623,15 +623,16 @@
              x-transition:leave="transition ease-in duration-150"
              x-transition:leave-start="opacity-100"
              x-transition:leave-end="opacity-0"
-             class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center"
-             @keydown.window.escape="showHeldOrders = false">
+             class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+             @keydown.window.escape="showHeldOrders = false"
+             @click.self="showHeldOrders = false">
 
-            <div class="bg-white w-full sm:w-96 rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col"
-                 style="max-height: 80vh;"
-                 @click.outside="showHeldOrders = false">
+            {{-- Fixed width via inline style so it never goes full-screen --}}
+            <div class="bg-white rounded-2xl shadow-2xl flex flex-col"
+                 style="width:440px; max-width:100%; max-height:85vh; min-height:0;">
 
                 {{-- Header --}}
-                <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+                <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100" style="flex-shrink:0;">
                     <h3 class="font-bold text-gray-900 text-base flex items-center gap-2">
                         <span class="w-7 h-7 bg-amber-100 rounded-lg flex items-center justify-center">
                             <i class="fas fa-layer-group text-amber-600 text-sm"></i>
@@ -645,68 +646,71 @@
                     </button>
                 </div>
 
-                {{-- Body --}}
-                <div class="flex-1 overflow-y-auto px-4 py-3">
+                {{-- Scrollable body --}}
+                <div style="flex:1 1 0%; overflow-y:auto; padding:12px 16px;">
 
                     {{-- Empty state --}}
                     <div x-show="heldOrders.length === 0" class="text-center py-12 text-gray-400">
                         <i class="fas fa-inbox text-4xl mb-3"></i>
                         <p class="text-sm font-medium">No held orders</p>
-                        <p class="text-xs mt-1 text-gray-300">Press <strong class="text-gray-400">Hold</strong> in the cart to park an order</p>
+                        <p class="text-xs mt-1" style="color:#d1d5db;">Press <strong style="color:#9ca3af;">Hold</strong> in the cart to park an order</p>
                     </div>
 
                     {{-- Held order cards --}}
-                    <div class="space-y-3">
+                    <div style="display:flex; flex-direction:column; gap:12px;">
                         <template x-for="(held, idx) in heldOrders" :key="held.id">
-                            <div class="border border-amber-200 bg-amber-50 rounded-xl p-3.5">
+                            <div style="border:1px solid #fde68a; background:#fffbeb; border-radius:12px; padding:14px;">
 
                                 {{-- Top row: label + total --}}
-                                <div class="flex items-start justify-between gap-2 mb-2">
-                                    <div class="min-w-0">
-                                        <div class="font-semibold text-gray-800 text-sm truncate" x-text="held.label"></div>
-                                        <div class="text-[11px] text-gray-500 flex items-center gap-1.5 mt-0.5">
-                                            <i class="fas fa-clock text-[9px]"></i>
+                                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:6px;">
+                                    <div style="min-width:0;">
+                                        <div style="font-weight:600; font-size:14px; color:#1f2937; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" x-text="held.label"></div>
+                                        <div style="font-size:11px; color:#6b7280; display:flex; align-items:center; gap:6px; margin-top:2px; flex-wrap:wrap;">
+                                            <i class="fas fa-clock" style="font-size:9px;"></i>
                                             <span x-text="held.heldAt"></span>
-                                            <span class="text-gray-300">·</span>
+                                            <span style="color:#d1d5db;">·</span>
                                             <span x-text="held.itemCount + (held.itemCount === 1 ? ' item' : ' items')"></span>
                                             <template x-if="held.customer">
-                                                <span class="flex items-center gap-0.5 text-blue-600">
-                                                    <span class="text-gray-300">·</span>
-                                                    <i class="fas fa-user text-[9px]"></i>
+                                                <span style="display:flex; align-items:center; gap:3px; color:#2563eb;">
+                                                    <span style="color:#d1d5db;">·</span>
+                                                    <i class="fas fa-user" style="font-size:9px;"></i>
                                                     <span x-text="held.customer.name"></span>
                                                 </span>
                                             </template>
                                         </div>
                                     </div>
-                                    <div class="font-bold text-primary-700 text-sm shrink-0"
+                                    <div style="font-weight:700; font-size:14px; color:#b91c1c; flex-shrink:0;"
                                          x-text="'Rs. ' + Number(held.total).toLocaleString()"></div>
                                 </div>
 
                                 {{-- Item preview --}}
-                                <div class="mb-3 space-y-0.5 pl-1 border-l-2 border-amber-200">
+                                <div style="margin-bottom:10px; padding-left:6px; border-left:2px solid #fde68a;">
                                     <template x-for="(item, j) in held.cart.slice(0, 3)" :key="j">
-                                        <div class="text-[11px] text-gray-600 flex items-center gap-1 truncate">
-                                            <span class="inline-block w-4 h-4 bg-white border border-amber-200 text-amber-700 rounded-full text-center leading-4 font-bold shrink-0 text-[9px]"
+                                        <div style="font-size:11px; color:#4b5563; display:flex; align-items:center; gap:5px; padding:1px 0; overflow:hidden;">
+                                            <span style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; background:white; border:1px solid #fde68a; color:#d97706; border-radius:50%; font-weight:700; font-size:9px; flex-shrink:0;"
                                                   x-text="item.quantity"></span>
-                                            <span class="truncate" x-text="item.name"></span>
-                                            <span class="ml-auto shrink-0 text-gray-400"
+                                            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;" x-text="item.name"></span>
+                                            <span style="margin-left:auto; flex-shrink:0; color:#9ca3af; font-size:11px;"
                                                   x-text="'Rs. ' + Number(item.price * item.quantity).toLocaleString()"></span>
                                         </div>
                                     </template>
                                     <div x-show="held.cart.length > 3"
-                                         class="text-[10px] text-amber-600 italic pl-5"
+                                         style="font-size:10px; color:#d97706; font-style:italic; padding-left:20px; margin-top:2px;"
                                          x-text="'+ ' + (held.cart.length - 3) + ' more item(s)'"></div>
                                 </div>
 
                                 {{-- Actions --}}
-                                <div class="flex gap-2">
+                                <div style="display:flex; gap:8px;">
                                     <button @click="resumeHeldOrder(idx)"
-                                            class="flex-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold py-2 rounded-xl transition-colors flex items-center justify-center gap-1.5">
-                                        <i class="fas fa-play text-[10px]"></i> Resume
+                                            style="flex:1; background:#f59e0b; color:white; font-size:12px; font-weight:600; padding:8px 0; border-radius:10px; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:background 0.15s;"
+                                            onmouseover="this.style.background='#d97706'" onmouseout="this.style.background='#f59e0b'">
+                                        <i class="fas fa-play" style="font-size:10px;"></i> Resume
                                     </button>
                                     <button @click="deleteHeldOrder(idx)"
-                                            class="px-3.5 text-red-400 hover:text-red-600 border border-red-200 hover:border-red-400 hover:bg-red-50 rounded-xl text-xs transition-colors">
-                                        <i class="fas fa-trash text-xs"></i>
+                                            style="padding:8px 14px; color:#f87171; border:1px solid #fecaca; border-radius:10px; background:white; cursor:pointer; font-size:12px; transition:all 0.15s;"
+                                            onmouseover="this.style.color='#dc2626';this.style.borderColor='#f87171';this.style.background='#fff1f2';"
+                                            onmouseout="this.style.color='#f87171';this.style.borderColor='#fecaca';this.style.background='white';">
+                                        <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
                             </div>
@@ -715,8 +719,8 @@
                 </div>
 
                 {{-- Footer tip --}}
-                <div class="px-5 py-3 border-t border-gray-100 shrink-0 text-[10px] text-gray-400 text-center">
-                    <i class="fas fa-info-circle mr-1"></i>
+                <div style="padding:10px 20px; border-top:1px solid #f3f4f6; flex-shrink:0; font-size:10px; color:#9ca3af; text-align:center;">
+                    <i class="fas fa-info-circle" style="margin-right:3px;"></i>
                     Resuming an order with items in cart will auto-hold the current cart
                 </div>
             </div>
