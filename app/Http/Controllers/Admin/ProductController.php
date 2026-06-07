@@ -63,10 +63,11 @@ class ProductController extends Controller
 
     public function create()
     {
-        $categories = Category::active()->whereNull('parent_id')->get();
-        $brands     = Brand::all();
-        $deals      = Deal::active()->get();
-        return view('admin.products.create', compact('categories', 'brands', 'deals'));
+        $categories    = Category::active()->whereNull('parent_id')->get();
+        $brands        = Brand::all();
+        $deals         = Deal::active()->get();
+        $attributeDefs = SerialAttributeDefinition::activeOrdered();
+        return view('admin.products.create', compact('categories', 'brands', 'deals', 'attributeDefs'));
     }
 
     public function subcategories(Category $category)
@@ -95,23 +96,32 @@ class ProductController extends Controller
             'is_featured'         => 'boolean',
             'show_in_ecom'        => 'boolean',
             'track_inventory'     => 'boolean',
-            'is_serialized'       => 'boolean',
-            'free_delivery'       => 'boolean',
-            'cod_enabled'         => 'boolean',
-            'images'              => 'nullable|array',
-            'images.*'            => 'image|max:5120',
-            'video_embed_url'     => 'nullable|string',
-            'video_file'          => 'nullable|file|mimetypes:video/mp4,video/webm|max:102400',
+            'is_serialized'                => 'boolean',
+            'free_delivery'                => 'boolean',
+            'cod_enabled'                  => 'boolean',
+            'primary_serial_attribute_id'  => 'nullable|exists:serial_attribute_definitions,id',
+            'serial_attribute_ids'         => 'nullable|array',
+            'serial_attribute_ids.*'       => 'integer|exists:serial_attribute_definitions,id',
+            'images'                       => 'nullable|array',
+            'images.*'                     => 'image|max:5120',
+            'video_embed_url'              => 'nullable|string',
+            'video_file'                   => 'nullable|file|mimetypes:video/mp4,video/webm|max:102400',
         ]);
 
-        $data['is_active']       = $request->boolean('is_active');
-        $data['is_featured']     = $request->boolean('is_featured');
-        $data['show_in_ecom']    = $request->boolean('show_in_ecom', true);
-        $data['track_inventory'] = $request->boolean('track_inventory', true);
-        $data['is_serialized']   = $request->boolean('is_serialized');
-        $data['free_delivery']   = $request->boolean('free_delivery');
-        $data['cod_enabled']     = $request->boolean('cod_enabled');
-        $data['stock_quantity']  = $data['stock_quantity'] ?? 0;
+        $data['is_active']                    = $request->boolean('is_active');
+        $data['is_featured']                  = $request->boolean('is_featured');
+        $data['show_in_ecom']                 = $request->boolean('show_in_ecom', true);
+        $data['track_inventory']              = $request->boolean('track_inventory', true);
+        $data['is_serialized']                = $request->boolean('is_serialized');
+        $data['free_delivery']                = $request->boolean('free_delivery');
+        $data['cod_enabled']                  = $request->boolean('cod_enabled');
+        $data['stock_quantity']               = $data['stock_quantity'] ?? 0;
+        $data['primary_serial_attribute_id']  = $request->boolean('is_serialized')
+            ? ($request->input('primary_serial_attribute_id') ?: null)
+            : null;
+        $data['serial_attribute_ids']         = $request->boolean('is_serialized')
+            ? ($request->input('serial_attribute_ids') ?: null)
+            : null;
 
         // Generate barcode if not provided
         if (empty($data['barcode'])) {
@@ -194,7 +204,8 @@ class ProductController extends Controller
         $subcategories = $product->category_id
             ? Category::active()->where('parent_id', $product->category_id)->orderBy('name')->get()
             : collect();
-        return view('admin.products.edit', compact('product', 'categories', 'brands', 'subcategories'));
+        $attributeDefs = SerialAttributeDefinition::activeOrdered();
+        return view('admin.products.edit', compact('product', 'categories', 'brands', 'subcategories', 'attributeDefs'));
     }
 
     public function update(Request $request, Product $product)
@@ -217,22 +228,31 @@ class ProductController extends Controller
             'is_featured'         => 'boolean',
             'show_in_ecom'        => 'boolean',
             'track_inventory'     => 'boolean',
-            'is_serialized'       => 'boolean',
-            'free_delivery'       => 'boolean',
-            'cod_enabled'         => 'boolean',
-            'images'              => 'nullable|array',
-            'images.*'            => 'image|max:5120',
-            'video_embed_url'     => 'nullable|string',
-            'video_file'          => 'nullable|file|mimetypes:video/mp4,video/webm|max:102400',
+            'is_serialized'                => 'boolean',
+            'free_delivery'                => 'boolean',
+            'cod_enabled'                  => 'boolean',
+            'primary_serial_attribute_id'  => 'nullable|exists:serial_attribute_definitions,id',
+            'serial_attribute_ids'         => 'nullable|array',
+            'serial_attribute_ids.*'       => 'integer|exists:serial_attribute_definitions,id',
+            'images'                       => 'nullable|array',
+            'images.*'                     => 'image|max:5120',
+            'video_embed_url'              => 'nullable|string',
+            'video_file'                   => 'nullable|file|mimetypes:video/mp4,video/webm|max:102400',
         ]);
 
-        $data['is_active']       = $request->boolean('is_active');
-        $data['is_featured']     = $request->boolean('is_featured');
-        $data['show_in_ecom']    = $request->boolean('show_in_ecom', true);
-        $data['track_inventory'] = $request->boolean('track_inventory', true);
-        $data['is_serialized']   = $request->boolean('is_serialized');
-        $data['free_delivery']   = $request->boolean('free_delivery');
-        $data['cod_enabled']     = $request->boolean('cod_enabled');
+        $data['is_active']                   = $request->boolean('is_active');
+        $data['is_featured']                 = $request->boolean('is_featured');
+        $data['show_in_ecom']                = $request->boolean('show_in_ecom', true);
+        $data['track_inventory']             = $request->boolean('track_inventory', true);
+        $data['is_serialized']               = $request->boolean('is_serialized');
+        $data['free_delivery']               = $request->boolean('free_delivery');
+        $data['cod_enabled']                 = $request->boolean('cod_enabled');
+        $data['primary_serial_attribute_id'] = $request->boolean('is_serialized')
+            ? ($request->input('primary_serial_attribute_id') ?: null)
+            : null;
+        $data['serial_attribute_ids']        = $request->boolean('is_serialized')
+            ? ($request->input('serial_attribute_ids') ?: null)
+            : null;
 
         // Strip non-model fields before updating
         $product->update(\Arr::except($data, ['images', 'video_embed_url', 'video_file']));

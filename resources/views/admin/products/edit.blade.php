@@ -104,12 +104,59 @@
                         <input type="hidden" name="is_serialized" value="0">
                         <input type="checkbox" name="is_serialized" id="is_serialized" value="1"
                                {{ old('is_serialized', $product->is_serialized) ? 'checked' : '' }}
+                               x-model="isSerial"
                                class="w-4 h-4 text-indigo-600 rounded">
                         <label for="is_serialized" class="text-sm font-medium text-gray-700 cursor-pointer">
                             <i class="fas fa-barcode text-indigo-500 mr-1 text-xs"></i>
                             Serialized — track IMEI / Serial numbers per unit
                         </label>
                     </div>
+
+                    {{-- Attribute configuration (shown only when serialized is checked) --}}
+                    @if(!$attributeDefs->isEmpty())
+                    <div x-show="isSerial && trackInventory" x-cloak
+                         class="ml-1 pl-4 border-l-2 border-indigo-100 space-y-4">
+
+                        {{-- Store Attribute --}}
+                        <div>
+                            <label class="form-label text-sm">
+                                <i class="fas fa-tags text-indigo-500 mr-1"></i>Store Attribute
+                                <span class="font-normal text-gray-400 ml-1">(shown as price-selector on the product page)</span>
+                            </label>
+                            <select name="primary_serial_attribute_id" class="form-select">
+                                <option value="">— None —</option>
+                                @foreach($attributeDefs as $def)
+                                <option value="{{ $def->id }}"
+                                        {{ old('primary_serial_attribute_id', $product->primary_serial_attribute_id) == $def->id ? 'selected' : '' }}>
+                                    {{ $def->name }}
+                                    ({{ implode(', ', array_slice($def->options, 0, 4)) }}{{ count($def->options) > 4 ? '…' : '' }})
+                                </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- Serial Entry Fields --}}
+                        <div>
+                            <label class="form-label text-sm">
+                                <i class="fas fa-list-check text-green-600 mr-1"></i>Serial Entry Fields
+                                <span class="font-normal text-gray-400 ml-1">(fields shown on the purchase form — leave all unchecked for all)</span>
+                            </label>
+                            <div class="grid grid-cols-2 gap-x-4 gap-y-2 mt-1">
+                                @foreach($attributeDefs as $def)
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox"
+                                           name="serial_attribute_ids[]"
+                                           value="{{ $def->id }}"
+                                           {{ in_array($def->id, old('serial_attribute_ids', $product->serial_attribute_ids ?? [])) ? 'checked' : '' }}
+                                           class="w-4 h-4 text-indigo-600 rounded border-gray-300">
+                                    <span class="text-sm text-gray-700">{{ $def->name }}</span>
+                                </label>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
                     <div x-show="trackInventory">
                         <label class="form-label">Low Stock Threshold</label>
                         <input type="number" name="low_stock_threshold" value="{{ old('low_stock_threshold', $product->low_stock_threshold) }}" min="0" class="form-input w-48">
@@ -377,6 +424,7 @@ function subcatPicker(initCat, initSub) {
 function productEditForm() {
     return {
         trackInventory: {{ old('track_inventory', $product->track_inventory) ? 'true' : 'false' }},
+        isSerial: {{ old('is_serialized', $product->is_serialized) ? 'true' : 'false' }},
         async generateBarcode() {
             try {
                 const categoryId = document.querySelector('[name="category_id"]')?.value || '';
