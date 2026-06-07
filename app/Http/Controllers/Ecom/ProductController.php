@@ -84,17 +84,22 @@ class ProductController extends Controller
             $primaryAttr = $product->primarySerialAttribute; // already eager-loaded
 
             if ($primaryAttr) {
-                $basePrice = $product->getDiscountedPrice();
-
                 $prices = ProductAttributePrice::where('product_id', $product->id)
                     ->where('serial_attribute_definition_id', $primaryAttr->id)
                     ->pluck('price', 'option_value');
 
-                // Show ALL options — fall back to product's base price when no per-option price is set
                 foreach ($primaryAttr->options as $opt) {
-                    $price = $prices->has($opt)
-                        ? (float) $prices->get($opt)
-                        : $basePrice;
+                    if ($prices->has($opt)) {
+                        // Admin-configured attribute price takes priority
+                        $price = (float) $prices->get($opt);
+                    } else {
+                        // Fall back to the min selling_price of serial numbers with this attribute value
+                        $price = (float) (SerialNumber::where('product_id', $product->id)
+                            ->where("attributes->{$primaryAttr->name}", $opt)
+                            ->whereNotNull('selling_price')
+                            ->where('selling_price', '>', 0)
+                            ->min('selling_price') ?? 0);
+                    }
 
                     $inStock = SerialNumber::where('product_id', $product->id)
                         ->where('status', 'in_stock')

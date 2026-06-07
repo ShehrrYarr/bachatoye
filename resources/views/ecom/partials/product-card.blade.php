@@ -1,6 +1,18 @@
 @php
     $deal           = $product->getActiveDeal();
     $finalPrice     = $product->getDiscountedPrice();
+    // For serialized products with no product-level price, derive from min serial selling_price
+    $serialFromPrice = false;
+    if ($product->is_serialized && $finalPrice == 0) {
+        $serialMin = (float) (\App\Models\SerialNumber::where('product_id', $product->id)
+            ->where('status', 'in_stock')
+            ->where('selling_price', '>', 0)
+            ->min('selling_price') ?? 0);
+        if ($serialMin > 0) {
+            $finalPrice      = $serialMin;
+            $serialFromPrice = true; // flag to show "From" prefix
+        }
+    }
     $hasDiscount    = $deal && $deal->type !== 'buy_x_get_y' && $finalPrice < $product->price;
     $comparePrice   = $product->compare_price && $product->compare_price > $finalPrice ? $product->compare_price : null;
     $strikePrice    = $hasDiscount ? $product->price : $comparePrice;
@@ -78,7 +90,9 @@
         <a href="{{ route('products.show', $product->slug) }}" class="block text-sm font-semibold text-gray-800 hover:text-primary-600 leading-snug line-clamp-2 mb-2">{{ $product->name }}</a>
 
         <div class="flex items-center gap-2 flex-wrap">
-            <span class="text-base font-bold text-primary-700">Rs. {{ number_format($finalPrice) }}</span>
+            <span class="text-base font-bold text-primary-700">
+                @if($serialFromPrice)From @endif Rs. {{ number_format($finalPrice) }}
+            </span>
             @if($strikePrice)
                 <span class="text-xs text-gray-400 line-through">Rs. {{ number_format($strikePrice) }}</span>
             @endif
