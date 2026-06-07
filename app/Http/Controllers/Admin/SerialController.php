@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Purchase;
+use App\Models\SerialAttributeDefinition;
 use App\Models\SerialNumber;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -33,7 +34,9 @@ class SerialController extends Controller
             ->get()
             ->groupBy('purchase_item_id');
 
-        return view('admin.purchases.serials', compact('purchase', 'serializedItems', 'registeredSerials'));
+        $serialAttributeDefs = SerialAttributeDefinition::activeOrdered();
+
+        return view('admin.purchases.serials', compact('purchase', 'serializedItems', 'registeredSerials', 'serialAttributeDefs'));
     }
 
     /**
@@ -42,9 +45,13 @@ class SerialController extends Controller
     public function storeForPurchase(Request $request, Purchase $purchase)
     {
         $request->validate([
-            'serials'               => 'required|array',
-            'serials.*'             => 'required|array',
-            'serials.*.*'           => 'nullable|string|max:100',
+            'serials'                           => 'required|array',
+            'serials.*'                         => 'required|array',
+            'serials.*.*.serial'                => 'nullable|string|max:100',
+            'serials.*.*.cost_price'            => 'nullable|numeric|min:0',
+            'serials.*.*.selling_price'         => 'nullable|numeric|min:0',
+            'serials.*.*.attributes'            => 'nullable|array',
+            'serials.*.*.attributes.*'          => 'nullable|string|max:200',
         ]);
 
         $purchase->load(['items.product']);
@@ -56,10 +63,10 @@ class SerialController extends Controller
         $allSerials = [];
 
         foreach ($serializedItems as $item) {
-            $inputSerials = $request->input("serials.{$item->id}", []);
+            $inputRows = $request->input("serials.{$item->id}", []);
 
-            foreach ($inputSerials as $pos => $sn) {
-                $sn = trim($sn ?? '');
+            foreach ($inputRows as $pos => $row) {
+                $sn = trim($row['serial'] ?? '');
                 if ($sn === '') continue;
 
                 // Duplicate within this submission
@@ -77,12 +84,18 @@ class SerialController extends Controller
                     continue;
                 }
 
+                $attrs = $row['attributes'] ?? [];
+                $attrs = array_filter($attrs, fn($v) => $v !== null && $v !== '');
+
                 $allSerials[] = $sn;
                 $toInsert[]   = [
-                    'item_id'       => $item->id,
-                    'product_id'    => $item->product_id,
-                    'purchase_id'   => $purchase->id,
-                    'serial_number' => $sn,
+                    'item_id'        => $item->id,
+                    'product_id'     => $item->product_id,
+                    'purchase_id'    => $purchase->id,
+                    'serial_number'  => $sn,
+                    'cost_price'     => isset($row['cost_price']) && $row['cost_price'] !== '' ? $row['cost_price'] : null,
+                    'selling_price'  => isset($row['selling_price']) && $row['selling_price'] !== '' ? $row['selling_price'] : null,
+                    'attributes'     => !empty($attrs) ? $attrs : null,
                 ];
             }
         }
@@ -92,17 +105,20 @@ class SerialController extends Controller
         }
 
         DB::transaction(function () use ($purchase, $toInsert) {
-            // Remove existing serials for this purchase (replace strategy)
+            // Remove existing in_stock serials for this purchase (replace strategy)
             SerialNumber::where('purchase_id', $purchase->id)
-                ->where('status', 'in_stock') // Only replace in_stock ones
+                ->where('status', 'in_stock')
                 ->delete();
 
             foreach ($toInsert as $row) {
                 SerialNumber::create([
-                    'product_id'      => $row['product_id'],
-                    'serial_number'   => $row['serial_number'],
-                    'status'          => 'in_stock',
-                    'purchase_id'     => $row['purchase_id'],
+                    'product_id'       => $row['product_id'],
+                    'serial_number'    => $row['serial_number'],
+                    'cost_price'       => $row['cost_price'],
+                    'selling_price'    => $row['selling_price'],
+                    'attributes'       => $row['attributes'],
+                    'status'           => 'in_stock',
+                    'purchase_id'      => $row['purchase_id'],
                     'purchase_item_id' => $row['item_id'],
                 ]);
             }
