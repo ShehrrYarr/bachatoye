@@ -138,35 +138,57 @@
         </div>
 
         {{-- ===== RIGHT: Product Info ===== --}}
-        <div>
+        @php
+            $finalPrice             = $product->getDiscountedPrice();
+            $hasDealDisc            = $deal && $deal->type !== 'buy_x_get_y' && $finalPrice < $product->price;
+            $comparePrice           = $product->compare_price && $product->compare_price > $finalPrice ? $product->compare_price : null;
+            $strikePrice            = $hasDealDisc ? $product->price : $comparePrice;
+            $firstInStockAttrOption = $attrOptions->firstWhere('in_stock', true);
+            $initialDisplayPrice    = $firstInStockAttrOption ? $firstInStockAttrOption['price'] : $finalPrice;
+            $productColors          = $product->colors;
+            $inStockColors          = $productColors->where('stock_quantity', '>', 0)->values();
+            $preSelected            = $inStockColors->count() === 1 ? $inStockColors->first() : null;
+        @endphp
+
+        {{-- Single x-data scope so price display and attribute chips share state directly --}}
+        <div x-data="{
+                displayPrice:       {{ $initialDisplayPrice }},
+                selectedColorId:    {{ $preSelected ? $preSelected->id : 'null' }},
+                selectedColorName:  '{{ $preSelected ? addslashes($preSelected->name) : '' }}',
+                selectedColorStock: {{ $preSelected ? $preSelected->stock_quantity : 0 }},
+                hasColors: {{ $inStockColors->count() > 0 ? 'true' : 'false' }},
+                hasAttr:   {{ $attrOptions->isNotEmpty() ? 'true' : 'false' }},
+                selectedAttrOption: {{ $firstInStockAttrOption ? "'".addslashes($firstInStockAttrOption['value'])."'" : 'null' }},
+                selectedAttrPrice:  {{ $initialDisplayPrice }},
+                selectAttr(value, price) {
+                    this.selectedAttrOption = value;
+                    this.selectedAttrPrice  = price;
+                    this.displayPrice       = price;
+                },
+                canAdd() {
+                    if (this.hasColors && !this.selectedColorId) return false;
+                    if (this.hasAttr && !this.selectedAttrOption) return false;
+                    return true;
+                }
+             }">
+
             @if($product->brand)
                 <div class="text-sm text-primary-600 font-semibold mb-1 uppercase tracking-wide">{{ $product->brand->name }}</div>
             @endif
             <h1 class="text-2xl md:text-3xl font-bold text-gray-900 leading-snug mb-4">{{ $product->name }}</h1>
 
-            {{-- Price --}}
-            @php
-                $finalPrice              = $product->getDiscountedPrice();
-                $hasDealDisc             = $deal && $deal->type !== 'buy_x_get_y' && $finalPrice < $product->price;
-                $comparePrice            = $product->compare_price && $product->compare_price > $finalPrice ? $product->compare_price : null;
-                $strikePrice             = $hasDealDisc ? $product->price : $comparePrice;
-                $firstInStockAttrOption  = $attrOptions->firstWhere('in_stock', true);
-                $initialDisplayPrice     = $firstInStockAttrOption ? $firstInStockAttrOption['price'] : $finalPrice;
-            @endphp
+            {{-- Price — reads displayPrice directly from shared scope, updates instantly --}}
             <div class="flex items-baseline gap-3 flex-wrap mb-5">
                 @if($attrOptions->isNotEmpty())
-                {{-- Reactive price — updates via 'attr-price-changed' window event --}}
                 <span class="text-3xl font-extrabold text-primary-700"
-                      x-data="{ displayPrice: {{ $initialDisplayPrice }} }"
-                      @attr-price-changed.window="displayPrice = $event.detail.price"
-                      x-text="'Rs. ' + Number(displayPrice).toLocaleString()">
-                    Rs. {{ number_format($initialDisplayPrice) }}
+                      x-text="'Rs. ' + Number(displayPrice).toLocaleString('en-PK', { maximumFractionDigits: 0 })">
+                    Rs. {{ number_format($initialDisplayPrice, 0) }}
                 </span>
                 @else
-                <span class="text-3xl font-extrabold text-primary-700">Rs. {{ number_format($finalPrice) }}</span>
+                <span class="text-3xl font-extrabold text-primary-700">Rs. {{ number_format($finalPrice, 0) }}</span>
                 @endif
                 @if($strikePrice)
-                    <span class="text-lg text-gray-400 line-through">Rs. {{ number_format($strikePrice) }}</span>
+                    <span class="text-lg text-gray-400 line-through">Rs. {{ number_format($strikePrice, 0) }}</span>
                 @endif
                 @if($hasDealDisc)
                     <span class="bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-lg">{{ $deal->badge_label }}</span>
@@ -176,7 +198,7 @@
                 @endif
             </div>
 
-            {{-- Urgency countdown badge (Daraz-style) --}}
+            {{-- Urgency countdown badge --}}
             @if($product->isInStock())
             @php
                 $discountLabel = $hasDealDisc
@@ -228,44 +250,16 @@
                 @endif
             </div>
 
-            {{-- Add to cart --}}
+            {{-- Add to cart (no own x-data — inherits shared scope above) --}}
             @if($product->isInStock())
-            @php
-                $productColors = $product->colors;
-                $inStockColors = $productColors->where('stock_quantity', '>', 0)->values();
-                $preSelected   = $inStockColors->count() === 1 ? $inStockColors->first() : null;
-                $basePrice     = $product->getDiscountedPrice();
-            @endphp
-            <form method="POST" action="{{ route('cart.add') }}" class="mb-5"
-                  x-data="{
-                      selectedColorId: {{ $preSelected ? $preSelected->id : 'null' }},
-                      selectedColorName: '{{ $preSelected ? addslashes($preSelected->name) : '' }}',
-                      selectedColorStock: {{ $preSelected ? $preSelected->stock_quantity : 0 }},
-                      hasColors: {{ $inStockColors->count() > 0 ? 'true' : 'false' }},
-                      hasAttr: {{ $attrOptions->isNotEmpty() ? 'true' : 'false' }},
-                      selectedAttrOption: {{ $firstInStockAttrOption ? "'".addslashes($firstInStockAttrOption['value'])."'" : 'null' }},
-                      selectedAttrPrice: {{ $firstInStockAttrOption ? $firstInStockAttrOption['price'] : $basePrice }},
-                      basePrice: {{ $basePrice }},
-                      displayPrice: {{ $firstInStockAttrOption ? $firstInStockAttrOption['price'] : $basePrice }},
-                      selectAttr(value, price) {
-                          this.selectedAttrOption = value;
-                          this.selectedAttrPrice  = price;
-                          this.displayPrice       = price;
-                          this.$dispatch('attr-price-changed', { price });
-                      },
-                      canAdd() {
-                          if (this.hasColors && !this.selectedColorId) return false;
-                          if (this.hasAttr && !this.selectedAttrOption) return false;
-                          return true;
-                      }
-                  }">
+            <form method="POST" action="{{ route('cart.add') }}" class="mb-5">
                 @csrf
                 <input type="hidden" name="product_id" value="{{ $product->id }}">
-                <input type="hidden" name="color_id" :value="selectedColorId">
-                <input type="hidden" name="selected_attr_option" :value="selectedAttrOption">
-                <input type="hidden" name="selected_attr_price" :value="selectedAttrPrice">
+                <input type="hidden" name="color_id"             :value="selectedColorId">
+                <input type="hidden" name="selected_attr_option"  :value="selectedAttrOption">
+                <input type="hidden" name="selected_attr_price"   :value="selectedAttrPrice">
 
-                {{-- Admin hint when product is serialized but no store attribute is configured --}}
+                {{-- Admin hint when no store attribute is configured --}}
                 @if($product->is_serialized && !$primaryAttr && auth()->check() && auth()->user()->hasRole('admin'))
                 <div class="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800 flex items-start gap-2">
                     <i class="fas fa-info-circle mt-0.5 shrink-0 text-amber-500"></i>
@@ -277,7 +271,7 @@
                 </div>
                 @endif
 
-                {{-- Primary Attribute Selector (e.g. Memory: 6GB / 8GB) --}}
+                {{-- Attribute chips (Memory: 6GB / 8GB …) --}}
                 @if($attrOptions->isNotEmpty())
                 <div class="mb-5">
                     <div class="flex items-center gap-2 mb-3">
@@ -296,7 +290,7 @@
                             <span>{{ $opt['value'] }}</span>
                             <span class="text-xs font-bold mt-0.5"
                                   :class="selectedAttrOption === '{{ addslashes($opt['value']) }}' ? 'text-primary-600' : 'text-gray-500'">
-                                Rs. {{ number_format($opt['price']) }}
+                                Rs. {{ number_format($opt['price'], 0) }}
                             </span>
                         </button>
                         @else
