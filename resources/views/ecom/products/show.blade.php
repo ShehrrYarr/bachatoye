@@ -146,11 +146,12 @@
 
             {{-- Price --}}
             @php
-                $finalPrice   = $product->getDiscountedPrice();
-                $hasDealDisc  = $deal && $deal->type !== 'buy_x_get_y' && $finalPrice < $product->price;
-                $comparePrice = $product->compare_price && $product->compare_price > $finalPrice ? $product->compare_price : null;
-                $strikePrice  = $hasDealDisc ? $product->price : $comparePrice;
-                $initialDisplayPrice = $firstInStockAttrOption ? $firstInStockAttrOption['price'] : $finalPrice;
+                $finalPrice              = $product->getDiscountedPrice();
+                $hasDealDisc             = $deal && $deal->type !== 'buy_x_get_y' && $finalPrice < $product->price;
+                $comparePrice            = $product->compare_price && $product->compare_price > $finalPrice ? $product->compare_price : null;
+                $strikePrice             = $hasDealDisc ? $product->price : $comparePrice;
+                $firstInStockAttrOption  = $attrOptions->firstWhere('in_stock', true);
+                $initialDisplayPrice     = $firstInStockAttrOption ? $firstInStockAttrOption['price'] : $finalPrice;
             @endphp
             <div class="flex items-baseline gap-3 flex-wrap mb-5">
                 @if($attrOptions->isNotEmpty())
@@ -230,11 +231,10 @@
             {{-- Add to cart --}}
             @if($product->isInStock())
             @php
-                $productColors  = $product->colors;
-                $inStockColors  = $productColors->where('stock_quantity', '>', 0)->values();
-                $preSelected    = $inStockColors->count() === 1 ? $inStockColors->first() : null;
-                $basePrice      = $product->getDiscountedPrice();
-                $firstInStockAttrOption = $attrOptions->firstWhere('in_stock', true);
+                $productColors = $product->colors;
+                $inStockColors = $productColors->where('stock_quantity', '>', 0)->values();
+                $preSelected   = $inStockColors->count() === 1 ? $inStockColors->first() : null;
+                $basePrice     = $product->getDiscountedPrice();
             @endphp
             <form method="POST" action="{{ route('cart.add') }}" class="mb-5"
                   x-data="{
