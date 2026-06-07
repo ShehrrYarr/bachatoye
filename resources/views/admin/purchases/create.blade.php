@@ -99,13 +99,15 @@
                                     </button>
                                 </div>
 
-                                {{-- Unit cost --}}
-                                <div class="mt-3 flex items-center gap-2">
-                                    <label class="text-xs text-gray-500 whitespace-nowrap">Unit Cost (Rs.)</label>
-                                    <input type="number" x-model.number="item.unit_cost" @input="recalc()"
-                                           min="0" step="0.01"
-                                           class="w-32 text-right border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500">
-                                </div>
+                                {{-- Unit cost (hidden for serialized products — cost entered per unit below) --}}
+                                <template x-if="!item.is_serialized">
+                                    <div class="mt-3 flex items-center gap-2">
+                                        <label class="text-xs text-gray-500 whitespace-nowrap">Unit Cost (Rs.)</label>
+                                        <input type="number" x-model.number="item.unit_cost" @input="recalc()"
+                                               min="0" step="0.01"
+                                               class="w-32 text-right border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500">
+                                    </div>
+                                </template>
 
                                 {{-- Non-colored: single qty --}}
                                 <template x-if="!item.has_colors">
@@ -117,7 +119,7 @@
                                                    class="w-24 text-center border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500">
                                         </div>
                                         <div class="text-sm font-semibold text-gray-700">
-                                            Rs. <span x-text="(item.quantity * item.unit_cost).toLocaleString()"></span>
+                                            Rs. <span x-text="(item.is_serialized ? item.serials.reduce((s,sn)=>s+(parseFloat(sn.cost_price)||0),0) : item.quantity*item.unit_cost).toLocaleString()"></span>
                                         </div>
                                     </div>
                                 </template>
@@ -139,7 +141,7 @@
                                                                min="0" placeholder="0"
                                                                class="w-20 text-center border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500">
                                                         <div class="text-sm text-gray-600 w-28 text-right shrink-0">
-                                                            Rs. <span x-text="((clr.quantity || 0) * item.unit_cost).toLocaleString()"></span>
+                                                            Rs. <span x-text="(item.is_serialized ? (clr.serials||[]).reduce((s,sn)=>s+(parseFloat(sn.cost_price)||0),0) : (clr.quantity||0)*item.unit_cost).toLocaleString()"></span>
                                                         </div>
                                                     </div>
                                                     {{-- Serial inputs per color unit (serialized products) --}}
@@ -159,6 +161,7 @@
                                                                         <div>
                                                                             <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Cost (Rs.)</label>
                                                                             <input type="number" x-model.number="clr.serials[csi].cost_price"
+                                                                                   @input="recalc()"
                                                                                    min="0" step="1" placeholder="0"
                                                                                    class="w-full border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-indigo-400">
                                                                         </div>
@@ -224,7 +227,7 @@
                                                 Total: <span x-text="item.quantity" class="text-gray-800"></span> items
                                             </span>
                                             <span class="text-gray-800">
-                                                Rs. <span x-text="(item.quantity * item.unit_cost).toLocaleString()"></span>
+                                                Rs. <span x-text="(item.is_serialized ? item.colors.reduce((cs,clr)=>cs+(clr.serials||[]).reduce((ss,sn)=>ss+(parseFloat(sn.cost_price)||0),0),0) : item.quantity*item.unit_cost).toLocaleString()"></span>
                                             </span>
                                         </div>
                                     </div>
@@ -260,6 +263,7 @@
                                                         <div>
                                                             <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Cost Price (Rs.)</label>
                                                             <input type="number" x-model.number="item.serials[si].cost_price"
+                                                                   @input="recalc()"
                                                                    min="0" step="1" placeholder="0"
                                                                    class="w-full border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-indigo-400">
                                                         </div>
@@ -618,8 +622,19 @@ function purchaseForm() {
                 if (item.has_colors) {
                     item.quantity = item.colors.reduce((s, c) => s + (parseInt(c.quantity) || 0), 0);
                 }
+                if (item.is_serialized) {
+                    if (!item.has_colors) {
+                        item.serial_cost_total = item.serials.reduce((s, sn) => s + (parseFloat(sn.cost_price) || 0), 0);
+                    } else {
+                        item.serial_cost_total = item.colors.reduce((cs, clr) =>
+                            cs + (clr.serials || []).reduce((ss, sn) => ss + (parseFloat(sn.cost_price) || 0), 0), 0);
+                    }
+                }
             });
-            this.total = this.items.reduce((s, i) => s + (i.quantity * i.unit_cost), 0);
+            this.total = this.items.reduce((s, i) => {
+                if (i.is_serialized) return s + (i.serial_cost_total || 0);
+                return s + (i.quantity * i.unit_cost);
+            }, 0);
         },
 
         newSerialRow() {
