@@ -173,6 +173,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::resource('vendors', Admin\VendorController::class);
     Route::post('vendors/{vendor}/ledger', [Admin\VendorController::class, 'addLedgerEntry'])->name('vendors.ledger.add');
     Route::get('api/vendors/{vendor}/balance', fn(\App\Models\Vendor $vendor) => response()->json(['balance' => $vendor->balance]))->name('api.vendor.balance');
+    Route::get('api/serials/check', function (\Illuminate\Http\Request $request) {
+        $serial = trim($request->input('serial', ''));
+        if ($serial === '') return response()->json(['exists' => false]);
+        $exists = \App\Models\SerialNumber::where('serial_number', $serial)->exists();
+        return response()->json(['exists' => $exists]);
+    })->name('api.serials.check');
     Route::post('api/products/quick-create', [Admin\PurchaseController::class, 'quickCreateProduct'])->name('api.products.quick-create');
     Route::get('api/products/search', function (\Illuminate\Http\Request $request) {
         $q = $request->input('q', '');
@@ -366,6 +372,13 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
 
     Route::post('api/products/quick-create', [Admin\PurchaseController::class, 'quickCreateProduct'])
         ->middleware('permission:purchases.manage')->name('api.products.quick-create');
+
+    Route::get('api/serials/check', function (\Illuminate\Http\Request $request) {
+        $serial = trim($request->input('serial', ''));
+        if ($serial === '') return response()->json(['exists' => false]);
+        $exists = \App\Models\SerialNumber::where('serial_number', $serial)->exists();
+        return response()->json(['exists' => $exists]);
+    })->middleware('permission:purchases.manage')->name('api.serials.check');
 
     Route::get('products/generate-barcode', [Admin\ProductController::class, 'generateBarcodeAjax'])
         ->middleware('permission:purchases.manage')->name('products.generate_barcode');

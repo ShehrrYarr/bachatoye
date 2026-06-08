@@ -154,9 +154,18 @@
                                                                            x-model="clr.serials[csi].serial"
                                                                            :placeholder="`IMEI / Serial #${csi+1}`"
                                                                            @keydown.enter.prevent="focusNextSerial($event)"
+                                                                           @input="csn.serialError = null"
+                                                                           @blur="checkSerialUnique(clr.serials[csi])"
                                                                            data-serial-input
                                                                            class="w-full border rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
-                                                                           :class="csn.serial && csn.serial.trim() ? 'border-green-400 bg-green-50' : 'border-gray-300 bg-white'">
+                                                                           :class="serialInputClass(csn)">
+                                                                    <div x-show="csn.serialChecking" class="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                                                                        <i class="fas fa-spinner fa-spin"></i> Checking…
+                                                                    </div>
+                                                                    <div x-show="csn.serialError" class="text-xs text-red-600 mt-1 flex items-center gap-1">
+                                                                        <i class="fas fa-exclamation-circle"></i>
+                                                                        <span x-text="csn.serialError"></span>
+                                                                    </div>
                                                                     <div class="grid grid-cols-2 gap-2">
                                                                         <div>
                                                                             <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Cost (Rs.)</label>
@@ -254,9 +263,18 @@
                                                            x-model="item.serials[si].serial"
                                                            :placeholder="`IMEI / Serial #${si+1}`"
                                                            @keydown.enter.prevent="focusNextSerial($event)"
+                                                           @input="sn.serialError = null"
+                                                           @blur="checkSerialUnique(item.serials[si])"
                                                            data-serial-input
                                                            class="w-full border rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
-                                                           :class="sn.serial && sn.serial.trim() ? 'border-green-400 bg-green-50' : 'border-gray-300 bg-white'">
+                                                           :class="serialInputClass(sn)">
+                                                    <div x-show="sn.serialChecking" class="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                                                        <i class="fas fa-spinner fa-spin"></i> Checking…
+                                                    </div>
+                                                    <div x-show="sn.serialError" class="text-xs text-red-600 mt-1 flex items-center gap-1">
+                                                        <i class="fas fa-exclamation-circle"></i>
+                                                        <span x-text="sn.serialError"></span>
+                                                    </div>
 
                                                     {{-- Cost + Selling price --}}
                                                     <div class="grid grid-cols-2 gap-2">
@@ -499,6 +517,7 @@
 <script>
     const _categoriesData    = {!! $categoriesJson !!};
     const _serialAttrDefs    = {!! json_encode($serialAttributeDefs->map(fn($d) => ['name' => $d->name, 'options' => $d->options])->values()) !!};
+    const _serialCheckUrl    = '/{{ auth()->user()->hasRole('admin') ? 'admin' : 'salesman' }}/api/serials/check';
 </script>
 
 <div x-data="purchaseCreateModal()"
@@ -603,7 +622,7 @@ function purchaseForm() {
                                    serials:  [],
                                })) : [],
                 quantity:      hasColors ? 0 : 1,
-                serials:       (!hasColors && isSerial) ? [{ serial:'', cost_price:'', selling_price:'', attributes:{}, extraFields:[] }] : [],
+                serials:       (!hasColors && isSerial) ? [{ serial:'', cost_price:'', selling_price:'', attributes:{}, extraFields:[], serialError:null, serialChecking:false }] : [],
             });
 
             this.searchQuery  = '';
@@ -638,7 +657,55 @@ function purchaseForm() {
         },
 
         newSerialRow() {
-            return { serial: '', cost_price: '', selling_price: '', attributes: {}, extraFields: [] };
+            return { serial: '', cost_price: '', selling_price: '', attributes: {}, extraFields: [], serialError: null, serialChecking: false };
+        },
+
+        serialInputClass(snObj) {
+            if (snObj.serialError)                        return 'border-red-400 bg-red-50';
+            if (snObj.serial && snObj.serial.trim())      return 'border-green-400 bg-green-50';
+            return 'border-gray-300 bg-white';
+        },
+
+        collectAllSerials() {
+            const list = [];
+            this.items.forEach(item => {
+                if (!item.is_serialized) return;
+                if (!item.has_colors) {
+                    item.serials.forEach(sn => { if (sn.serial && sn.serial.trim()) list.push(sn.serial.trim()); });
+                } else {
+                    item.colors.forEach(clr => {
+                        (clr.serials || []).forEach(sn => { if (sn.serial && sn.serial.trim()) list.push(sn.serial.trim()); });
+                    });
+                }
+            });
+            return list;
+        },
+
+        async checkSerialUnique(snObj) {
+            const val = (snObj.serial || '').trim();
+            snObj.serialError = null;
+            if (!val) return;
+
+            // Check for duplicates within the current form (cross-item)
+            const all = this.collectAllSerials();
+            const upper = val.toUpperCase();
+            const count = all.filter(s => s.toUpperCase() === upper).length;
+            if (count > 1) {
+                snObj.serialError = 'Duplicate — already entered in this form';
+                return;
+            }
+
+            // Check against the database
+            snObj.serialChecking = true;
+            try {
+                const res  = await fetch(`${_serialCheckUrl}?serial=${encodeURIComponent(val)}`);
+                const data = await res.json();
+                if (data.exists) snObj.serialError = 'Already registered in the system';
+            } catch (e) {
+                // network error — let server validate on submit
+            } finally {
+                snObj.serialChecking = false;
+            }
         },
 
         syncSerials(item) {
@@ -703,11 +770,6 @@ function purchaseForm() {
                         alert(`⚠️ Serial numbers required for: ${item.name}\n\nPlease enter all ${item.quantity} IMEI / Serial number(s).\n(${filled} of ${item.quantity} entered)`);
                         return;
                     }
-                    const unique = new Set(item.serials.map(s => s.serial.trim().toUpperCase()));
-                    if (unique.size < item.quantity) {
-                        alert(`Duplicate serial numbers found in: ${item.name}\nEach unit must have a unique serial.`);
-                        return;
-                    }
                 } else {
                     for (const clr of item.colors) {
                         const qty = parseInt(clr.quantity) || 0;
@@ -718,13 +780,31 @@ function purchaseForm() {
                             alert(`⚠️ Serial numbers required for: ${item.name} — ${clr.name}\n\nPlease enter all ${qty} IMEI / Serial number(s).\n(${filled} of ${qty} entered)`);
                             return;
                         }
-                        const unique = new Set(serials.map(s => s.serial.trim().toUpperCase()));
-                        if (unique.size < qty) {
-                            alert(`Duplicate serial numbers found in: ${item.name} — ${clr.name}`);
-                            return;
-                        }
                     }
                 }
+            }
+
+            // Cross-item global uniqueness check (catches duplicates across different products)
+            const allSerials = this.collectAllSerials();
+            const seenSerials = {};
+            for (const s of allSerials) {
+                const up = s.toUpperCase();
+                if (seenSerials[up]) {
+                    alert(`Duplicate serial number: "${s}" appears more than once.\nEach serial/IMEI must be unique across all products.`);
+                    return;
+                }
+                seenSerials[up] = true;
+            }
+
+            // Block submission if any inline serial error is still showing
+            const hasSerialErrors = this.items.some(item => {
+                if (!item.is_serialized) return false;
+                if (!item.has_colors) return item.serials.some(sn => sn.serialError);
+                return item.colors.some(clr => (clr.serials || []).some(sn => sn.serialError));
+            });
+            if (hasSerialErrors) {
+                alert('Please fix the serial number errors highlighted in red before saving.');
+                return;
             }
 
             // Build hidden fields and inject into form

@@ -184,6 +184,8 @@ class PurchaseController extends Controller
         ]);
 
         // Server-side serial validation for serialized products
+        // Pass 1: collect all serials across all items and check for cross-item duplicates
+        $allSerialMap = []; // uppercase → original value
         foreach ($request->items as $row) {
             $product = Product::find($row['product_id']);
             if (!$product || !$product->is_serialized) continue;
@@ -193,17 +195,27 @@ class PurchaseController extends Controller
                 fn($s) => $s !== ''
             ));
 
+            // Quantity check
             if (count($serials) < (int) $row['quantity']) {
                 return back()
                     ->withErrors(['items' => "Please enter all {$row['quantity']} serial number(s) for: {$product->name}."])
                     ->withInput();
             }
-            if (count(array_unique($serials)) < count($serials)) {
-                return back()
-                    ->withErrors(['items' => "Duplicate serial numbers found for: {$product->name}."])
-                    ->withInput();
+
+            foreach ($serials as $sn) {
+                $upper = strtoupper($sn);
+                if (isset($allSerialMap[$upper])) {
+                    return back()
+                        ->withErrors(['items' => "Serial number '{$sn}' appears more than once in this purchase."])
+                        ->withInput();
+                }
+                $allSerialMap[$upper] = $sn;
             }
-            $existing = SerialNumber::whereIn('serial_number', $serials)->pluck('serial_number');
+        }
+
+        // Pass 2: check all collected serials against the database in one query
+        if (!empty($allSerialMap)) {
+            $existing = SerialNumber::whereIn('serial_number', array_values($allSerialMap))->pluck('serial_number');
             if ($existing->isNotEmpty()) {
                 return back()
                     ->withErrors(['items' => "Serial number(s) already registered in the system: " . $existing->implode(', ')])
