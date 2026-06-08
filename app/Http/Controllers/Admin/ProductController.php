@@ -23,16 +23,39 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $categories = Category::active()->withCount('products')->orderBy('sort_order')->orderBy('name')->get();
-        $brands     = Brand::all();
+        $brands = Brand::all();
 
-        // If no category is selected, show the category grid instead of products
+        // ── No filters: show parent-category grid ──────────────────────────────
         if (!$request->filled('category') && !$request->filled('q') && !$request->filled('brand') && !$request->filled('status')) {
+            $categories = Category::active()
+                ->whereNull('parent_id')
+                ->withCount('products')
+                ->orderBy('sort_order')->orderBy('name')
+                ->get();
             $uncategorizedCount = Product::whereNull('category_id')->count();
             return view('admin.products.index', compact('categories', 'brands', 'uncategorizedCount'));
         }
 
-        // Category (or filter) selected — show products
+        // ── Category selected with no other filters → check for subcategories ──
+        if ($request->filled('category')
+            && $request->category !== 'uncategorized'
+            && !$request->filled('q') && !$request->filled('brand') && !$request->filled('status')
+        ) {
+            $selectedCat = Category::active()->find($request->category);
+            if ($selectedCat && $selectedCat->parent_id === null) {
+                $subcategories = $selectedCat->children()
+                    ->active()
+                    ->withCount('products')
+                    ->orderBy('sort_order')->orderBy('name')
+                    ->get();
+                if ($subcategories->isNotEmpty()) {
+                    $uncategorizedCount = 0;
+                    return view('admin.products.index', compact('selectedCat', 'subcategories', 'brands', 'uncategorizedCount'));
+                }
+            }
+        }
+
+        // ── Show products (category has no children, or filters applied) ────────
         $query = Product::with(['category', 'brand', 'colors'])->latest();
 
         if ($request->filled('q')) {
@@ -52,13 +75,26 @@ class ProductController extends Controller
         if ($request->filled('brand'))  $query->where('brand_id', $request->brand);
         if ($request->filled('status')) $query->where('is_active', $request->status === 'active');
 
-        $products        = $query->paginate(30)->withQueryString();
-        $selectedCat     = $request->category === 'uncategorized'
-                            ? (object)['id' => 'uncategorized', 'name' => 'Uncategorized']
-                            : ($request->filled('category') ? $categories->firstWhere('id', $request->category) : null);
+        $products = $query->paginate(30)->withQueryString();
+
+        // Resolve selected category for breadcrumb
+        $selectedCat = null;
+        if ($request->filled('category')) {
+            $selectedCat = $request->category === 'uncategorized'
+                ? (object)['id' => 'uncategorized', 'name' => 'Uncategorized', 'parent_id' => null]
+                : Category::find($request->category);
+        }
+
+        // Find parent category for back-link when viewing a subcategory's products
+        $parentCat = null;
+        if ($selectedCat && is_object($selectedCat) && !empty($selectedCat->parent_id)) {
+            $parentCat = Category::find($selectedCat->parent_id);
+        }
+
+        $categories         = collect();
         $uncategorizedCount = 0;
 
-        return view('admin.products.index', compact('products', 'categories', 'brands', 'selectedCat', 'uncategorizedCount'));
+        return view('admin.products.index', compact('products', 'categories', 'brands', 'selectedCat', 'parentCat', 'uncategorizedCount'));
     }
 
     public function create()

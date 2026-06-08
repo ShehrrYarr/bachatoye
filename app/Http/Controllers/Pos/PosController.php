@@ -28,11 +28,25 @@ class PosController extends Controller
         // Section-based filtering: admins see everything; salesmen see only their sections
         $allowedCategoryIds = $user->allowedCategoryIds();
 
-        $catQuery  = \App\Models\Category::active()->with('products');
         $prodQuery = Product::active()->inStock()->with('images');
 
+        $catQuery = \App\Models\Category::active()
+            ->whereNull('parent_id')
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->with(['children' => function ($q) use ($allowedCategoryIds) {
+                $q->active()->orderBy('sort_order')->orderBy('name');
+                if ($allowedCategoryIds !== null) {
+                    $q->whereIn('id', $allowedCategoryIds);
+                }
+            }]);
+
         if ($allowedCategoryIds !== null) {
-            $catQuery->whereIn('id', $allowedCategoryIds);
+            // Show parent categories that are in the allowed list OR have allowed children
+            $catQuery->where(function ($q) use ($allowedCategoryIds) {
+                $q->whereIn('id', $allowedCategoryIds)
+                  ->orWhereHas('children', fn ($c) => $c->whereIn('id', $allowedCategoryIds));
+            });
             $prodQuery->whereIn('category_id', $allowedCategoryIds);
         }
 

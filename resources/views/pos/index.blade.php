@@ -65,8 +65,8 @@
             </div>
         </div>
 
-        {{-- Category grid (shown when no search + no category selected) --}}
-        <div class="p-4 flex-1 overflow-y-auto" x-show="!searchQuery && !selectedCategory">
+        {{-- Parent category grid (shown when no search + no parent selected + no product category) --}}
+        <div class="p-4 flex-1 overflow-y-auto" x-show="!searchQuery && !activeParent && !selectedCategory">
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
                 <template x-for="cat in categories" :key="cat.id">
                     <div @click="selectCategory(cat)"
@@ -84,6 +84,9 @@
                         </div>
                         <div class="px-2 py-1.5">
                             <div class="text-xs font-semibold text-gray-800 truncate group-hover:text-primary-700 transition-colors" x-text="cat.name"></div>
+                            <template x-if="cat.children && cat.children.length > 0">
+                                <div class="text-[10px] text-gray-400 mt-0.5" x-text="cat.children.length + ' subcategories'"></div>
+                            </template>
                         </div>
                     </div>
                 </template>
@@ -96,14 +99,51 @@
             </div>
         </div>
 
-        {{-- Product grid (shown when searching OR a category is selected) --}}
+        {{-- Subcategory grid (shown when a parent is active but no leaf category selected) --}}
+        <div class="flex-1 flex flex-col overflow-hidden" x-show="!searchQuery && activeParent && !selectedCategory">
+            {{-- Subcategory breadcrumb --}}
+            <div class="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center gap-2 shrink-0">
+                <button @click="clearCategory()"
+                        class="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 transition-colors">
+                    <i class="fas fa-arrow-left text-xs"></i> Categories
+                </button>
+                <span class="text-gray-300">/</span>
+                <span class="text-xs font-semibold text-gray-800" x-text="activeParent?.name"></span>
+            </div>
+            <div class="p-4 flex-1 overflow-y-auto">
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
+                    <template x-for="sub in (activeParent?.children || [])" :key="sub.id">
+                        <div @click="selectSubcategory(sub)"
+                             class="cursor-pointer group bg-white rounded-xl border border-gray-200 shadow-sm hover:border-primary-400 hover:shadow-md transition-all overflow-hidden flex flex-col">
+                            <div class="aspect-square overflow-hidden bg-gray-100">
+                                <template x-if="sub.image">
+                                    <img :src="sub.image" :alt="sub.name"
+                                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200">
+                                </template>
+                                <template x-if="!sub.image">
+                                    <div class="w-full h-full flex items-center justify-center">
+                                        <i class="fas fa-tag text-3xl text-gray-300"></i>
+                                    </div>
+                                </template>
+                            </div>
+                            <div class="px-2 py-1.5">
+                                <div class="text-xs font-semibold text-gray-800 truncate group-hover:text-primary-700 transition-colors" x-text="sub.name"></div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        {{-- Product grid (shown when searching OR a leaf category is selected) --}}
         <div class="flex-1 flex flex-col overflow-hidden" x-show="searchQuery || selectedCategory">
-            {{-- Category breadcrumb + back button --}}
+            {{-- Breadcrumb + back button --}}
             <div x-show="selectedCategory && !searchQuery"
                  class="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center gap-2 shrink-0">
                 <button @click="clearCategory()"
                         class="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 transition-colors">
-                    <i class="fas fa-arrow-left text-xs"></i> Categories
+                    <i class="fas fa-arrow-left text-xs"></i>
+                    <span x-text="activeParent ? activeParent.name : 'Categories'"></span>
                 </button>
                 <span class="text-gray-300">/</span>
                 <span class="text-xs font-semibold text-gray-800" x-text="selectedCategory?.name"></span>
@@ -1202,9 +1242,14 @@ $_posStats = [
     'total_collected' => $todayPayments->total_collected ?? 0,
 ];
 $_posCategories = $categories->map(fn($c) => [
-    'id'    => $c->id,
-    'name'  => $c->name,
-    'image' => $c->image ? \Illuminate\Support\Facades\Storage::url($c->image) : null,
+    'id'       => $c->id,
+    'name'     => $c->name,
+    'image'    => $c->image ? \Illuminate\Support\Facades\Storage::url($c->image) : null,
+    'children' => $c->children->map(fn($child) => [
+        'id'    => $child->id,
+        'name'  => $child->name,
+        'image' => $child->image ? \Illuminate\Support\Facades\Storage::url($child->image) : null,
+    ])->values()->all(),
 ])->values()->toArray();
 @endphp
 @push('scripts')
@@ -1217,6 +1262,7 @@ function posApp() {
         displayProducts: [],
         loading: false,
         categories: @json($_posCategories),
+        activeParent: null,
         selectedCategory: null,
         discountType: 'flat',
         discountValue: 0,
@@ -1268,6 +1314,7 @@ function posApp() {
                 } else if (this.selectedCategory) {
                     this.loadProducts();
                 }
+                // If in subcategory/category grid, no reload needed (no products shown)
             });
         },
 
@@ -1283,13 +1330,35 @@ function posApp() {
         },
 
         selectCategory(cat) {
-            this.selectedCategory = cat;
+            if (cat.children && cat.children.length > 0) {
+                // Parent with children → show subcategory grid
+                this.activeParent = cat;
+            } else {
+                // Leaf category (or childless parent) → load products directly
+                this.selectedCategory = cat;
+                this.loadProducts();
+            }
+        },
+
+        selectSubcategory(sub) {
+            this.selectedCategory = sub;
             this.loadProducts();
         },
 
         clearCategory() {
-            this.selectedCategory = null;
-            this.displayProducts = [];
+            if (this.selectedCategory && this.activeParent) {
+                // In product view reached via subcategory → go back to subcategory grid
+                this.selectedCategory = null;
+                this.displayProducts = [];
+            } else if (this.activeParent && !this.selectedCategory) {
+                // In subcategory grid → go back to parent grid
+                this.activeParent = null;
+            } else {
+                // Back to root
+                this.activeParent = null;
+                this.selectedCategory = null;
+                this.displayProducts = [];
+            }
             this.$refs.barcodeInput?.focus();
         },
 

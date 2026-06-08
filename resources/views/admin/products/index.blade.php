@@ -3,8 +3,8 @@
 
 @section('content')
 
-@if(!isset($products))
-{{-- ===== CATEGORY GRID VIEW ===== --}}
+@if(!isset($products) && !isset($subcategories))
+{{-- ===== PARENT CATEGORY GRID VIEW ===== --}}
 <div class="flex items-center justify-between mb-6">
     <div>
         <h1 class="text-xl font-bold text-gray-900">Products</h1>
@@ -77,16 +77,69 @@
 </div>{{-- end grid --}}
 </div>{{-- end x-data catSearch --}}
 
-@else
-{{-- ===== PRODUCTS TABLE VIEW (category selected) ===== --}}
-
-{{-- Breadcrumb + header --}}
+@elseif(isset($subcategories))
+{{-- ===== SUBCATEGORY GRID VIEW ===== --}}
 <div class="flex items-center justify-between mb-6">
     <div class="flex items-center gap-3">
         <a href="{{ route('admin.products.index') }}"
            class="text-gray-400 hover:text-gray-700 transition-colors text-sm flex items-center gap-1.5">
             <i class="fas fa-arrow-left text-xs"></i> Categories
         </a>
+        <span class="text-gray-300">/</span>
+        <div>
+            <h1 class="text-xl font-bold text-gray-900">{{ $selectedCat->name }}</h1>
+            <p class="text-sm text-gray-500 mt-0.5">{{ $subcategories->count() }} subcategories</p>
+        </div>
+    </div>
+    <a href="{{ route('admin.products.create') }}" class="btn-primary">
+        <i class="fas fa-plus mr-2"></i> Add Product
+    </a>
+</div>
+
+<div class="grid gap-2" style="grid-template-columns: repeat(auto-fill, minmax(120px, 1fr))">
+    @forelse($subcategories as $sub)
+    <a href="{{ route('admin.products.index', ['category' => $sub->id]) }}"
+       class="group flex flex-col hover:opacity-90 transition-opacity">
+        <div class="aspect-square rounded-xl border border-gray-200 overflow-hidden shadow-sm group-hover:border-primary-400 group-hover:shadow-md transition-all">
+            @if($sub->image)
+            <img src="{{ Storage::url($sub->image) }}" alt="{{ $sub->name }}"
+                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+            @else
+            <div class="w-full h-full bg-gray-100 flex items-center justify-center">
+                <i class="fas fa-tag text-2xl text-gray-300"></i>
+            </div>
+            @endif
+        </div>
+        <div class="mt-1.5 px-0.5">
+            <div class="text-xs font-semibold text-gray-800 leading-tight truncate group-hover:text-primary-700 transition-colors">{{ $sub->name }}</div>
+            <div class="text-[10px] text-gray-400 mt-0.5">{{ $sub->products_count }} products</div>
+        </div>
+    </a>
+    @empty
+    <div class="col-span-full text-center py-16 text-gray-400">
+        <i class="fas fa-folder-open text-4xl mb-3"></i>
+        <p>No subcategories found.</p>
+    </div>
+    @endforelse
+</div>
+
+@else
+{{-- ===== PRODUCTS TABLE VIEW (category selected) ===== --}}
+
+{{-- Breadcrumb + header --}}
+<div class="flex items-center justify-between mb-6">
+    <div class="flex items-center gap-3">
+        @if(isset($parentCat) && $parentCat)
+        <a href="{{ route('admin.products.index', ['category' => $parentCat->id]) }}"
+           class="text-gray-400 hover:text-gray-700 transition-colors text-sm flex items-center gap-1.5">
+            <i class="fas fa-arrow-left text-xs"></i> {{ $parentCat->name }}
+        </a>
+        @else
+        <a href="{{ route('admin.products.index') }}"
+           class="text-gray-400 hover:text-gray-700 transition-colors text-sm flex items-center gap-1.5">
+            <i class="fas fa-arrow-left text-xs"></i> Categories
+        </a>
+        @endif
         <span class="text-gray-300">/</span>
         <div>
             <h1 class="text-xl font-bold text-gray-900">{{ $selectedCat?->name ?? 'All Products' }}</h1>
