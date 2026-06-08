@@ -648,26 +648,28 @@
                 </button>
             </div>
 
-            {{-- Output terminal --}}
-            <div x-show="output !== ''" x-transition class="mt-5">
+            {{-- Output terminal (only rendered when there is output) --}}
+            <template x-if="output !== ''">
+                <div class="mt-5" x-transition.opacity>
 
-                {{-- Terminal header bar --}}
-                <div class="flex items-center justify-between bg-gray-800 rounded-t-xl px-4 py-2">
-                    <div class="flex items-center gap-2">
-                        <span class="w-3 h-3 rounded-full bg-red-500"></span>
-                        <span class="w-3 h-3 rounded-full bg-yellow-400"></span>
-                        <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                    {{-- Terminal header bar --}}
+                    <div class="flex items-center justify-between bg-gray-800 rounded-t-xl px-4 py-2">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-red-500"></span>
+                            <span class="w-3 h-3 rounded-full bg-yellow-400"></span>
+                            <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                        </div>
+                        <span class="text-xs text-gray-400 font-mono" x-text="'$ ' + cmdLabel"></span>
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                              :class="ok ? 'bg-green-800 text-green-300' : 'bg-red-800 text-red-300'"
+                              x-text="ok ? '✓ OK' : '✗ Error'"></span>
                     </div>
-                    <span class="text-xs text-gray-400 font-mono" x-text="'$ ' + cmdLabel"></span>
-                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
-                          :class="ok ? 'bg-green-800 text-green-300' : 'bg-red-800 text-red-300'"
-                          x-text="ok ? '✓ OK' : '✗ Error'"></span>
-                </div>
 
-                {{-- Output body --}}
-                <pre class="bg-gray-900 text-gray-100 text-xs font-mono rounded-b-xl px-4 py-4 overflow-x-auto whitespace-pre-wrap max-h-80 overflow-y-auto leading-relaxed"
-                     x-text="output"></pre>
-            </div>
+                    {{-- Output body --}}
+                    <pre class="bg-gray-900 text-gray-100 text-xs font-mono rounded-b-xl px-4 py-4 overflow-x-auto whitespace-pre-wrap max-h-80 overflow-y-auto leading-relaxed"
+                         x-text="output"></pre>
+                </div>
+            </template>
 
         </div>
     </div>
