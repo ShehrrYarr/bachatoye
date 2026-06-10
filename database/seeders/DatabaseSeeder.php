@@ -20,6 +20,8 @@ class DatabaseSeeder extends Seeder
         // Permissions
         $permissions = [
             'pos.access',
+            'pos.edit_sale',
+            'pos.delete_sale',
             'pos.process_returns',
             'orders.view',
             'orders.manage',
