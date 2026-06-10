@@ -107,6 +107,12 @@
     {{-- Sidebar --}}
     <div class="space-y-5">
         <div class="card p-5">
+            @if($customer->photo)
+            <div class="flex justify-center mb-4">
+                <img src="{{ Storage::url($customer->photo) }}" alt="{{ $customer->name }}"
+                     class="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md">
+            </div>
+            @endif
             <h2 class="font-semibold text-gray-800 mb-4">Customer Info</h2>
             <dl class="space-y-3 text-sm">
                 <div><dt class="text-gray-500 text-xs">Phone</dt><dd class="font-medium font-mono">{{ $customer->phone }}</dd></div>

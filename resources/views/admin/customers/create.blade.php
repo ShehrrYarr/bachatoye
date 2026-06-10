@@ -8,9 +8,32 @@
 </div>
 
 <div class="max-w-xl">
-    <form method="POST" action="{{ route('admin.customers.store') }}">
+    <form method="POST" action="{{ route('admin.customers.store') }}" enctype="multipart/form-data">
         @csrf
         <div class="card p-6 space-y-4">
+
+            {{-- Photo upload --}}
+            <div x-data="{ preview: null }" class="flex items-center gap-5">
+                <div class="relative shrink-0">
+                    <div class="w-20 h-20 rounded-full overflow-hidden bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center">
+                        <template x-if="!preview">
+                            <i class="fas fa-user text-3xl text-gray-300"></i>
+                        </template>
+                        <template x-if="preview">
+                            <img :src="preview" class="w-full h-full object-cover">
+                        </template>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <label class="form-label">Customer Photo <span class="text-gray-400 font-normal">(optional)</span></label>
+                    <input type="file" name="photo" accept="image/*"
+                           class="block w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 cursor-pointer"
+                           @change="preview = $event.target.files[0] ? URL.createObjectURL($event.target.files[0]) : null">
+                    <p class="form-hint">JPG, PNG or WebP · Max 2 MB</p>
+                    @error('photo') <p class="form-error">{{ $message }}</p> @enderror
+                </div>
+            </div>
+
             <div class="grid grid-cols-2 gap-4">
                 <div class="col-span-2">
                     <label class="form-label">Full Name *</label>

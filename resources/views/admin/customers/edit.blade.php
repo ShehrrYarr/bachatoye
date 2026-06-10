@@ -8,9 +8,50 @@
 </div>
 
 <div class="max-w-xl">
-    <form method="POST" action="{{ route('admin.customers.update', $customer) }}">
+    <form method="POST" action="{{ route('admin.customers.update', $customer) }}" enctype="multipart/form-data">
         @csrf @method('PUT')
         <div class="card p-6 space-y-4">
+
+            {{-- Photo upload --}}
+            <div x-data="{
+                    preview: '{{ $customer->photo ? Storage::url($customer->photo) : '' }}',
+                    removed: false,
+                    hasExisting: {{ $customer->photo ? 'true' : 'false' }},
+                    handleFile(e) {
+                        const file = e.target.files[0];
+                        if (file) { this.preview = URL.createObjectURL(file); this.removed = false; }
+                    },
+                    removePhoto() { this.preview = ''; this.removed = true; }
+                }" class="flex items-center gap-5">
+                <div class="relative shrink-0">
+                    <div class="w-20 h-20 rounded-full overflow-hidden bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center">
+                        <template x-if="!preview">
+                            <i class="fas fa-user text-3xl text-gray-300"></i>
+                        </template>
+                        <template x-if="preview">
+                            <img :src="preview" class="w-full h-full object-cover">
+                        </template>
+                    </div>
+                    {{-- Remove button (only shown when there is a photo) --}}
+                    <template x-if="preview">
+                        <button type="button" @click="removePhoto()"
+                                class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors">
+                            <i class="fas fa-times text-[9px]"></i>
+                        </button>
+                    </template>
+                </div>
+                <div class="flex-1">
+                    <label class="form-label">Customer Photo <span class="text-gray-400 font-normal">(optional)</span></label>
+                    <input type="file" name="photo" accept="image/*"
+                           class="block w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 cursor-pointer"
+                           @change="handleFile($event)">
+                    <p class="form-hint">JPG, PNG or WebP · Max 2 MB · Leave blank to keep current</p>
+                    @error('photo') <p class="form-error">{{ $message }}</p> @enderror
+                </div>
+                {{-- Hidden flag sent when the user explicitly removes the photo --}}
+                <input type="hidden" name="remove_photo" :value="removed ? '1' : '0'">
+            </div>
+
             <div class="grid grid-cols-2 gap-4">
                 <div class="col-span-2">
                     <label class="form-label">Full Name *</label>

@@ -9,6 +9,7 @@ use App\Models\Customer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class CustomerController extends Controller
 {
@@ -64,7 +65,12 @@ class CustomerController extends Controller
             'email'   => 'nullable|email',
             'address' => 'nullable|string',
             'city'    => 'nullable|string|max:100',
+            'photo'   => 'nullable|image|mimes:jpeg,jpg,png,webp|max:2048',
         ]);
+
+        if ($request->hasFile('photo')) {
+            $data['photo'] = $request->file('photo')->store('customers', 'public');
+        }
 
         $data['created_by']   = Auth::id();
         $data['source']        = 'pos';
@@ -91,13 +97,23 @@ class CustomerController extends Controller
     public function update(Request $request, Customer $customer)
     {
         $data = $request->validate([
-            'name'      => 'required|string|max:100',
-            'phone'     => 'required|string|max:20|unique:customers,phone,' . $customer->id,
-            'email'     => 'nullable|email',
-            'address'   => 'nullable|string',
-            'city'      => 'nullable|string|max:100',
-            'is_active' => 'boolean',
+            'name'         => 'required|string|max:100',
+            'phone'        => 'required|string|max:20|unique:customers,phone,' . $customer->id,
+            'email'        => 'nullable|email',
+            'address'      => 'nullable|string',
+            'city'         => 'nullable|string|max:100',
+            'is_active'    => 'boolean',
+            'photo'        => 'nullable|image|mimes:jpeg,jpg,png,webp|max:2048',
+            'remove_photo' => 'nullable|boolean',
         ]);
+
+        if ($request->hasFile('photo')) {
+            if ($customer->photo) Storage::disk('public')->delete($customer->photo);
+            $data['photo'] = $request->file('photo')->store('customers', 'public');
+        } elseif ($request->boolean('remove_photo')) {
+            if ($customer->photo) Storage::disk('public')->delete($customer->photo);
+            $data['photo'] = null;
+        }
 
         $data['is_active'] = $request->boolean('is_active');
         $customer->update($data);
@@ -106,6 +122,7 @@ class CustomerController extends Controller
 
     public function destroy(Customer $customer)
     {
+        if ($customer->photo) Storage::disk('public')->delete($customer->photo);
         $customer->delete();
         return redirect()->route(Auth::user()->hasRole('admin') ? 'admin.customers.index' : 'salesman.customers.index')->with('success', 'Customer removed.');
     }

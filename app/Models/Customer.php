@@ -12,6 +12,7 @@ class Customer extends Model
         'email',
         'address',
         'city',
+        'photo',
         'credit_balance',
         'is_active',
         'source',
