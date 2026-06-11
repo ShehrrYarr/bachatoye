@@ -206,9 +206,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
                 'name'     => $c->name,
                 'hex_code' => $c->hex_code,
             ])->values(),
-            'category'         => $p->category
-                ? ($p->category->parent ? $p->category->parent->name . ' > ' . $p->category->name : $p->category->name)
+            'category'    => $p->category
+                ? ($p->category->parent ? $p->category->parent->name : $p->category->name)
                 : null,
+            'subcategory' => ($p->category && $p->category->parent) ? $p->category->name : null,
         ]));
     })->name('admin.api.products.search');
     Route::get('purchases', [Admin\PurchaseController::class, 'index'])->name('purchases.index');
@@ -370,9 +371,10 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
             'colors'           => $p->colors->map(fn($c) => [
                 'id' => $c->id, 'name' => $c->name, 'hex_code' => $c->hex_code,
             ])->values(),
-            'category'         => $p->category
-                ? ($p->category->parent ? $p->category->parent->name . ' > ' . $p->category->name : $p->category->name)
+            'category'    => $p->category
+                ? ($p->category->parent ? $p->category->parent->name : $p->category->name)
                 : null,
+            'subcategory' => ($p->category && $p->category->parent) ? $p->category->name : null,
         ]));
     })->middleware('permission:purchases.manage')->name('api.products.search');
 
