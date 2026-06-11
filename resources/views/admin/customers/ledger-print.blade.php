@@ -217,6 +217,13 @@
         </div>
         <div class="doc-title">
             <h2>KHATA LEDGER</h2>
+            @if($dateFrom || $dateTo)
+                <p style="font-weight:600;color:#111;">
+                    {{ $dateFrom ? \Carbon\Carbon::parse($dateFrom)->format('d M Y') : 'Start' }}
+                    &mdash;
+                    {{ $dateTo ? \Carbon\Carbon::parse($dateTo)->format('d M Y') : 'Today' }}
+                </p>
+            @endif
             <p>Generated: {{ now()->format('d M Y, h:i A') }}</p>
             <p>Total Entries: {{ $entries->count() }}</p>
         </div>
@@ -234,11 +241,18 @@
             <div style="font-size:11px;color:#888;margin-top:1px;">{{ $customer->address }}</div>
             @endif
         </div>
+        @php
+            $isFiltered   = $dateFrom || $dateTo;
+            $displayBal   = $isFiltered
+                ? ($entries->last()->balance_after ?? $customer->credit_balance)
+                : $customer->credit_balance;
+            $balLabel     = $isFiltered ? 'Balance at End of Period' : 'Current Balance';
+        @endphp
         <div style="text-align:right;">
-            <div class="label">Current Balance</div>
-            <div class="balance-chip {{ $customer->credit_balance < 0 ? 'balance-owed' : 'balance-clear' }}" style="margin-top:4px;">
-                Rs. {{ number_format(abs($customer->credit_balance)) }}
-                {{ $customer->credit_balance < 0 ? 'OWED' : ($customer->credit_balance > 0 ? 'CREDIT' : 'SETTLED') }}
+            <div class="label">{{ $balLabel }}</div>
+            <div class="balance-chip {{ $displayBal < 0 ? 'balance-owed' : 'balance-clear' }}" style="margin-top:4px;">
+                Rs. {{ number_format(abs($displayBal)) }}
+                {{ $displayBal < 0 ? 'OWED' : ($displayBal > 0 ? 'CREDIT' : 'SETTLED') }}
             </div>
         </div>
     </div>
@@ -327,9 +341,9 @@
         </div>
         @endforeach
         <div class="summary-item">
-            <div class="s-label">Net Balance</div>
-            <div class="s-value {{ $customer->credit_balance < 0 ? 'bal-neg' : 'bal-pos' }}">
-                Rs. {{ number_format($customer->credit_balance) }}
+            <div class="s-label">{{ $isFiltered ? 'Balance at End of Period' : 'Net Balance' }}</div>
+            <div class="s-value {{ $displayBal < 0 ? 'bal-neg' : 'bal-pos' }}">
+                Rs. {{ number_format($displayBal) }}
             </div>
         </div>
     </div>

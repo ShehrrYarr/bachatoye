@@ -13,13 +13,30 @@
         <a href="{{ $backRoute }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
         <h1 class="text-xl font-bold text-gray-900">Khata Ledger: {{ $customer->name }}</h1>
     </div>
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-3 flex-wrap">
         <span class="text-sm {{ $customer->credit_balance < 0 ? 'text-red-600 font-bold' : 'text-green-600 font-bold' }}">
             Balance: Rs. {{ number_format($customer->credit_balance) }}
         </span>
-        <a href="{{ $printRoute }}" target="_blank" class="btn-outline btn-sm">
-            <i class="fas fa-file-pdf mr-1.5 text-red-500"></i> Print as PDF
-        </a>
+        {{-- Date filter + print --}}
+        <div x-data="{ from: '', to: '' }" class="flex items-center gap-2 flex-wrap">
+            <input type="date" x-model="from"
+                   class="form-input text-sm py-1 h-8 w-36"
+                   title="From date">
+            <span class="text-gray-400 text-xs font-medium">to</span>
+            <input type="date" x-model="to"
+                   class="form-input text-sm py-1 h-8 w-36"
+                   title="To date">
+            <button @click="
+                let url = '{{ $printRoute }}';
+                let p = new URLSearchParams();
+                if (from) p.append('date_from', from);
+                if (to) p.append('date_to', to);
+                if (p.toString()) url += '?' + p.toString();
+                window.open(url, '_blank');
+            " class="btn-outline btn-sm whitespace-nowrap">
+                <i class="fas fa-file-pdf mr-1.5 text-red-500"></i> Print as PDF
+            </button>
+        </div>
     </div>
 </div>
 

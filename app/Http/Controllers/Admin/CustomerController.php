@@ -134,13 +134,22 @@ class CustomerController extends Controller
         return view('admin.customers.ledger', compact('customer', 'entries', 'bankAccounts'));
     }
 
-    public function ledgerPrint(Customer $customer)
+    public function ledgerPrint(Request $request, Customer $customer)
     {
-        $entries = $customer->ledgerEntries()->with(['user', 'bankAccount'])->oldest()->get();
-        $storeName = \App\Models\Setting::get('shop_name', config('app.name'));
-        $storePhone = \App\Models\Setting::get('shop_phone', '');
+        $dateFrom = $request->input('date_from');
+        $dateTo   = $request->input('date_to');
+
+        $query = $customer->ledgerEntries()->with(['user', 'bankAccount'])->oldest();
+        if ($dateFrom) $query->whereDate('created_at', '>=', $dateFrom);
+        if ($dateTo)   $query->whereDate('created_at', '<=', $dateTo);
+
+        $entries      = $query->get();
+        $storeName    = \App\Models\Setting::get('shop_name', config('app.name'));
+        $storePhone   = \App\Models\Setting::get('shop_phone', '');
         $storeAddress = \App\Models\Setting::get('shop_address', '');
-        return view('admin.customers.ledger-print', compact('customer', 'entries', 'storeName', 'storePhone', 'storeAddress'));
+        return view('admin.customers.ledger-print', compact(
+            'customer', 'entries', 'storeName', 'storePhone', 'storeAddress', 'dateFrom', 'dateTo'
+        ));
     }
 
     public function addLedgerEntry(Request $request, Customer $customer)
