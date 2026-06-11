@@ -338,20 +338,104 @@ function liveSearch() {
     </div>
 </div>
 
-{{-- ===== WHATSAPP FLOATING BUTTON ===== --}}
+{{-- ===== WHATSAPP CHAT WIDGET ===== --}}
 @php
-    $waNumber  = \App\Models\Setting::get('whatsapp_number');
-    $waMessage = \App\Models\Setting::get('whatsapp_message', 'Hi, I need help with an order.');
+    $waNumber   = \App\Models\Setting::get('whatsapp_number');
+    $waMessage  = \App\Models\Setting::get('whatsapp_message', 'Hi, I need help with an order.');
+    $waGreeting = \App\Models\Setting::get('whatsapp_greeting', 'Hello! 👋 How can we help you today? Click below to chat with us on WhatsApp.');
+    $waShop     = \App\Models\Setting::get('shop_name', 'MobileHub');
+    $waLink     = 'https://wa.me/' . preg_replace('/\D/', '', $waNumber) . '?text=' . urlencode($waMessage);
 @endphp
 @if($waNumber)
-<a href="https://wa.me/{{ preg_replace('/\D/', '', $waNumber) }}?text={{ urlencode($waMessage) }}"
-   target="_blank"
-   rel="noopener noreferrer"
-   title="Chat with us on WhatsApp"
-   class="fixed z-50 flex items-center justify-center w-14 h-14 rounded-full shadow-2xl transition-transform hover:scale-110 active:scale-95"
-   style="bottom: 1.5rem; right: 2rem; background: #25D366;">
-    <i class="fab fa-whatsapp text-white text-3xl"></i>
-</a>
+<div x-data="waWidget()" x-init="init()" class="fixed z-50 no-print" style="bottom: 1.5rem; right: 1.5rem;">
+
+    {{-- Chat popup --}}
+    <div x-show="open" x-cloak
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-3 scale-95"
+         x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+         x-transition:leave-end="opacity-0 translate-y-3 scale-95"
+         class="mb-4 w-72 rounded-2xl shadow-2xl overflow-hidden"
+         style="transform-origin: bottom right;">
+
+        {{-- Header --}}
+        <div class="px-4 py-3 flex items-center gap-3" style="background: #075e54;">
+            <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style="background: rgba(255,255,255,0.2);">
+                <i class="fab fa-whatsapp text-white text-2xl"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-white font-semibold text-sm truncate">{{ $waShop }}</p>
+                <p class="text-xs" style="color: #9de1b5;">Typically replies instantly</p>
+            </div>
+            <button @click="close()" class="text-white hover:text-white/70 text-xl leading-none ml-1 focus:outline-none">&times;</button>
+        </div>
+
+        {{-- Chat bubble --}}
+        <div class="p-4" style="background: #ece5dd;">
+            <div class="relative bg-white rounded-lg rounded-tl-none px-3 py-2 shadow text-sm text-gray-700 max-w-[90%]">
+                <div class="absolute -left-2 top-0 w-0 h-0" style="border-right: 8px solid white; border-bottom: 8px solid transparent;"></div>
+                {{ $waGreeting }}
+                <span class="text-[10px] text-gray-400 ml-2 float-right mt-1">now</span>
+            </div>
+        </div>
+
+        {{-- Start Chat button --}}
+        <div class="px-4 pb-4" style="background: #ece5dd;">
+            <a href="{{ $waLink }}" target="_blank" rel="noopener noreferrer"
+               class="flex items-center justify-center gap-2 w-full py-2.5 rounded-full text-white text-sm font-semibold shadow transition-opacity hover:opacity-90"
+               style="background: #25D366;">
+                <i class="fab fa-whatsapp text-lg"></i>
+                Start Chat
+            </a>
+        </div>
+    </div>
+
+    {{-- Floating button --}}
+    <button @click="toggle()"
+            :class="{ 'wa-ring': !open }"
+            class="w-14 h-14 rounded-full shadow-2xl flex items-center justify-center focus:outline-none active:scale-95 transition-transform"
+            style="background: #25D366;"
+            aria-label="Chat on WhatsApp">
+        <i x-show="!open" class="fab fa-whatsapp text-white text-3xl"></i>
+        <i x-show="open"  class="fas fa-times text-white text-2xl"></i>
+    </button>
+</div>
+
+<style>
+@keyframes wa-shake {
+    0%, 50%, 100% { transform: rotate(0deg); }
+    10%, 30%      { transform: rotate(-14deg); }
+    20%, 40%      { transform: rotate(14deg); }
+}
+@keyframes wa-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(37,211,102,0.55); }
+    60%      { box-shadow: 0 0 0 14px rgba(37,211,102,0); }
+}
+.wa-ring { animation: wa-shake 2.4s ease-in-out infinite, wa-pulse 2.4s ease-in-out infinite; }
+</style>
+
+<script>
+function waWidget() {
+    return {
+        open: false,
+        init() {
+            if (!sessionStorage.getItem('wa_closed')) {
+                setTimeout(() => { this.open = true; }, 5000);
+            }
+        },
+        toggle() {
+            this.open = !this.open;
+            if (!this.open) sessionStorage.setItem('wa_closed', '1');
+        },
+        close() {
+            this.open = false;
+            sessionStorage.setItem('wa_closed', '1');
+        }
+    }
+}
+</script>
 @endif
 
 {{-- ===== CART TOAST ===== --}}

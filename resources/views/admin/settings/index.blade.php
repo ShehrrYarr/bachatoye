@@ -286,6 +286,13 @@
                            class="form-input" placeholder="Hi, I need help with an order.">
                     <p class="form-hint">This message will be pre-filled when a customer opens WhatsApp.</p>
                 </div>
+                <div>
+                    <label class="form-label">WhatsApp Chat Greeting</label>
+                    <input type="text" name="whatsapp_greeting"
+                           value="{{ old('whatsapp_greeting', \App\Models\Setting::get('whatsapp_greeting', 'Hello! 👋 How can we help you today? Click below to chat with us on WhatsApp.')) }}"
+                           class="form-input" placeholder="Hello! How can we help you today?">
+                    <p class="form-hint">Shown in the chat popup bubble on the online store.</p>
+                </div>
             </div>
         </div>
 

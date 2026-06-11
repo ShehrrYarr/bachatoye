@@ -72,6 +72,7 @@ class SettingController extends Controller
             'social_tiktok'       => 'nullable|url|max:255',
             'whatsapp_number'     => 'nullable|string|max:20',
             'whatsapp_message'    => 'nullable|string|max:300',
+            'whatsapp_greeting'   => 'nullable|string|max:300',
             'logo'                => 'nullable|image|max:2048',
             'primary_color'       => 'nullable|regex:/^#[0-9a-fA-F]{6}$/',
             'secondary_color'     => 'nullable|regex:/^#[0-9a-fA-F]{6}$/',
