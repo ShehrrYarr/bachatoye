@@ -158,6 +158,22 @@
                             </div>
                         </div>
                         @endforeach
+
+                        {{-- Free items from bundle deals --}}
+                        @foreach($triggeredDeals as $deal)
+                            @foreach($deal->freeProducts as $fp)
+                            <div class="flex items-center gap-3 bg-green-50 rounded-lg p-1.5">
+                                <img src="{{ $fp->primary_image_url }}" class="w-12 h-12 object-cover rounded-lg bg-gray-100 shrink-0">
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-xs font-medium text-green-800 truncate">{{ $fp->name }}</div>
+                                    <div class="text-xs text-green-600">
+                                        <i class="fas fa-gift mr-1"></i>Free — {{ $deal->name }}
+                                    </div>
+                                </div>
+                                <div class="text-xs font-bold text-green-700 shrink-0">FREE</div>
+                            </div>
+                            @endforeach
+                        @endforeach
                     </div>
 
                     {{-- Coupon code --}}

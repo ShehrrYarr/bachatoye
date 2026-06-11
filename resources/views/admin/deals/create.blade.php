@@ -28,7 +28,8 @@
                         <select name="type" x-model="dealType" class="form-select" required>
                             <option value="percentage">Percentage Discount (% off)</option>
                             <option value="flat">Flat Discount (Rs. off)</option>
-                            <option value="buy_x_get_y">Buy X Get Y Free</option>
+                            <option value="buy_x_get_y">Buy X Get Y Free (same product)</option>
+                            <option value="bundle_free">Bundle Free — Buy different products, get others free (Online Store only)</option>
                         </select>
                     </div>
 
@@ -61,6 +62,14 @@
                         </div>
                     </div>
 
+                    {{-- Bundle Free hint --}}
+                    <div x-show="dealType === 'bundle_free'"
+                         class="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm text-green-800">
+                        <i class="fas fa-gift mr-2"></i>
+                        Customer must have <strong>all required products</strong> in their cart to unlock the free products.
+                        Only applies on the <strong>online store</strong>.
+                    </div>
+
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="form-label">Start Date</label>
@@ -74,8 +83,8 @@
                 </div>
             </div>
 
-            {{-- Product / Category scope --}}
-            <div class="card">
+            {{-- Product / Category scope (not used for bundle_free) --}}
+            <div class="card" x-show="dealType !== 'bundle_free'">
                 <div class="card-header"><h2 class="font-semibold text-gray-800">Apply To</h2></div>
                 <div class="card-body space-y-4">
                     <p class="text-sm text-gray-500">Leave both empty to apply to all products.</p>
@@ -106,6 +115,42 @@
                             </label>
                             @endforeach
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Bundle Free product selectors --}}
+            <div class="card" x-show="dealType === 'bundle_free'" x-cloak>
+                <div class="card-header"><h2 class="font-semibold text-gray-800">Bundle Products</h2></div>
+                <div class="card-body space-y-5">
+                    <div>
+                        <label class="form-label text-amber-700">Required Products <span class="font-normal text-gray-500">(customer must have ALL of these in cart)</span></label>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-60 overflow-y-auto p-2 border border-amber-200 rounded-xl bg-amber-50">
+                            @foreach($products as $product)
+                            <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                <input type="checkbox" name="buy_product_ids[]" value="{{ $product->id }}"
+                                       {{ in_array($product->id, old('buy_product_ids', [])) ? 'checked' : '' }}
+                                       class="w-4 h-4 text-amber-600 rounded">
+                                <span class="truncate">{{ $product->name }}</span>
+                            </label>
+                            @endforeach
+                        </div>
+                        @error('buy_product_ids') <p class="form-error">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div>
+                        <label class="form-label text-green-700">Free Products <span class="font-normal text-gray-500">(customer gets these at Rs. 0)</span></label>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-60 overflow-y-auto p-2 border border-green-200 rounded-xl bg-green-50">
+                            @foreach($products as $product)
+                            <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                <input type="checkbox" name="free_product_ids[]" value="{{ $product->id }}"
+                                       {{ in_array($product->id, old('free_product_ids', [])) ? 'checked' : '' }}
+                                       class="w-4 h-4 text-green-600 rounded">
+                                <span class="truncate">{{ $product->name }}</span>
+                            </label>
+                            @endforeach
+                        </div>
+                        @error('free_product_ids') <p class="form-error">{{ $message }}</p> @enderror
                     </div>
                 </div>
             </div>
@@ -154,6 +199,7 @@ function dealForm() {
         badgePreview() {
             if (this.dealType === 'percentage') return this.discountValue + '% OFF';
             if (this.dealType === 'flat') return 'Rs.' + this.flatDiscount + ' OFF';
+            if (this.dealType === 'bundle_free') return 'Bundle Deal';
             return 'Buy ' + this.buyQty + ' Get ' + this.getQty + ' Free';
         }
     };

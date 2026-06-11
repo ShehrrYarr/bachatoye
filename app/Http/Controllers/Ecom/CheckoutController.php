@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Ecom;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Models\Deal;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -29,7 +30,15 @@ class CheckoutController extends Controller
 
         $codAvailable = collect($items)->every(fn($item) => $item['product']->cod_enabled);
 
-        return view('ecom.checkout', compact('items', 'subtotal', 'deliveryCharge', 'couponCode', 'couponDiscount', 'total', 'codAvailable'));
+        $cartProductIds = collect($items)->pluck('product.id')->all();
+        $triggeredDeals = Deal::active()
+            ->where('type', 'bundle_free')
+            ->with(['buyProducts', 'freeProducts'])
+            ->get()
+            ->filter(fn($deal) => $deal->isTriggeredBy($cartProductIds))
+            ->values();
+
+        return view('ecom.checkout', compact('items', 'subtotal', 'deliveryCharge', 'couponCode', 'couponDiscount', 'total', 'codAvailable', 'triggeredDeals'));
     }
 
     public function store(Request $request)
@@ -105,6 +114,33 @@ class CheckoutController extends Controller
                     'line_total'      => $item['line_total'],
                 ]);
                 // Stock is deducted when order status changes to "Delivered" in OrderController
+            }
+
+            // Add free items from triggered bundle_free deals
+            $cartProductIds = collect($items)->pluck('product.id')->all();
+            $triggeredDeals = Deal::active()
+                ->where('type', 'bundle_free')
+                ->with(['buyProducts', 'freeProducts'])
+                ->get()
+                ->filter(fn($deal) => $deal->isTriggeredBy($cartProductIds));
+
+            $addedFreeProductIds = [];
+            foreach ($triggeredDeals as $deal) {
+                foreach ($deal->freeProducts as $freeProduct) {
+                    if (in_array($freeProduct->id, $addedFreeProductIds)) continue;
+                    $addedFreeProductIds[] = $freeProduct->id;
+                    OrderItem::create([
+                        'order_id'        => $order->id,
+                        'product_id'      => $freeProduct->id,
+                        'product_name'    => $freeProduct->name . ' (Free — ' . $deal->name . ')',
+                        'color_name'      => null,
+                        'product_barcode' => $freeProduct->barcode,
+                        'unit_price'      => 0,
+                        'cost_price'      => $freeProduct->cost_price,
+                        'quantity'        => 1,
+                        'line_total'      => 0,
+                    ]);
+                }
             }
 
             DB::commit();

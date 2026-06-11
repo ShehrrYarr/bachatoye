@@ -14,16 +14,30 @@ class Deal extends Model
     protected function casts(): array
     {
         return [
-            'value'      => 'decimal:2',
-            'is_active'  => 'boolean',
-            'starts_at'  => 'datetime',
-            'ends_at'    => 'datetime',
+            'value'     => 'decimal:2',
+            'is_active' => 'boolean',
+            'starts_at' => 'datetime',
+            'ends_at'   => 'datetime',
         ];
     }
 
     public function products()
     {
         return $this->belongsToMany(Product::class, 'deal_products');
+    }
+
+    // Products the customer must have in cart (bundle_free deals)
+    public function buyProducts()
+    {
+        return $this->belongsToMany(Product::class, 'deal_products')
+            ->wherePivot('role', 'buy');
+    }
+
+    // Products given free when bundle deal triggers
+    public function freeProducts()
+    {
+        return $this->belongsToMany(Product::class, 'deal_products')
+            ->wherePivot('role', 'free');
     }
 
     public function categories()
@@ -45,8 +59,20 @@ class Deal extends Model
             'percentage'  => number_format($this->value, 0) . '% OFF',
             'flat'        => 'Rs. ' . number_format($this->value, 0) . ' OFF',
             'buy_x_get_y' => "Buy {$this->buy_quantity} Get {$this->get_quantity} Free",
+            'bundle_free' => $this->name,
             default       => $this->name,
         };
+    }
+
+    /**
+     * Check if this bundle_free deal is triggered by the given set of product IDs.
+     */
+    public function isTriggeredBy(array $cartProductIds): bool
+    {
+        if ($this->type !== 'bundle_free') return false;
+        $required = $this->buyProducts->pluck('id')->all();
+        if (empty($required)) return false;
+        return count(array_intersect($required, $cartProductIds)) === count($required);
     }
 
     public function scopeActive($query)

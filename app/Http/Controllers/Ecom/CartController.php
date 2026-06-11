@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Ecom;
 
 use App\Http\Controllers\Controller;
+use App\Models\Deal;
 use App\Models\Product;
 use App\Models\ProductAttributePrice;
 use App\Models\ProductColor;
@@ -35,9 +36,18 @@ class CartController extends Controller
 
         $total = max(0, $subtotal + $deliveryCharge - $couponDiscount);
 
+        // Detect triggered bundle_free deals
+        $cartProductIds   = collect($items)->pluck('product.id')->all();
+        $triggeredDeals   = Deal::active()
+            ->where('type', 'bundle_free')
+            ->with(['buyProducts', 'freeProducts'])
+            ->get()
+            ->filter(fn($deal) => $deal->isTriggeredBy($cartProductIds))
+            ->values();
+
         return view('ecom.cart', compact(
             'items', 'subtotal', 'deliveryCharge', 'total',
-            'couponCode', 'couponName', 'couponDiscount'
+            'couponCode', 'couponName', 'couponDiscount', 'triggeredDeals'
         ));
     }
 

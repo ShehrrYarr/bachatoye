@@ -175,6 +175,29 @@
                     @endif
                 </div>
 
+                {{-- Bundle Free deal banners --}}
+                @if($triggeredDeals->isNotEmpty())
+                <div class="mt-4 space-y-3">
+                    @foreach($triggeredDeals as $deal)
+                    <div class="bg-green-50 border border-green-300 rounded-xl px-3 py-3">
+                        <div class="flex items-center gap-2 mb-1.5">
+                            <i class="fas fa-gift text-green-600 text-base"></i>
+                            <span class="text-sm font-bold text-green-800">Deal Unlocked: {{ $deal->name }}</span>
+                        </div>
+                        <p class="text-xs text-green-700 mb-1.5">You'll receive the following for free:</p>
+                        <ul class="space-y-1">
+                            @foreach($deal->freeProducts as $fp)
+                            <li class="flex items-center gap-2 text-xs text-green-800">
+                                <i class="fas fa-check-circle text-green-500 shrink-0"></i>
+                                <span>{{ $fp->name }}</span>
+                            </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                    @endforeach
+                </div>
+                @endif
+
                 <a href="{{ route('checkout.index') }}" class="btn-primary btn-lg w-full justify-center mt-5">
                     Proceed to Checkout <i class="fas fa-arrow-right ml-1"></i>
                 </a>
