@@ -129,6 +129,23 @@
 </div>
 
 <div class="grid gap-2" style="grid-template-columns: repeat(auto-fill, minmax(120px, 1fr))">
+
+    {{-- "All [Parent]" tile for products assigned directly to the parent category --}}
+    @if(isset($parentDirectCount) && $parentDirectCount > 0)
+    <a href="{{ route('admin.products.index', ['category' => $selectedCat->id, 'all' => 1]) }}"
+       class="group flex flex-col hover:opacity-90 transition-opacity">
+        <div class="aspect-square rounded-xl border-2 border-dashed overflow-hidden flex items-center justify-center transition-all group-hover:shadow-md"
+             style="border-color: var(--app-primary, #e11d48); background: #fff5f7;">
+            <i class="fas fa-layer-group text-2xl transition-colors" style="color: var(--app-primary, #e11d48);"></i>
+        </div>
+        <div class="mt-1.5 px-0.5">
+            <div class="text-xs font-semibold leading-tight truncate transition-colors group-hover:text-primary-700"
+                 style="color: var(--app-primary, #e11d48);">All {{ $selectedCat->name }}</div>
+            <div class="text-[10px] text-gray-400 mt-0.5">{{ $parentDirectCount }} products</div>
+        </div>
+    </a>
+    @endif
+
     @forelse($subcategories as $sub)
     <a href="{{ route('admin.products.index', ['category' => $sub->id]) }}"
        class="group flex flex-col hover:opacity-90 transition-opacity">

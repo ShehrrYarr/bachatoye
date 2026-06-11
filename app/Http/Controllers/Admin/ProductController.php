@@ -41,6 +41,7 @@ class ProductController extends Controller
         if (!$listView
             && $request->filled('category')
             && $request->category !== 'uncategorized'
+            && !$request->boolean('all')
             && !$request->filled('q') && !$request->filled('brand') && !$request->filled('status')
         ) {
             $selectedCat = Category::active()->find($request->category);
@@ -51,8 +52,9 @@ class ProductController extends Controller
                     ->orderBy('sort_order')->orderBy('name')
                     ->get();
                 if ($subcategories->isNotEmpty()) {
-                    $uncategorizedCount = 0;
-                    return view('admin.products.index', compact('selectedCat', 'subcategories', 'brands', 'uncategorizedCount'));
+                    $uncategorizedCount    = 0;
+                    $parentDirectCount = Product::where('category_id', $selectedCat->id)->count();
+                    return view('admin.products.index', compact('selectedCat', 'subcategories', 'brands', 'uncategorizedCount', 'parentDirectCount'));
                 }
             }
         }

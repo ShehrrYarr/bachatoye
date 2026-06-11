@@ -157,6 +157,19 @@
             </div>
             <div class="p-4 flex-1 overflow-y-auto">
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
+
+                    {{-- "All [Parent]" tile --}}
+                    <div @click="selectedCategory = { id: activeParent.id, name: 'All ' + activeParent.name }; loadProducts()"
+                         class="cursor-pointer group bg-white rounded-xl border-2 border-dashed shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col"
+                         style="border-color: var(--app-primary, #e11d48);">
+                        <div class="aspect-square overflow-hidden flex items-center justify-center" style="background: #fff5f7;">
+                            <i class="fas fa-layer-group text-3xl transition-colors" style="color: var(--app-primary, #e11d48);"></i>
+                        </div>
+                        <div class="px-2 py-1.5">
+                            <div class="text-xs font-semibold leading-tight truncate" style="color: var(--app-primary, #e11d48);" x-text="'All ' + activeParent.name"></div>
+                        </div>
+                    </div>
+
                     <template x-for="sub in (activeParent?.children || [])" :key="sub.id">
                         <div @click="selectSubcategory(sub)"
                              class="cursor-pointer group bg-white rounded-xl border border-gray-200 shadow-sm hover:border-primary-400 hover:shadow-md transition-all overflow-hidden flex flex-col">
