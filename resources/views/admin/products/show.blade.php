@@ -358,7 +358,7 @@
                 <div class="flex justify-between">
                     <dt class="text-gray-500">Margin</dt>
                     <dd class="font-medium text-green-600">
-                        @php $margin = $product->cost_price > 0 ? round((($product->price - $product->cost_price) / $product->price) * 100, 1) : null; @endphp
+                        @php $margin = ($product->cost_price > 0 && $product->price > 0) ? round((($product->price - $product->cost_price) / $product->price) * 100, 1) : null; @endphp
                         {{ $margin !== null ? $margin.'%' : '—' }}
                     </dd>
                 </div>
