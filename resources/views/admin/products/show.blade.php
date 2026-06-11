@@ -452,6 +452,12 @@
                 <i class="fas fa-barcode mr-2"></i> Print Barcode
             </a>
             @endif
+            @if($product->is_serialized)
+            <a href="{{ route('admin.products.stickers', $product) }}"
+               class="btn-outline justify-center">
+                <i class="fas fa-tag mr-2"></i> Print Stickers
+            </a>
+            @endif
             @if($stockAdjustmentEnabled)
             <a href="{{ route('admin.inventory.adjust.form', $product) }}" class="btn-outline justify-center">
                 <i class="fas fa-cubes mr-2"></i> Adjust Stock

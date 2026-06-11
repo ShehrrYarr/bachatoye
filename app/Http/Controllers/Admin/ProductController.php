@@ -498,4 +498,25 @@ class ProductController extends Controller
     {
         return view('admin.products.print-barcode', compact('product'));
     }
+
+    public function printStickers(Product $product)
+    {
+        abort_unless($product->is_serialized, 404);
+
+        $serials = $product->serialNumbers()
+            ->where('status', 'in_stock')
+            ->latest()
+            ->get();
+
+        // Collect all unique attribute keys across all serial records
+        $allAttrKeys = collect();
+        foreach ($serials as $serial) {
+            if (!empty($serial->attributes)) {
+                $allAttrKeys = $allAttrKeys->merge(array_keys($serial->attributes));
+            }
+        }
+        $allAttrKeys = $allAttrKeys->unique()->values();
+
+        return view('admin.products.sticker-print', compact('product', 'serials', 'allAttrKeys'));
+    }
 }

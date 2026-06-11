@@ -269,6 +269,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('products/{product}/primary-attribute', [Admin\ProductAttributePriceController::class, 'savePrimaryAttribute'])->name('products.primary-attribute.save');
     Route::post('products/{product}/serial-attributes', [Admin\ProductAttributePriceController::class, 'saveSerialAttributes'])->name('products.serial-attributes.save');
     Route::post('products/{product}/attribute-prices', [Admin\ProductAttributePriceController::class, 'save'])->name('products.attribute-prices.save');
+    Route::get('products/{product}/stickers', [Admin\ProductController::class, 'printStickers'])->name('products.stickers');
 
     // System tools (migrate + git pull) — admin only
     Route::post('system/migrate',  [Admin\SettingController::class, 'runMigrate'])->name('system.migrate');
