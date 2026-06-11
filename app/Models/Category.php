@@ -44,6 +44,16 @@ class Category extends Model
         return $this->hasMany(Product::class);
     }
 
+    /**
+     * Products assigned to this category as their *subcategory*.
+     * (Products link to a subcategory via the `subcategory_id` column,
+     * while `category_id` always points at the parent category.)
+     */
+    public function subcategoryProducts()
+    {
+        return $this->hasMany(Product::class, 'subcategory_id');
+    }
+
     public function getImageUrlAttribute(): string
     {
         return $this->image

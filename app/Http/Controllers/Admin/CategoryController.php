@@ -12,7 +12,7 @@ class CategoryController extends Controller
     public function index()
     {
         $categories = Category::whereNull('parent_id')
-            ->with(['children' => fn($q) => $q->withCount('products')])
+            ->with(['children' => fn($q) => $q->withCount('subcategoryProducts')])
             ->withCount(['products', 'children'])
             ->orderBy('sort_order')
             ->get();

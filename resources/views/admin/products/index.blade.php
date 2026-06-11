@@ -299,11 +299,9 @@
                     @if(isset($listView) && $listView)
                     <td class="text-xs text-gray-500">
                         @if($product->category)
-                            @if($product->category->parent_id)
-                                <div class="text-gray-400">{{ $product->category->parent?->name }}</div>
-                                <div class="font-medium text-gray-600">{{ $product->category->name }}</div>
-                            @else
-                                <div class="font-medium text-gray-600">{{ $product->category->name }}</div>
+                            <div class="font-medium text-gray-600">{{ $product->category->name }}</div>
+                            @if($product->subcategory)
+                                <div class="text-gray-400">{{ $product->subcategory->name }}</div>
                             @endif
                         @else
                             <span class="text-gray-300">—</span>

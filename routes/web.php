@@ -188,8 +188,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         $products = \App\Models\Product::where('name', 'like', "%{$q}%")
             ->orWhere('sku', 'like', "%{$q}%")
             ->orderBy('name')->limit(10)
-            ->with(['colors', 'category.parent'])
-            ->get(['id', 'name', 'sku', 'cost_price', 'is_serialized', 'serial_attribute_ids', 'category_id']);
+            ->with(['colors', 'category', 'subcategory'])
+            ->get(['id', 'name', 'sku', 'cost_price', 'is_serialized', 'serial_attribute_ids', 'category_id', 'subcategory_id']);
         return response()->json($products->map(fn($p) => [
             'id'               => $p->id,
             'name'             => $p->name,
@@ -206,10 +206,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
                 'name'     => $c->name,
                 'hex_code' => $c->hex_code,
             ])->values(),
-            'category'    => $p->category
-                ? ($p->category->parent ? $p->category->parent->name : $p->category->name)
-                : null,
-            'subcategory' => ($p->category && $p->category->parent) ? $p->category->name : null,
+            'category'    => $p->category?->name,
+            'subcategory' => $p->subcategory?->name,
         ]));
     })->name('admin.api.products.search');
     Route::get('purchases', [Admin\PurchaseController::class, 'index'])->name('purchases.index');
@@ -355,8 +353,8 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
             ->map(fn($d) => ['id' => $d->id, 'name' => $d->name, 'options' => $d->options]);
         $products = \App\Models\Product::where('name', 'like', "%{$q}%")
             ->orWhere('sku', 'like', "%{$q}%")
-            ->orderBy('name')->limit(10)->with(['colors', 'category.parent'])
-            ->get(['id', 'name', 'sku', 'cost_price', 'is_serialized', 'serial_attribute_ids', 'category_id']);
+            ->orderBy('name')->limit(10)->with(['colors', 'category', 'subcategory'])
+            ->get(['id', 'name', 'sku', 'cost_price', 'is_serialized', 'serial_attribute_ids', 'category_id', 'subcategory_id']);
         return response()->json($products->map(fn($p) => [
             'id'               => $p->id,
             'name'             => $p->name,
@@ -371,10 +369,8 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
             'colors'           => $p->colors->map(fn($c) => [
                 'id' => $c->id, 'name' => $c->name, 'hex_code' => $c->hex_code,
             ])->values(),
-            'category'    => $p->category
-                ? ($p->category->parent ? $p->category->parent->name : $p->category->name)
-                : null,
-            'subcategory' => ($p->category && $p->category->parent) ? $p->category->name : null,
+            'category'    => $p->category?->name,
+            'subcategory' => $p->subcategory?->name,
         ]));
     })->middleware('permission:purchases.manage')->name('api.products.search');
 

@@ -86,7 +86,7 @@
                         </div>
                     </td>
                     <td class="text-sm text-gray-400">—</td>
-                    <td class="text-sm font-medium text-gray-600">{{ $sub->products_count }}</td>
+                    <td class="text-sm font-medium text-gray-600">{{ $sub->subcategory_products_count }}</td>
                     <td>
                         <span class="badge {{ $sub->is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500' }}">
                             {{ $sub->is_active ? 'Active' : 'Inactive' }}

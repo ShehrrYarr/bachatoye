@@ -48,11 +48,12 @@ class ProductController extends Controller
             if ($selectedCat && $selectedCat->parent_id === null) {
                 $subcategories = $selectedCat->children()
                     ->active()
-                    ->withCount('products')
+                    ->withCount('subcategoryProducts')
                     ->orderBy('sort_order')->orderBy('name')
                     ->get();
                 if ($subcategories->isNotEmpty()) {
-                    $uncategorizedCount    = 0;
+                    $uncategorizedCount = 0;
+                    // "All [Parent]" tile → every product in this category (any/no subcategory)
                     $parentDirectCount = Product::where('category_id', $selectedCat->id)->count();
                     return view('admin.products.index', compact('selectedCat', 'subcategories', 'brands', 'uncategorizedCount', 'parentDirectCount'));
                 }
@@ -60,7 +61,7 @@ class ProductController extends Controller
         }
 
         // ── Show products (category has no children, or filters applied) ────────
-        $query = Product::with(['category.parent', 'brand', 'colors'])->latest();
+        $query = Product::with(['category', 'subcategory', 'brand', 'colors'])->latest();
 
         if ($request->filled('q')) {
             $s = $request->q;
@@ -73,12 +74,14 @@ class ProductController extends Controller
             if ($request->category === 'uncategorized') {
                 $query->whereNull('category_id');
             } else {
-                // If this is a subcategory, also include products assigned to its parent
                 $cat = Category::find($request->category);
-                $categoryIds = ($cat && $cat->parent_id)
-                    ? [$request->category, $cat->parent_id]
-                    : [$request->category];
-                $query->whereIn('category_id', $categoryIds);
+                if ($cat && $cat->parent_id) {
+                    // Subcategory → products linked via subcategory_id
+                    $query->where('subcategory_id', $cat->id);
+                } else {
+                    // Parent category → all products in it (incl. those in subcategories)
+                    $query->where('category_id', $request->category);
+                }
             }
         }
         if ($request->filled('brand'))  $query->where('brand_id', $request->brand);
