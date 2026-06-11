@@ -60,7 +60,12 @@
                                             class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 text-left transition-colors border-b border-gray-100 last:border-0">
                                         <div class="flex-1 min-w-0">
                                             <div class="text-sm font-medium text-gray-800 truncate" x-text="p.name"></div>
-                                            <div class="text-xs text-gray-400" x-text="p.sku ? 'SKU: ' + p.sku : ''"></div>
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <span class="text-xs text-gray-400" x-show="p.sku" x-text="'SKU: ' + p.sku"></span>
+                                                <span x-show="p.category"
+                                                      class="text-xs text-indigo-500 font-medium bg-indigo-50 px-1.5 py-0.5 rounded"
+                                                      x-text="p.category"></span>
+                                            </div>
                                         </div>
                                         <div class="flex items-center gap-2 shrink-0">
                                             <template x-if="p.colors && p.colors.length > 0">
