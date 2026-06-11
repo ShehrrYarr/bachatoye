@@ -14,6 +14,8 @@ use App\Models\Product;
 use App\Models\SerialNumber;
 use App\Models\Setting;
 use App\Models\StockMovement;
+use App\Models\Vendor;
+use App\Models\VendorLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -443,12 +445,33 @@ class PosController extends Controller
     public function searchCustomer(Request $request)
     {
         $q = $request->input('q', '');
-        $customers = Customer::where('name', 'like', "%{$q}%")
-                              ->orWhere('phone', 'like', "%{$q}%")
-                              ->limit(10)
-                              ->get(['id', 'name', 'phone', 'credit_balance']);
 
-        return response()->json($customers);
+        $customers = Customer::where('name', 'like', "%{$q}%")
+            ->orWhere('phone', 'like', "%{$q}%")
+            ->limit(8)
+            ->get(['id', 'name', 'phone', 'credit_balance'])
+            ->map(fn($c) => [
+                'id'             => $c->id,
+                'name'           => $c->name,
+                'phone'          => $c->phone,
+                'credit_balance' => (float) $c->credit_balance,
+                'type'           => 'customer',
+            ]);
+
+        $vendors = Vendor::where('name', 'like', "%{$q}%")
+            ->orWhere('phone', 'like', "%{$q}%")
+            ->limit(5)
+            ->get(['id', 'name', 'phone', 'balance'])
+            ->map(fn($v) => [
+                'id'             => $v->id,
+                'name'           => $v->name,
+                'phone'          => $v->phone ?? '',
+                // Negative vendor balance = vendor owes us; matches customer credit_balance semantics
+                'credit_balance' => (float) ($v->balance * -1),
+                'type'           => 'vendor',
+            ]);
+
+        return response()->json($customers->concat($vendors)->values());
     }
 
     public function createCustomer(Request $request)
@@ -481,6 +504,7 @@ class PosController extends Controller
             'bank_amount'         => 'nullable|numeric|min:0',
             'bank_account_id'     => 'nullable|exists:bank_accounts,id',
             'customer_id'         => 'nullable|exists:customers,id',
+            'vendor_id'           => 'nullable|exists:vendors,id',
             'discount'            => 'nullable|numeric|min:0',
             'notes'               => 'nullable|string|max:500',
             'exchange_item_name'  => 'nullable|string|max:200',
@@ -491,6 +515,7 @@ class PosController extends Controller
         DB::beginTransaction();
         try {
             $customer = $request->customer_id ? Customer::find($request->customer_id) : null;
+            $vendor   = $request->vendor_id   ? Vendor::find($request->vendor_id)     : null;
 
             $subtotal = 0;
             $orderItems = [];
@@ -576,16 +601,16 @@ class PosController extends Controller
             if ($payMethod === 'khata') {
                 $amountPaid = 0;
                 $payStatus  = 'pending';
-                if (!$customer) {
+                if (!$customer && !$vendor) {
                     DB::rollBack();
-                    return response()->json(['error' => 'A customer must be selected for Khata payment.'], 422);
+                    return response()->json(['error' => 'A customer or vendor must be selected for Khata payment.'], 422);
                 }
             } elseif ($payMethod === 'partial') {
                 $amountPaid = min((float)($request->amount_paid ?? 0), $total);
                 $payStatus  = $amountPaid >= $total ? 'paid' : 'partial';
-                if (!$customer && $amountPaid < $total) {
+                if (!$customer && !$vendor && $amountPaid < $total) {
                     DB::rollBack();
-                    return response()->json(['error' => 'A customer must be selected for partial payment.'], 422);
+                    return response()->json(['error' => 'A customer or vendor must be selected for partial payment.'], 422);
                 }
             } elseif ($payMethod === 'split') {
                 $cashAmount = max(0, (float)($request->cash_amount ?? 0));
@@ -597,8 +622,9 @@ class PosController extends Controller
             $order = Order::create([
                 'source'          => 'pos',
                 'customer_id'     => $customer?->id,
-                'customer_name'   => $customer?->name ?? 'Walk-in Customer',
-                'customer_phone'  => $customer?->phone ?? '-',
+                'vendor_id'       => $vendor?->id,
+                'customer_name'   => $customer?->name ?? $vendor?->name ?? 'Walk-in Customer',
+                'customer_phone'  => $customer?->phone ?? $vendor?->phone ?? '-',
                 'subtotal'        => $subtotal,
                 'discount_amount' => $discount,
                 'total'           => $total,
@@ -672,7 +698,25 @@ class PosController extends Controller
                 $khataDue = $total - $amountPaid;
             }
 
-            if ($khataDue > 0 && $customer) {
+            if ($khataDue > 0 && $vendor) {
+                // Vendor buying on credit: reduces our payable to them (debit entry)
+                // If vendor.balance goes negative, it means vendor owes us money
+                $newBal = $vendor->balance - $khataDue;
+                $description = $payMethod === 'partial'
+                    ? "Partial Sale — {$order->order_number} | Total: Rs.{$total} | Paid: Rs.{$amountPaid}, Pending: Rs.{$khataDue} | Items: {$itemsList}"
+                    : "POS Sale — {$order->order_number} | Total: Rs.{$total} | Items: {$itemsList}";
+                VendorLedger::create([
+                    'vendor_id'    => $vendor->id,
+                    'order_id'     => $order->id,
+                    'type'         => 'debit',
+                    'amount'       => $khataDue,
+                    'balance_after' => $newBal,
+                    'description'  => $description,
+                    'reference'    => $order->order_number,
+                    'created_by'   => Auth::id(),
+                ]);
+                $vendor->update(['balance' => $newBal]);
+            } elseif ($khataDue > 0 && $customer) {
                 $newBal = $customer->credit_balance - $khataDue;
                 $description = $payMethod === 'partial'
                     ? "Partial Payment — {$order->order_number} | Total: Rs.{$total} | Paid: Rs.{$amountPaid}, Khata: Rs.{$khataDue} | Items: {$itemsList}"
@@ -744,6 +788,9 @@ class PosController extends Controller
             $oldCustomer = $order->customer_id
                 ? \App\Models\Customer::find($order->customer_id)
                 : null;
+            $oldVendor = $order->vendor_id
+                ? Vendor::find($order->vendor_id)
+                : null;
 
             // ── 1. Restore stock ──────────────────────────────────────────
             $items = $order->items()->get();
@@ -775,7 +822,17 @@ class PosController extends Controller
             }
 
             // ── 2. Reverse khata ledger entries ───────────────────────────
-            if ($oldCustomer && in_array($oldMethod, ['khata', 'partial'])) {
+            if ($oldVendor && in_array($oldMethod, ['khata', 'partial'])) {
+                $ledgers     = VendorLedger::where('reference', $order->order_number)
+                    ->where('type', 'debit')
+                    ->where('vendor_id', $oldVendor->id)
+                    ->get();
+                $ledgerTotal = $ledgers->sum('amount');
+                if ($ledgerTotal > 0) {
+                    $ledgers->each->delete();
+                    $oldVendor->increment('balance', $ledgerTotal);
+                }
+            } elseif ($oldCustomer && in_array($oldMethod, ['khata', 'partial'])) {
                 $ledgers     = AccountLedger::where('reference', $order->order_number)
                     ->where('type', 'debit')
                     ->where('customer_id', $oldCustomer->id)
@@ -869,6 +926,7 @@ class PosController extends Controller
             'bank_amount'         => 'nullable|numeric|min:0',
             'bank_account_id'     => 'nullable|exists:bank_accounts,id',
             'customer_id'         => 'nullable|exists:customers,id',
+            'vendor_id'           => 'nullable|exists:vendors,id',
             'discount'            => 'nullable|numeric|min:0',
             'notes'               => 'nullable|string|max:500',
             'promise_date'        => 'nullable|date',
@@ -880,6 +938,9 @@ class PosController extends Controller
             $oldMethod   = $order->payment_method;
             $oldCustomer = $order->customer_id
                 ? \App\Models\Customer::find($order->customer_id)
+                : null;
+            $oldVendor = $order->vendor_id
+                ? Vendor::find($order->vendor_id)
                 : null;
 
             // ── 1. Restore stock from old items ───────────────────────────
@@ -912,7 +973,18 @@ class PosController extends Controller
             }
 
             // ── 2. Reverse khata ledger entries ───────────────────────────
-            if ($oldCustomer && in_array($oldMethod, ['khata', 'partial'])) {
+            if ($oldVendor && in_array($oldMethod, ['khata', 'partial'])) {
+                $oldLedgers  = VendorLedger::where('reference', $order->order_number)
+                    ->where('type', 'debit')
+                    ->where('vendor_id', $oldVendor->id)
+                    ->get();
+                $ledgerTotal = $oldLedgers->sum('amount');
+                if ($ledgerTotal > 0) {
+                    $oldLedgers->each->delete();
+                    $oldVendor->increment('balance', $ledgerTotal);
+                    $oldVendor->refresh();
+                }
+            } elseif ($oldCustomer && in_array($oldMethod, ['khata', 'partial'])) {
                 $oldLedgers  = AccountLedger::where('reference', $order->order_number)
                     ->where('type', 'debit')
                     ->where('customer_id', $oldCustomer->id)
@@ -931,6 +1003,9 @@ class PosController extends Controller
             // ── 4. Build and validate new items ──────────────────────────
             $customer = $request->customer_id
                 ? \App\Models\Customer::find($request->customer_id)
+                : null;
+            $vendor = $request->vendor_id
+                ? Vendor::find($request->vendor_id)
                 : null;
 
             $subtotal = 0;
@@ -986,16 +1061,16 @@ class PosController extends Controller
             if ($payMethod === 'khata') {
                 $amountPaid = 0;
                 $payStatus  = 'pending';
-                if (! $customer) {
+                if (! $customer && ! $vendor) {
                     DB::rollBack();
-                    return response()->json(['error' => 'A customer is required for Khata payment.'], 422);
+                    return response()->json(['error' => 'A customer or vendor is required for Khata payment.'], 422);
                 }
             } elseif ($payMethod === 'partial') {
                 $amountPaid = min((float) ($request->amount_paid ?? 0), $newTotal);
                 $payStatus  = $amountPaid >= $newTotal ? 'paid' : 'partial';
-                if (! $customer && $amountPaid < $newTotal) {
+                if (! $customer && ! $vendor && $amountPaid < $newTotal) {
                     DB::rollBack();
-                    return response()->json(['error' => 'A customer is required for partial payment.'], 422);
+                    return response()->json(['error' => 'A customer or vendor is required for partial payment.'], 422);
                 }
             } elseif ($payMethod === 'split') {
                 $cashAmount = max(0, (float) ($request->cash_amount ?? 0));
@@ -1045,11 +1120,26 @@ class PosController extends Controller
                 $khataDue = $newTotal - $amountPaid;
             }
 
-            if ($khataDue > 0 && $customer) {
+            $itemsList = collect($newItems)
+                ->map(fn($i) => "{$i['product']->name} x{$i['qty']}")
+                ->join(', ');
+
+            if ($khataDue > 0 && $vendor) {
+                $vendor->refresh();
+                $newBal = $vendor->balance - $khataDue;
+                VendorLedger::create([
+                    'vendor_id'    => $vendor->id,
+                    'order_id'     => $order->id,
+                    'type'         => 'debit',
+                    'amount'       => $khataDue,
+                    'balance_after' => $newBal,
+                    'description'  => "Edited Sale — {$order->order_number} | Total: Rs.{$newTotal} | Items: {$itemsList}",
+                    'reference'    => $order->order_number,
+                    'created_by'   => Auth::id(),
+                ]);
+                $vendor->update(['balance' => $newBal]);
+            } elseif ($khataDue > 0 && $customer) {
                 $customer->refresh();
-                $itemsList = collect($newItems)
-                    ->map(fn($i) => "{$i['product']->name} x{$i['qty']}")
-                    ->join(', ');
                 $newBal = $customer->credit_balance - $khataDue;
 
                 AccountLedger::create([
@@ -1068,8 +1158,9 @@ class PosController extends Controller
             // ── 7. Update order record ────────────────────────────────────
             $order->update([
                 'customer_id'     => $customer?->id,
-                'customer_name'   => $customer?->name ?? 'Walk-in Customer',
-                'customer_phone'  => $customer?->phone ?? '-',
+                'vendor_id'       => $vendor?->id,
+                'customer_name'   => $customer?->name ?? $vendor?->name ?? 'Walk-in Customer',
+                'customer_phone'  => $customer?->phone ?? $vendor?->phone ?? '-',
                 'subtotal'        => $subtotal,
                 'discount_amount' => $discount,
                 'total'           => $newTotal,

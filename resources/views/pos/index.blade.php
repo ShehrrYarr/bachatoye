@@ -298,11 +298,16 @@
                            class="w-full text-xs px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500">
                     <div x-show="customerResults.length > 0"
                          class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 overflow-hidden">
-                        <template x-for="cust in customerResults" :key="cust.id">
+                        <template x-for="cust in customerResults" :key="cust.type + '_' + cust.id">
                             <div @click="selectCustomer(cust)"
-                                 class="px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0">
-                                <div class="text-xs font-semibold text-gray-800" x-text="cust.name"></div>
-                                <div class="text-xs text-gray-500" x-text="cust.phone"></div>
+                                 class="px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0 flex items-center justify-between gap-2">
+                                <div>
+                                    <div class="text-xs font-semibold text-gray-800" x-text="cust.name"></div>
+                                    <div class="text-xs text-gray-500" x-text="cust.phone"></div>
+                                </div>
+                                <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0"
+                                      :class="cust.type === 'vendor' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'"
+                                      x-text="cust.type === 'vendor' ? 'Vendor' : 'Customer'"></span>
                             </div>
                         </template>
                         <div @click="showNewCustomer = true; customerResults = []"
@@ -314,7 +319,12 @@
             </div>
             <div x-show="selectedCustomer" class="flex items-center justify-between">
                 <div>
-                    <div class="text-xs font-semibold text-gray-800" x-text="selectedCustomer?.name"></div>
+                    <div class="flex items-center gap-1.5">
+                        <div class="text-xs font-semibold text-gray-800" x-text="selectedCustomer?.name"></div>
+                        <span class="text-[9px] font-bold px-1 py-0.5 rounded"
+                              :class="selectedCustomer?.type === 'vendor' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'"
+                              x-text="selectedCustomer?.type === 'vendor' ? 'Vendor' : 'Customer'"></span>
+                    </div>
                     <div class="text-xs text-gray-500" x-text="selectedCustomer?.phone"></div>
                     <div x-show="selectedCustomer?.credit_balance < 0"
                          class="text-xs text-red-500 font-medium"
@@ -1761,7 +1771,8 @@ function posApp() {
                         cash_amount: this.paymentMethod === 'split' ? this.splitCash : null,
                         bank_amount: this.paymentMethod === 'split' ? this.splitBank : null,
                         bank_account_id: ['bank_transfer', 'split'].includes(this.paymentMethod) ? this.bankAccountId : null,
-                        customer_id: this.selectedCustomer?.id || null,
+                        customer_id: (this.selectedCustomer?.type === 'customer') ? (this.selectedCustomer?.id || null) : null,
+                        vendor_id:   (this.selectedCustomer?.type === 'vendor')   ? (this.selectedCustomer?.id || null) : null,
                         notes: this.orderNotes || null,
                         cash_received: this.cashReceived,
                         promise_date: ['khata','partial'].includes(this.paymentMethod) ? (this.promiseDate || null) : null,
