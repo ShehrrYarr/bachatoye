@@ -23,10 +23,11 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $brands = Brand::all();
+        $brands   = Brand::all();
+        $listView = $request->input('view') === 'list';
 
-        // ── No filters: show parent-category grid ──────────────────────────────
-        if (!$request->filled('category') && !$request->filled('q') && !$request->filled('brand') && !$request->filled('status')) {
+        // ── No filters + categories mode: show parent-category grid ───────────
+        if (!$listView && !$request->filled('category') && !$request->filled('q') && !$request->filled('brand') && !$request->filled('status')) {
             $categories = Category::active()
                 ->whereNull('parent_id')
                 ->withCount('products')
@@ -37,7 +38,8 @@ class ProductController extends Controller
         }
 
         // ── Category selected with no other filters → check for subcategories ──
-        if ($request->filled('category')
+        if (!$listView
+            && $request->filled('category')
             && $request->category !== 'uncategorized'
             && !$request->filled('q') && !$request->filled('brand') && !$request->filled('status')
         ) {
@@ -56,7 +58,7 @@ class ProductController extends Controller
         }
 
         // ── Show products (category has no children, or filters applied) ────────
-        $query = Product::with(['category', 'brand', 'colors'])->latest();
+        $query = Product::with(['category.parent', 'brand', 'colors'])->latest();
 
         if ($request->filled('q')) {
             $s = $request->q;
@@ -94,7 +96,7 @@ class ProductController extends Controller
         $categories         = collect();
         $uncategorizedCount = 0;
 
-        return view('admin.products.index', compact('products', 'categories', 'brands', 'selectedCat', 'parentCat', 'uncategorizedCount'));
+        return view('admin.products.index', compact('products', 'categories', 'brands', 'selectedCat', 'parentCat', 'uncategorizedCount', 'listView'));
     }
 
     public function create()

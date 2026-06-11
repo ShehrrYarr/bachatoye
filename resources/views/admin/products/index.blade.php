@@ -3,16 +3,48 @@
 
 @section('content')
 
+{{-- ── localStorage view-mode preference ──────────────────────────────── --}}
+<script>
+(function() {
+    var pref = localStorage.getItem('admin_products_view');
+    var params = new URLSearchParams(window.location.search);
+    // Auto-redirect only on bare /admin/products with no params
+    if (!params.toString() && pref === 'list') {
+        window.location.replace('{{ route('admin.products.index') }}?view=list');
+    }
+})();
+</script>
+
+@php
+    $toggleCatUrl  = route('admin.products.index');
+    $toggleListUrl = route('admin.products.index') . '?view=list';
+@endphp
+
 @if(!isset($products) && !isset($subcategories))
 {{-- ===== PARENT CATEGORY GRID VIEW ===== --}}
-<div class="flex items-center justify-between mb-6">
+<div class="flex items-center justify-between mb-6 flex-wrap gap-3">
     <div>
         <h1 class="text-xl font-bold text-gray-900">Products</h1>
         <p class="text-sm text-gray-500 mt-0.5">{{ $categories->sum('products_count') + $uncategorizedCount }} products across {{ $categories->count() }} categories</p>
     </div>
-    <a href="{{ route('admin.products.create') }}" class="btn-primary">
-        <i class="fas fa-plus mr-2"></i> Add Product
-    </a>
+    <div class="flex items-center gap-3">
+        {{-- View toggle --}}
+        <div class="inline-flex rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+            <span onclick="localStorage.setItem('admin_products_view','categories')"
+                  class="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold cursor-default text-white"
+                  style="background: var(--app-gradient, #e11d48);">
+                <i class="fas fa-th-large text-xs"></i> Categories
+            </span>
+            <a href="{{ $toggleListUrl }}"
+               onclick="localStorage.setItem('admin_products_view','list')"
+               class="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors bg-white">
+                <i class="fas fa-list text-xs"></i> All Products
+            </a>
+        </div>
+        <a href="{{ route('admin.products.create') }}" class="btn-primary">
+            <i class="fas fa-plus mr-2"></i> Add Product
+        </a>
+    </div>
 </div>
 
 {{-- Category search --}}
@@ -124,11 +156,14 @@
 </div>
 
 @else
-{{-- ===== PRODUCTS TABLE VIEW (category selected) ===== --}}
+{{-- ===== PRODUCTS TABLE VIEW (category selected OR list mode) ===== --}}
 
 {{-- Breadcrumb + header --}}
-<div class="flex items-center justify-between mb-6">
+<div class="flex items-center justify-between mb-6 flex-wrap gap-3">
     <div class="flex items-center gap-3">
+        @if(isset($listView) && $listView)
+        {{-- In list-view mode: back arrow goes to categories grid --}}
+        @else
         @if(isset($parentCat) && $parentCat)
         <a href="{{ route('admin.products.index', ['category' => $parentCat->id]) }}"
            class="text-gray-400 hover:text-gray-700 transition-colors text-sm flex items-center gap-1.5">
@@ -141,19 +176,44 @@
         </a>
         @endif
         <span class="text-gray-300">/</span>
+        @endif
         <div>
-            <h1 class="text-xl font-bold text-gray-900">{{ $selectedCat?->name ?? 'All Products' }}</h1>
+            <h1 class="text-xl font-bold text-gray-900">
+                @if(isset($listView) && $listView) All Products
+                @else {{ $selectedCat?->name ?? 'All Products' }}
+                @endif
+            </h1>
             <p class="text-sm text-gray-500 mt-0.5">{{ $products->total() }} products</p>
         </div>
     </div>
-    <a href="{{ route('admin.products.create') }}" class="btn-primary">
-        <i class="fas fa-plus mr-2"></i> Add Product
-    </a>
+    <div class="flex items-center gap-3">
+        @if(isset($listView) && $listView)
+        {{-- View toggle (only shown in list-view mode) --}}
+        <div class="inline-flex rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+            <a href="{{ $toggleCatUrl }}"
+               onclick="localStorage.setItem('admin_products_view','categories')"
+               class="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors bg-white">
+                <i class="fas fa-th-large text-xs"></i> Categories
+            </a>
+            <span onclick="localStorage.setItem('admin_products_view','list')"
+                  class="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold cursor-default text-white"
+                  style="background: var(--app-gradient, #e11d48);">
+                <i class="fas fa-list text-xs"></i> All Products
+            </span>
+        </div>
+        @endif
+        <a href="{{ route('admin.products.create') }}" class="btn-primary">
+            <i class="fas fa-plus mr-2"></i> Add Product
+        </a>
+    </div>
 </div>
 
-{{-- Inline search within category --}}
+{{-- Inline search / filter --}}
 <div class="card p-4 mb-5">
     <form method="GET" action="{{ route('admin.products.index') }}" class="flex flex-wrap gap-3 items-end">
+        @if(isset($listView) && $listView)
+        <input type="hidden" name="view" value="list">
+        @endif
         @if(request('category'))
         <input type="hidden" name="category" value="{{ request('category') }}">
         @endif
@@ -161,6 +221,16 @@
             <input type="text" name="q" value="{{ request('q') }}" placeholder="Search by name, SKU, barcode..."
                    class="form-input text-sm">
         </div>
+        @if(isset($listView) && $listView)
+        <div>
+            <select name="brand" class="form-select text-sm">
+                <option value="">All Brands</option>
+                @foreach($brands as $b)
+                <option value="{{ $b->id }}" {{ request('brand') == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
+                @endforeach
+            </select>
+        </div>
+        @endif
         <div>
             <select name="status" class="form-select text-sm">
                 <option value="">All Status</option>
@@ -169,8 +239,9 @@
             </select>
         </div>
         <button type="submit" class="btn-primary btn-sm">Filter</button>
-        @if(request()->hasAny(['q','status']))
-        <a href="{{ route('admin.products.index', ['category' => request('category')]) }}" class="btn-outline btn-sm">Clear</a>
+        @if(request()->hasAny(['q','status','brand']))
+        <a href="{{ isset($listView) && $listView ? route('admin.products.index').'?view=list' : route('admin.products.index', ['category' => request('category')]) }}"
+           class="btn-outline btn-sm">Clear</a>
         @endif
     </form>
 </div>
@@ -183,6 +254,9 @@
                 <tr>
                     <th class="w-12"></th>
                     <th>Product</th>
+                    @if(isset($listView) && $listView)
+                    <th>Category</th>
+                    @endif
                     <th>SKU / Barcode</th>
                     <th>Price</th>
                     <th>Stock</th>
@@ -205,6 +279,20 @@
                         <span class="badge bg-yellow-100 text-yellow-700 text-xs">Featured</span>
                         @endif
                     </td>
+                    @if(isset($listView) && $listView)
+                    <td class="text-xs text-gray-500">
+                        @if($product->category)
+                            @if($product->category->parent_id)
+                                <div class="text-gray-400">{{ $product->category->parent?->name }}</div>
+                                <div class="font-medium text-gray-600">{{ $product->category->name }}</div>
+                            @else
+                                <div class="font-medium text-gray-600">{{ $product->category->name }}</div>
+                            @endif
+                        @else
+                            <span class="text-gray-300">—</span>
+                        @endif
+                    </td>
+                    @endif
                     <td class="text-xs text-gray-500 font-mono">
                         @if($product->sku) <div>{{ $product->sku }}</div> @endif
                         @if($product->barcode) <div>{{ $product->barcode }}</div> @endif
