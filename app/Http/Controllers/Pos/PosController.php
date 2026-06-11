@@ -280,9 +280,18 @@ class PosController extends Controller
         $categoryId         = $request->input('category');
         $allowedCategoryIds = Auth::user()->allowedCategoryIds();
 
+        // When a subcategory is selected, also include products assigned to the parent category
+        $categoryIds = null;
+        if ($categoryId) {
+            $cat = \App\Models\Category::find($categoryId);
+            $categoryIds = $cat?->parent_id
+                ? [$categoryId, $cat->parent_id]
+                : [$categoryId];
+        }
+
         $products = Product::active()->inStock()
             ->when($allowedCategoryIds !== null, fn($query) => $query->whereIn('category_id', $allowedCategoryIds))
-            ->when($categoryId, fn($query) => $query->where('category_id', $categoryId))
+            ->when($categoryIds, fn($query) => $query->whereIn('category_id', $categoryIds))
             ->where(fn($query) => $query
                 ->where('name', 'like', "%{$q}%")
                 ->orWhere('barcode', 'like', "%{$q}%")

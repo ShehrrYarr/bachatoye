@@ -73,7 +73,12 @@ class ProductController extends Controller
             if ($request->category === 'uncategorized') {
                 $query->whereNull('category_id');
             } else {
-                $query->where('category_id', $request->category);
+                // If this is a subcategory, also include products assigned to its parent
+                $cat = Category::find($request->category);
+                $categoryIds = ($cat && $cat->parent_id)
+                    ? [$request->category, $cat->parent_id]
+                    : [$request->category];
+                $query->whereIn('category_id', $categoryIds);
             }
         }
         if ($request->filled('brand'))  $query->where('brand_id', $request->brand);
