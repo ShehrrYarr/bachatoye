@@ -28,8 +28,8 @@
                 </button>
             </div>
 
-            {{-- Session info --}}
-            <div class="shrink-0 flex items-center gap-2">
+            {{-- Session info (desktop) --}}
+            <div class="shrink-0 hidden md:flex items-center gap-2">
                 @if($session)
                 <div class="text-xs text-gray-500 hidden md:block">
                     Session: <span class="font-semibold text-green-600">Open</span>
@@ -62,6 +62,51 @@
                    class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg font-medium transition-colors">
                     <i class="fas fa-th-large mr-1"></i>Dashboard
                 </a>
+            </div>
+
+            {{-- Hamburger menu (mobile) --}}
+            <div class="md:hidden relative shrink-0">
+                <button @click="showMobileMenu = !showMobileMenu"
+                        class="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors relative">
+                    <i class="fas fa-bars"></i>
+                    {{-- Held orders dot indicator --}}
+                    <span x-show="heldOrders.length > 0"
+                          class="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white"></span>
+                </button>
+                <div x-show="showMobileMenu" @click.outside="showMobileMenu = false" x-transition
+                     class="absolute right-0 top-full mt-2 w-52 bg-white border border-gray-200 rounded-xl shadow-xl z-30 overflow-hidden py-1">
+                    @if($session)
+                    <div class="px-4 py-2 text-xs text-gray-400 border-b border-gray-100">
+                        Session: <span class="font-semibold text-green-600">Open</span>
+                    </div>
+                    <button @click="showCloseSession = true; showMobileMenu = false"
+                            class="w-full text-left px-4 py-2.5 text-sm text-red-700 hover:bg-red-50 flex items-center gap-2.5">
+                        <i class="fas fa-door-closed w-4 text-center"></i> Close Session
+                    </button>
+                    @else
+                    <button @click="showOpenSession = true; showMobileMenu = false"
+                            class="w-full text-left px-4 py-2.5 text-sm text-green-700 hover:bg-green-50 flex items-center gap-2.5">
+                        <i class="fas fa-door-open w-4 text-center"></i> Open Session
+                    </button>
+                    @endif
+                    <button x-show="heldOrders.length > 0" @click="showHeldOrders = true; showMobileMenu = false"
+                            class="w-full text-left px-4 py-2.5 text-sm text-amber-700 hover:bg-amber-50 flex items-center gap-2.5">
+                        <i class="fas fa-layer-group w-4 text-center"></i>
+                        <span x-text="'Held Orders (' + heldOrders.length + ')'"></span>
+                    </button>
+                    <a href="{{ route('pos.return.index') }}"
+                       class="block px-4 py-2.5 text-sm text-purple-700 hover:bg-purple-50 flex items-center gap-2.5">
+                        <i class="fas fa-undo w-4 text-center"></i> Return
+                    </a>
+                    <a href="{{ route('pos.exchange.index') }}"
+                       class="block px-4 py-2.5 text-sm text-indigo-700 hover:bg-indigo-50 flex items-center gap-2.5">
+                        <i class="fas fa-sync-alt w-4 text-center"></i> Exchange
+                    </a>
+                    <a href="{{ auth()->user()->hasRole('admin') ? route('admin.dashboard') : route('salesman.dashboard') }}"
+                       class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 border-t border-gray-100">
+                        <i class="fas fa-th-large w-4 text-center"></i> Dashboard
+                    </a>
+                </div>
             </div>
         </div>
 
@@ -201,11 +246,16 @@
     </div>
 
     {{-- ===== RIGHT PANEL: Cart ===== --}}
-    <div class="pos-cart bg-white border-l border-gray-200">
+    <div class="pos-cart bg-white border-l border-gray-200" :class="showMobileCart ? 'mobile-open' : ''">
 
         {{-- Cart header --}}
         <div class="px-4 py-2 border-b border-gray-200 flex items-center justify-between">
             <div class="flex items-center gap-2">
+                {{-- Back to products (mobile only) --}}
+                <button @click="showMobileCart = false"
+                        class="lg:hidden w-8 h-8 -ml-1 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 transition-colors">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
                 <h2 class="font-bold text-gray-800">Current Sale</h2>
                 <span x-show="showCostPrice"
                       class="text-xs bg-amber-100 text-amber-700 border border-amber-300 px-2 py-0.5 rounded-full font-semibold animate-pulse">
@@ -338,7 +388,7 @@
         </div>
 
         {{-- Totals & payment --}}
-        <div class="border-t border-gray-200 px-3 py-2 space-y-2">
+        <div class="pos-cart-totals border-t border-gray-200 px-3 py-2 space-y-2">
             {{-- Discount --}}
             <div class="flex items-center gap-2">
                 <label class="text-xs text-gray-500 shrink-0">Discount:</label>
@@ -575,12 +625,33 @@
         </div>
     </div>
 
+    {{-- ===== MOBILE FLOATING CART BAR (above the daily summary bar) ===== --}}
+    <div class="lg:hidden fixed left-0 right-0 z-40 no-print" style="bottom: 36px;">
+        <button @click="showMobileCart = true"
+                class="w-full h-14 px-4 flex items-center justify-between text-white shadow-[0_-4px_12px_rgba(0,0,0,0.15)]"
+                style="background: var(--app-gradient, linear-gradient(135deg, #f43f5e 0%, #be123c 100%));">
+            <span class="flex items-center gap-3 text-sm font-semibold">
+                <span class="relative">
+                    <i class="fas fa-shopping-cart text-lg"></i>
+                    <span x-show="cart.length > 0"
+                          class="absolute -top-2 -right-2.5 min-w-[18px] h-[18px] px-1 bg-white text-primary-700 text-[10px] font-bold rounded-full flex items-center justify-center"
+                          x-text="cart.reduce((s, i) => s + i.quantity, 0)"></span>
+                </span>
+                <span x-text="cart.length === 0 ? 'Cart is empty' : cart.reduce((s, i) => s + i.quantity, 0) + ' item(s)'"></span>
+            </span>
+            <span class="flex items-center gap-2 text-base font-bold">
+                <span x-text="`Rs. ${total.toLocaleString()}`"></span>
+                <i class="fas fa-chevron-up text-xs opacity-80"></i>
+            </span>
+        </button>
+    </div>
+
     {{-- Serial Prompt Modal — appears when a serialized product tile is clicked --}}
     <template x-teleport="body">
         <div x-show="serialPromptProduct" x-transition
-             class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+             class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
              @keydown.window.escape="serialPromptProduct = null">
-            <div class="bg-white rounded-2xl shadow-2xl p-6 w-96">
+            <div class="bg-white rounded-2xl shadow-2xl p-6 w-96 max-w-full">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
                         <i class="fas fa-barcode text-indigo-600 text-lg"></i>
@@ -625,8 +696,8 @@
 
     {{-- Color Picker Modal — kept inside posApp() so it can access colorPickerProduct --}}
     <template x-teleport="body">
-        <div x-show="colorPickerProduct" x-transition class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-            <div class="bg-white rounded-2xl shadow-2xl p-6 w-80" @click.outside="colorPickerProduct = null">
+        <div x-show="colorPickerProduct" x-transition class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl p-6 w-80 max-w-full" @click.outside="colorPickerProduct = null">
                 <h3 class="font-bold text-gray-900 text-base mb-1" x-text="colorPickerProduct?.name"></h3>
                 <p class="text-xs text-gray-500 mb-4">Select a color variant to add to cart:</p>
                 <div class="space-y-2">
@@ -768,8 +839,8 @@
     </template>
 
     {{-- Open Session Modal --}}
-    <div x-show="showOpenSession" x-transition class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" x-data="{ cash: '' }">
-        <div class="bg-white rounded-2xl shadow-2xl p-6 w-80" @click.outside="showOpenSession = false">
+    <div x-show="showOpenSession" x-transition class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" x-data="{ cash: '' }">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-80 max-w-full" @click.outside="showOpenSession = false">
             <h3 class="font-bold text-gray-900 text-lg mb-4">Open POS Session</h3>
             <div class="mb-4">
                 <label class="form-label text-sm">Opening Cash (Rs.)</label>
@@ -783,8 +854,8 @@
     </div>
 
     {{-- Close Session Modal --}}
-    <div x-show="showCloseSession" x-transition class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-        <div class="bg-white rounded-2xl shadow-2xl p-6 w-80" @click.outside="showCloseSession = false">
+    <div x-show="showCloseSession" x-transition class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-80 max-w-full" @click.outside="showCloseSession = false">
             <h3 class="font-bold text-gray-900 text-lg mb-2">Close POS Session</h3>
             <p class="text-sm text-gray-500 mb-4">This will close the current session and generate a summary.</p>
             <div class="flex gap-3">
@@ -795,8 +866,8 @@
     </div>
 
     {{-- New Customer Modal --}}
-    <div x-show="showNewCustomer" x-transition class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-        <div class="bg-white rounded-2xl shadow-2xl p-6 w-96" @click.outside="showNewCustomer = false">
+    <div x-show="showNewCustomer" x-transition class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-96 max-w-full" @click.outside="showNewCustomer = false">
             <h3 class="font-bold text-gray-900 text-lg mb-4">Add New Customer</h3>
             <div class="space-y-3">
                 <div>
@@ -1264,6 +1335,10 @@ function posApp() {
         categories: @json($_posCategories),
         activeParent: null,
         selectedCategory: null,
+
+        // Mobile UI state
+        showMobileCart: false,
+        showMobileMenu: false,
         discountType: 'flat',
         discountValue: 0,
         discountAmount: 0,
@@ -1304,7 +1379,7 @@ function posApp() {
         showCloseSession: false,
 
         async init() {
-            this.$refs.barcodeInput?.focus();
+            this.focusBarcode();
             // Load held orders from localStorage
             try { this.heldOrders = JSON.parse(localStorage.getItem('pos_held_orders') || '[]'); } catch(e) { this.heldOrders = []; }
             // Start on category grid — no products loaded until category selected or searched
@@ -1316,6 +1391,11 @@ function posApp() {
                 }
                 // If in subcategory/category grid, no reload needed (no products shown)
             });
+        },
+
+        // Focus the barcode input — desktop only (on mobile it pops the keyboard)
+        focusBarcode() {
+            if (window.innerWidth >= 1024) this.$refs.barcodeInput?.focus();
         },
 
         async loadProducts() {
@@ -1359,7 +1439,7 @@ function posApp() {
                 this.selectedCategory = null;
                 this.displayProducts = [];
             }
-            this.$refs.barcodeInput?.focus();
+            this.focusBarcode();
         },
 
         async searchProducts() {
@@ -1449,7 +1529,7 @@ function posApp() {
                 this.searchQuery    = '';
                 this.displayProducts = [];
                 if (this.selectedCategory) this.loadProducts();
-                this.$refs.barcodeInput?.focus();
+                this.focusBarcode();
                 return;
             }
 
@@ -1490,7 +1570,7 @@ function posApp() {
                         this.addSerializedToCart(data, data.serial_number, data.serial_id);
                         this.serialPromptProduct = null;
                         this.serialPromptInput   = '';
-                        this.$refs.barcodeInput?.focus();
+                        this.focusBarcode();
                     }
                 } else {
                     this.serialPromptError = data.error || 'Serial not found or already sold. Register it in a purchase first.';
@@ -1682,6 +1762,7 @@ function posApp() {
                     this.selectedCustomer = null;
                     this.orderNotes = '';
                     this.paymentMethod = 'cash';
+                    this.showMobileCart = false;
                     window.open(`/pos/receipt/${data.order_id}`, '_blank', 'width=400,height=700');
                     if (this.selectedCategory) this.loadProducts(); // reload same category
                     window.dispatchEvent(new CustomEvent('pos:order-placed'));
@@ -1741,8 +1822,9 @@ function posApp() {
             this.discountValue     = 0;
             this.orderNotes        = '';
             this.paymentMethod     = 'cash';
+            this.showMobileCart    = false;
             this.recalculate();
-            this.$refs.barcodeInput?.focus();
+            this.focusBarcode();
         },
 
         resumeHeldOrder(idx) {
@@ -1758,8 +1840,10 @@ function posApp() {
             this.heldOrders.splice(idx, 1);
             this._saveHeldOrders();
             this.showHeldOrders = false;
+            // On mobile, open the cart so the resumed order is visible
+            if (window.innerWidth < 1024) this.showMobileCart = true;
             this.recalculate();
-            this.$refs.barcodeInput?.focus();
+            this.focusBarcode();
         },
 
         deleteHeldOrder(idx) {
