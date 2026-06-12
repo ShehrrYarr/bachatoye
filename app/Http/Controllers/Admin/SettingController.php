@@ -147,6 +147,23 @@ class SettingController extends Controller
         }
     }
 
+    public function runOptimize()
+    {
+        try {
+            Artisan::call('optimize');
+            $output = Artisan::output();
+            return response()->json([
+                'success' => true,
+                'output'  => trim($output) ?: 'Optimization complete.',
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'output'  => 'Error: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function updateAccount(Request $request)
     {
         $user = auth()->user();

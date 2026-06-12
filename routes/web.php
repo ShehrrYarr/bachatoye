@@ -274,6 +274,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     // System tools (migrate + git pull) — admin only
     Route::post('system/migrate',  [Admin\SettingController::class, 'runMigrate'])->name('system.migrate');
     Route::post('system/git-pull', [Admin\SettingController::class, 'runGitPull'])->name('system.git-pull');
+    Route::post('system/optimize', [Admin\SettingController::class, 'runOptimize'])->name('system.optimize');
 });
 
 /*

@@ -584,11 +584,16 @@
              this.loading  = cmd;
              this.output   = '';
              this.ok       = null;
-             this.cmdLabel = cmd === 'migrate' ? 'php artisan migrate --force' : 'git pull origin master';
+             this.cmdLabel = {
+                 migrate:  'php artisan migrate --force',
+                 gitpull:  'git pull origin master',
+                 optimize: 'php artisan optimize',
+             }[cmd] ?? cmd;
 
              const urls = {
                  migrate:  '{{ route('admin.system.migrate') }}',
                  gitpull:  '{{ route('admin.system.git-pull') }}',
+                 optimize: '{{ route('admin.system.optimize') }}',
              };
 
              try {
@@ -652,6 +657,23 @@
                         <i class="fab fa-git-alt text-sm"></i>
                     </template>
                     <span x-text="loading === 'gitpull' ? 'Pulling…' : 'Git Pull'"></span>
+                </button>
+
+                {{-- Optimize --}}
+                <button type="button"
+                        @click="run('optimize')"
+                        :disabled="loading !== null"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border-2 border-amber-500 bg-amber-50 text-amber-700 font-semibold text-sm hover:bg-amber-100 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                    <template x-if="loading === 'optimize'">
+                        <svg class="animate-spin w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                        </svg>
+                    </template>
+                    <template x-if="loading !== 'optimize'">
+                        <i class="fas fa-bolt text-sm"></i>
+                    </template>
+                    <span x-text="loading === 'optimize' ? 'Optimizing…' : 'Optimize'"></span>
                 </button>
             </div>
 
