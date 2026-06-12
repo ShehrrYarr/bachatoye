@@ -30,18 +30,36 @@
 
             {{-- Session info (desktop) --}}
             <div class="shrink-0 hidden md:flex items-center gap-2">
-                {{-- Connectivity indicator --}}
+                {{-- Mode indicator --}}
                 <span class="text-xs px-2.5 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 shrink-0"
-                      :class="isOnline ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
-                    <span class="w-2 h-2 rounded-full" :class="isOnline ? 'bg-green-500' : 'bg-red-500 animate-pulse'"></span>
-                    <span x-text="isOnline ? 'Online' : 'Offline'"></span>
+                      :class="offlineMode ? 'bg-red-100 text-red-700' : (isOnline ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700')">
+                    <span class="w-2 h-2 rounded-full"
+                          :class="offlineMode ? 'bg-red-500 animate-pulse' : (isOnline ? 'bg-green-500' : 'bg-amber-500 animate-pulse')"></span>
+                    <span x-text="offlineMode ? 'Offline Mode' : (isOnline ? 'Online' : 'No Internet')"></span>
                 </span>
 
-                {{-- Sync offline orders button --}}
+                {{-- Go Offline / Go Online toggle --}}
+                <template x-if="!offlineMode">
+                    <button @click="goOffline()" :disabled="preparingOffline"
+                            class="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg font-semibold transition-colors flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-wait">
+                        <i class="fas" :class="preparingOffline ? 'fa-spinner fa-spin' : 'fa-download'"></i>
+                        <span x-text="preparingOffline ? 'Downloading…' : 'Go Offline'"></span>
+                    </button>
+                </template>
+                <template x-if="offlineMode">
+                    <button @click="goOnline()" :disabled="syncing"
+                            class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg font-semibold transition-colors flex items-center gap-1.5 disabled:opacity-70 disabled:cursor-wait">
+                        <i class="fas" :class="syncing ? 'fa-spinner fa-spin' : 'fa-cloud-upload-alt'"></i>
+                        <span x-text="syncing ? 'Syncing…' : ('Go Online' + (offlineOrders.length > 0 ? ' (' + offlineOrders.length + ')' : ''))"></span>
+                    </button>
+                </template>
+
+                {{-- Review queued offline sales --}}
                 <button x-show="offlineOrders.length > 0" @click="showOfflineModal = true"
-                        class="relative text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5">
-                    <i class="fas fa-cloud-upload-alt" :class="syncing ? 'fa-fade' : ''"></i>
-                    <span x-text="'Sync (' + offlineOrders.length + ')'"></span>
+                        class="relative text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2.5 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5"
+                        title="Review queued offline sales">
+                    <i class="fas fa-receipt"></i>
+                    <span x-text="offlineOrders.length"></span>
                 </button>
 
                 @if($session)
@@ -91,16 +109,28 @@
                 </button>
                 <div x-show="showMobileMenu" @click.outside="showMobileMenu = false" x-transition
                      class="absolute right-0 top-full mt-2 w-52 bg-white border border-gray-200 rounded-xl shadow-xl z-30 overflow-hidden py-1">
-                    {{-- Connectivity + sync (mobile) --}}
+                    {{-- Mode + offline controls (mobile) --}}
                     <div class="px-4 py-2 flex items-center gap-2 border-b border-gray-100">
-                        <span class="w-2 h-2 rounded-full" :class="isOnline ? 'bg-green-500' : 'bg-red-500 animate-pulse'"></span>
-                        <span class="text-xs font-semibold" :class="isOnline ? 'text-green-600' : 'text-red-600'"
-                              x-text="isOnline ? 'Online' : 'Offline'"></span>
+                        <span class="w-2 h-2 rounded-full"
+                              :class="offlineMode ? 'bg-red-500 animate-pulse' : (isOnline ? 'bg-green-500' : 'bg-amber-500 animate-pulse')"></span>
+                        <span class="text-xs font-semibold"
+                              :class="offlineMode ? 'text-red-600' : (isOnline ? 'text-green-600' : 'text-amber-600')"
+                              x-text="offlineMode ? 'Offline Mode' : (isOnline ? 'Online' : 'No Internet')"></span>
                     </div>
+                    <button x-show="!offlineMode" @click="goOffline()" :disabled="preparingOffline"
+                            class="w-full text-left px-4 py-2.5 text-sm text-indigo-700 hover:bg-indigo-50 flex items-center gap-2.5 disabled:opacity-60">
+                        <i class="fas w-4 text-center" :class="preparingOffline ? 'fa-spinner fa-spin' : 'fa-download'"></i>
+                        <span x-text="preparingOffline ? 'Downloading…' : 'Go Offline'"></span>
+                    </button>
+                    <button x-show="offlineMode" @click="goOnline()" :disabled="syncing"
+                            class="w-full text-left px-4 py-2.5 text-sm text-green-700 hover:bg-green-50 flex items-center gap-2.5 disabled:opacity-60">
+                        <i class="fas w-4 text-center" :class="syncing ? 'fa-spinner fa-spin' : 'fa-cloud-upload-alt'"></i>
+                        <span x-text="syncing ? 'Syncing…' : ('Go Online' + (offlineOrders.length > 0 ? ' (' + offlineOrders.length + ')' : ''))"></span>
+                    </button>
                     <button x-show="offlineOrders.length > 0" @click="showOfflineModal = true; showMobileMenu = false"
                             class="w-full text-left px-4 py-2.5 text-sm text-blue-700 hover:bg-blue-50 flex items-center gap-2.5">
-                        <i class="fas fa-cloud-upload-alt w-4 text-center"></i>
-                        <span x-text="'Sync Orders (' + offlineOrders.length + ')'"></span>
+                        <i class="fas fa-receipt w-4 text-center"></i>
+                        <span x-text="'Queued Sales (' + offlineOrders.length + ')'"></span>
                     </button>
                     @if($session)
                     <div class="px-4 py-2 text-xs text-gray-400 border-b border-gray-100">
@@ -135,6 +165,23 @@
                     </a>
                 </div>
             </div>
+        </div>
+
+        {{-- Offline mode banner --}}
+        <div x-show="offlineMode" x-cloak
+             class="bg-red-600 text-white px-4 py-2 flex items-center justify-between gap-3 text-sm">
+            <div class="flex items-center gap-2 min-w-0">
+                <i class="fas fa-wifi-slash shrink-0"></i>
+                <span class="font-semibold">Offline Mode</span>
+                <span class="hidden sm:inline text-red-100 text-xs truncate">
+                    — sales are saved on this device. Click <strong>Go Online</strong> to sync.
+                </span>
+            </div>
+            <button @click="goOnline()" :disabled="syncing"
+                    class="shrink-0 bg-white text-red-700 hover:bg-red-50 font-semibold text-xs px-3 py-1 rounded-lg transition-colors disabled:opacity-70 disabled:cursor-wait flex items-center gap-1.5">
+                <i class="fas" :class="syncing ? 'fa-spinner fa-spin' : 'fa-cloud-upload-alt'"></i>
+                <span x-text="syncing ? 'Syncing…' : ('Go Online' + (offlineOrders.length > 0 ? ' (' + offlineOrders.length + ')' : ''))"></span>
+            </button>
         </div>
 
         {{-- Parent category grid (shown when no search + no parent selected + no product category) --}}
@@ -1654,13 +1701,16 @@ function posApp() {
         showHeldOrders: false,
 
         // Offline mode + sync queue
-        isOnline: navigator.onLine,
+        isOnline: navigator.onLine,   // live connectivity (heartbeat)
+        offlineMode: false,           // manual offline mode (user-controlled)
+        preparingOffline: false,      // downloading data for offline use
         offlineOrders: [],
         showOfflineModal: false,
         syncing: false,
         lastSyncReport: null,   // { success, failed, networkAborted }
         catalog: [],            // full product catalog cached for offline browsing
         catalogReady: false,
+        offlineCustomers: [],   // customers + vendors cached for offline use
 
         // Session
         showOpenSession: false,
@@ -1672,15 +1722,21 @@ function posApp() {
             try { this.heldOrders = JSON.parse(localStorage.getItem('pos_held_orders') || '[]'); } catch(e) { this.heldOrders = []; }
             // Load any offline orders pending sync
             try { this.offlineOrders = JSON.parse(localStorage.getItem('pos_offline_orders') || '[]'); } catch(e) { this.offlineOrders = []; }
-            // Load the cached product catalog (for offline browsing)
+            // Load the cached product catalog + customers (for offline browsing)
             try { this.catalog = JSON.parse(localStorage.getItem('pos_catalog') || '[]'); } catch(e) { this.catalog = []; }
+            try { this.offlineCustomers = JSON.parse(localStorage.getItem('pos_offline_customers') || '[]'); } catch(e) { this.offlineCustomers = []; }
             this.catalogReady = this.catalog.length > 0;
+            // Restore manual offline mode so a refresh keeps the POS offline
+            try { this.offlineMode = localStorage.getItem('pos_offline_mode') === '1'; } catch(e) { this.offlineMode = false; }
 
             // Connectivity monitoring — browser events + a real heartbeat to the server
-            window.addEventListener('online',  () => { this.checkConnection(); this.refreshCatalog(); });
+            window.addEventListener('online',  () => { this.checkConnection(); });
             window.addEventListener('offline', () => { this.isOnline = false; });
-            this.checkConnection().then(() => this.refreshCatalog());
+            this.checkConnection().then(() => { if (!this.offlineMode) this.refreshCatalog(); });
             setInterval(() => this.checkConnection(), 20000);
+
+            // If we reloaded straight into offline mode, render products from cache
+            if (this.offlineMode && this.selectedCategory) this.loadProducts();
 
             // Start on category grid — no products loaded until category selected or searched
             window.addEventListener('pos:sale-deleted', () => {
@@ -1704,6 +1760,12 @@ function posApp() {
             }
         },
 
+        // Behave offline when the user manually chose offline mode OR the
+        // connection genuinely dropped (safety net so a sale is never lost).
+        effectiveOffline() {
+            return this.offlineMode || !this.isOnline;
+        },
+
         // Pull the full catalog while online and cache it for offline browsing.
         async refreshCatalog() {
             if (!this.isOnline) return;
@@ -1717,6 +1779,81 @@ function posApp() {
                     try { localStorage.setItem('pos_catalog', JSON.stringify(data)); } catch(e) {}
                 }
             } catch(e) { /* offline or failed — keep the existing cache */ }
+        },
+
+        // Pull customers + vendors while online and cache them for offline use.
+        async refreshCustomers() {
+            if (!this.isOnline) return;
+            try {
+                const res = await fetch('/pos/customers-cache', { cache: 'no-store' });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (Array.isArray(data)) {
+                    this.offlineCustomers = data;
+                    try { localStorage.setItem('pos_offline_customers', JSON.stringify(data)); } catch(e) {}
+                }
+            } catch(e) { /* keep existing cache */ }
+        },
+
+        // ── Manual offline mode ────────────────────────────────────────────────
+        // Download everything needed and switch the POS into offline mode.
+        async goOffline() {
+            this.showMobileMenu = false;
+            await this.checkConnection();
+
+            if (!this.isOnline) {
+                if (!this.catalogReady) {
+                    alert('No internet, and no offline data has been downloaded yet. Connect to the internet once, then try again.');
+                    return;
+                }
+                if (!confirm('No internet right now — switch to offline mode using the data already downloaded? It may be slightly out of date.')) return;
+            } else {
+                // Online → download the latest catalog + customers first
+                this.preparingOffline = true;
+                await Promise.all([this.refreshCatalog(), this.refreshCustomers()]);
+                this.preparingOffline = false;
+                if (!this.catalogReady) {
+                    alert('Could not download product data. Please check your connection and try again.');
+                    return;
+                }
+            }
+
+            // Ask the service worker to store the latest page shell so a refresh
+            // while offline still loads the POS.
+            try { navigator.serviceWorker?.controller?.postMessage('cache-shell'); } catch(e) {}
+
+            this.offlineMode = true;
+            this._saveOfflineMode();
+            // Refresh whatever is on screen from the cache
+            if (this.searchQuery.length > 0) this.searchProducts();
+            else if (this.selectedCategory) this.loadProducts();
+        },
+
+        // Sync all queued sales and switch back to online mode.
+        async goOnline() {
+            this.showMobileMenu = false;
+            await this.checkConnection();
+            if (!this.isOnline) {
+                alert('Still no internet connection. Connect to the internet first, then click Go Online.');
+                return;
+            }
+
+            if (this.offlineOrders.length > 0) {
+                await this.syncOfflineOrders();
+            }
+
+            this.offlineMode = false;
+            this._saveOfflineMode();
+            await this.refreshCatalog();   // freshen data now that we're back online
+
+            // If some sales failed to sync, surface them for review
+            if (this.offlineOrders.length > 0) {
+                this.showOfflineModal = true;
+            }
+        },
+
+        _saveOfflineMode() {
+            try { localStorage.setItem('pos_offline_mode', this.offlineMode ? '1' : '0'); } catch(e) {}
         },
 
         // Filter the cached catalog by selected category (offline equivalent of loadProducts)
@@ -1764,7 +1901,7 @@ function posApp() {
 
         async loadProducts() {
             // Offline → serve from the cached catalog
-            if (!this.isOnline) {
+            if (this.effectiveOffline()) {
                 this.displayProducts = this.catalogByCategory();
                 this.loading = false;
                 return;
@@ -1826,7 +1963,7 @@ function posApp() {
                 return;
             }
             // Offline → search the cached catalog
-            if (!this.isOnline) {
+            if (this.effectiveOffline()) {
                 this.displayProducts = this.catalogBySearch(this.searchQuery);
                 this.loading = false;
                 return;
@@ -1847,7 +1984,7 @@ function posApp() {
             if (!this.searchQuery) return;
 
             // Offline → resolve the scan against the cached catalog
-            if (!this.isOnline) {
+            if (this.effectiveOffline()) {
                 this.handleOfflineScan(this.searchQuery.trim());
                 return;
             }
@@ -1972,7 +2109,7 @@ function posApp() {
                 setTimeout(() => document.getElementById('serialPromptInput')?.focus(), 80);
 
                 // Offline → use the serials embedded in the cached catalog
-                if (!this.isOnline) {
+                if (this.effectiveOffline()) {
                     const cat = this.catalog.find(p => p.id === product.id);
                     this.serialPromptSerials = product.serials || cat?.serials || [];
                     this.serialPromptLoading = false;
@@ -2178,10 +2315,26 @@ function posApp() {
 
         async searchCustomers() {
             if (this.customerSearch.length < 2) { this.customerResults = []; return; }
+            // Offline → filter the cached customers + vendors
+            if (this.effectiveOffline()) {
+                const q = this.customerSearch.toLowerCase();
+                this.customerResults = this.offlineCustomers.filter(c =>
+                    (c.name && c.name.toLowerCase().includes(q)) ||
+                    (c.phone && String(c.phone).includes(this.customerSearch))
+                ).slice(0, 13);
+                return;
+            }
             try {
                 const res = await fetch(`/pos/customer/search?q=${encodeURIComponent(this.customerSearch)}`);
                 this.customerResults = await res.json();
-            } catch(e) {}
+            } catch(e) {
+                // Network dropped — fall back to the cached list
+                const q = this.customerSearch.toLowerCase();
+                this.customerResults = this.offlineCustomers.filter(c =>
+                    (c.name && c.name.toLowerCase().includes(q)) ||
+                    (c.phone && String(c.phone).includes(this.customerSearch))
+                ).slice(0, 13);
+            }
         },
 
         selectCustomer(cust) {
@@ -2243,7 +2396,7 @@ function posApp() {
             const payload = this.buildOrderPayload();
 
             // Offline → queue locally and print an interim receipt
-            if (!this.isOnline) {
+            if (this.effectiveOffline()) {
                 this.queueOfflineOrder(payload);
                 this.processingOrder = false;
                 return;

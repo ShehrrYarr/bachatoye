@@ -11,9 +11,23 @@
 // Bump CACHE_VERSION whenever you want to discard old cached assets/pages.
 const CACHE_VERSION = 'pos-v1';
 
-self.addEventListener('install', () => {
-    // Activate this worker immediately instead of waiting for old tabs to close.
-    self.skipWaiting();
+self.addEventListener('install', (event) => {
+    // Pre-cache the POS shell so it's available even if the user goes offline
+    // immediately after their first visit. cache.add() sends same-origin
+    // cookies, so this fetches the authenticated page. Then activate at once.
+    event.waitUntil(
+        caches.open(CACHE_VERSION)
+            .then((c) => c.add('/pos').catch(() => {}))
+            .then(() => self.skipWaiting())
+    );
+});
+
+// The page asks us to (re)cache the shell when the user clicks "Go Offline",
+// guaranteeing the very latest page is stored before the connection is cut.
+self.addEventListener('message', (event) => {
+    if (event.data === 'cache-shell') {
+        event.waitUntil(caches.open(CACHE_VERSION).then((c) => c.add('/pos').catch(() => {})));
+    }
 });
 
 self.addEventListener('activate', (event) => {

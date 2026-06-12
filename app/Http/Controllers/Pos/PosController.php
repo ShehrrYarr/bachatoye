@@ -422,6 +422,35 @@ class PosController extends Controller
         return response()->json($products);
     }
 
+    /**
+     * Customers + vendors for offline POS use. Cached in the browser so the
+     * salesman can still pick a customer / vendor for khata sales offline.
+     */
+    public function offlineCustomers()
+    {
+        $customers = Customer::orderBy('name')
+            ->get(['id', 'name', 'phone', 'credit_balance'])
+            ->map(fn($c) => [
+                'id'             => $c->id,
+                'name'           => $c->name,
+                'phone'          => $c->phone ?? '',
+                'credit_balance' => (float) $c->credit_balance,
+                'type'           => 'customer',
+            ]);
+
+        $vendors = Vendor::orderBy('name')
+            ->get(['id', 'name', 'phone', 'balance'])
+            ->map(fn($v) => [
+                'id'             => $v->id,
+                'name'           => $v->name,
+                'phone'          => $v->phone ?? '',
+                'credit_balance' => (float) ($v->balance * -1),
+                'type'           => 'vendor',
+            ]);
+
+        return response()->json($customers->concat($vendors)->values());
+    }
+
     public function getByBarcode(string $barcode)
     {
         $allowedCategoryIds = Auth::user()->allowedCategoryIds();
