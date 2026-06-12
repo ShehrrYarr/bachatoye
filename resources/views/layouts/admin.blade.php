@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     @stack('styles')
 </head>
-<body class="h-full flex" x-data="{ sidebarOpen: window.innerWidth >= 1024, isMobile: window.innerWidth < 1024 }">
+<body class="h-full flex overflow-hidden" x-data="{ sidebarOpen: window.innerWidth >= 1024, isMobile: window.innerWidth < 1024 }">
 
     {{-- Mobile backdrop (only on small screens when sidebar is open) --}}
     <div x-show="isMobile && sidebarOpen"
