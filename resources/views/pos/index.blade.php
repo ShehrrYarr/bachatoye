@@ -30,13 +30,15 @@
 
             {{-- Session info (desktop) --}}
             <div class="shrink-0 hidden md:flex items-center gap-2">
-                {{-- Mode indicator --}}
-                <span class="text-xs px-2.5 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 shrink-0"
-                      :class="offlineMode ? 'bg-red-100 text-red-700' : (isOnline ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700')">
+                {{-- Mode indicator (click to view offline data / queued sales) --}}
+                <button @click="showOfflineModal = true"
+                        class="text-xs px-2.5 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 shrink-0 transition-colors"
+                        :class="offlineMode ? 'bg-red-100 text-red-700 hover:bg-red-200' : (isOnline ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-amber-100 text-amber-700 hover:bg-amber-200')"
+                        title="View offline data & queued sales">
                     <span class="w-2 h-2 rounded-full"
                           :class="offlineMode ? 'bg-red-500 animate-pulse' : (isOnline ? 'bg-green-500' : 'bg-amber-500 animate-pulse')"></span>
                     <span x-text="offlineMode ? 'Offline Mode' : (isOnline ? 'Online' : 'No Internet')"></span>
-                </span>
+                </button>
 
                 {{-- Go Offline / Go Online toggle --}}
                 <template x-if="!offlineMode">
@@ -1026,7 +1028,27 @@
                 </div>
 
                 {{-- Footer --}}
-                <div class="px-5 py-3 border-t border-gray-100" style="flex-shrink:0;">
+                <div class="px-5 py-3 border-t border-gray-100 space-y-2" style="flex-shrink:0;">
+                    {{-- Cached offline data diagnostic --}}
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="text-gray-500">
+                            <i class="fas fa-database mr-1 text-gray-400"></i>
+                            Offline data cached:
+                            <span class="font-semibold text-gray-700" x-text="catalog.length + ' products'"></span>
+                            ·
+                            <span class="font-semibold text-gray-700" x-text="offlineCustomers.length + ' customers'"></span>
+                        </span>
+                        <button @click="preparingOffline = true; Promise.all([refreshCatalog(), refreshCustomers()]).then(() => { preparingOffline = false; })"
+                                :disabled="preparingOffline"
+                                class="text-blue-600 hover:text-blue-800 font-semibold disabled:opacity-50">
+                            <i class="fas mr-1" :class="preparingOffline ? 'fa-spinner fa-spin' : 'fa-rotate'"></i>Refresh
+                        </button>
+                    </div>
+                    <template x-if="catalogError">
+                        <p class="text-xs text-red-600">
+                            <i class="fas fa-exclamation-triangle mr-1"></i><span x-text="catalogError"></span>
+                        </p>
+                    </template>
                     <p class="text-xs text-gray-400 text-center">
                         <i class="fas fa-info-circle mr-1"></i>
                         Synced orders post to the live database with their original sale time. Failed ones stay here for review.
@@ -1710,6 +1732,7 @@ function posApp() {
         lastSyncReport: null,   // { success, failed, networkAborted }
         catalog: [],            // full product catalog cached for offline browsing
         catalogReady: false,
+        catalogError: '',       // last catalog-download error (for diagnostics)
         offlineCustomers: [],   // customers + vendors cached for offline use
 
         // Session
@@ -1732,8 +1755,17 @@ function posApp() {
             // Connectivity monitoring — browser events + a real heartbeat to the server
             window.addEventListener('online',  () => { this.checkConnection(); });
             window.addEventListener('offline', () => { this.isOnline = false; });
-            this.checkConnection().then(() => { if (!this.offlineMode) this.refreshCatalog(); });
+            this.checkConnection();
             setInterval(() => this.checkConnection(), 20000);
+
+            // Keep the offline cache fresh on every load. These fail gracefully
+            // when genuinely offline (the existing cache is kept), and crucially
+            // they are NOT gated by the heartbeat, so a missing /pos/ping route
+            // can't prevent the catalog from downloading.
+            if (!this.offlineMode) {
+                this.refreshCatalog();
+                this.refreshCustomers();
+            }
 
             // If we reloaded straight into offline mode, render products from cache
             if (this.offlineMode && this.selectedCategory) this.loadProducts();
@@ -1766,54 +1798,68 @@ function posApp() {
             return this.offlineMode || !this.isOnline;
         },
 
-        // Pull the full catalog while online and cache it for offline browsing.
+        // Download the full catalog and cache it for offline browsing.
+        // NOT gated by the heartbeat — we just try the request, so a missing
+        // /pos/ping route (e.g. stale route cache) can't block the download.
+        // Returns true on success. Fails gracefully (keeps existing cache).
         async refreshCatalog() {
-            if (!this.isOnline) return;
             try {
                 const res = await fetch('/pos/catalog', { cache: 'no-store' });
-                if (!res.ok) return;
+                if (!res.ok) { this.catalogError = 'Server returned HTTP ' + res.status + ' for /pos/catalog'; return false; }
                 const data = await res.json();
                 if (Array.isArray(data)) {
                     this.catalog = data;
-                    this.catalogReady = true;
-                    try { localStorage.setItem('pos_catalog', JSON.stringify(data)); } catch(e) {}
+                    this.catalogReady = data.length > 0;
+                    this.catalogError = '';
+                    try { localStorage.setItem('pos_catalog', JSON.stringify(data)); } catch(e) { this.catalogError = 'Browser storage is full — could not save catalog.'; return false; }
+                    return true;
                 }
-            } catch(e) { /* offline or failed — keep the existing cache */ }
+                this.catalogError = 'Unexpected catalog response.';
+                return false;
+            } catch(e) {
+                this.catalogError = 'No connection while downloading catalog.';
+                return false;
+            }
         },
 
-        // Pull customers + vendors while online and cache them for offline use.
+        // Download customers + vendors and cache them for offline use.
         async refreshCustomers() {
-            if (!this.isOnline) return;
             try {
                 const res = await fetch('/pos/customers-cache', { cache: 'no-store' });
-                if (!res.ok) return;
+                if (!res.ok) return false;
                 const data = await res.json();
                 if (Array.isArray(data)) {
                     this.offlineCustomers = data;
                     try { localStorage.setItem('pos_offline_customers', JSON.stringify(data)); } catch(e) {}
+                    return true;
                 }
-            } catch(e) { /* keep existing cache */ }
+                return false;
+            } catch(e) { return false; }
         },
 
         // ── Manual offline mode ────────────────────────────────────────────────
         // Download everything needed and switch the POS into offline mode.
         async goOffline() {
             this.showMobileMenu = false;
-            await this.checkConnection();
+            this.catalogError = '';
 
-            if (!this.isOnline) {
-                if (!this.catalogReady) {
-                    alert('No internet, and no offline data has been downloaded yet. Connect to the internet once, then try again.');
+            // Always TRY to download the latest data (don't trust the heartbeat —
+            // a missing /pos/ping route shouldn't block this).
+            this.preparingOffline = true;
+            const [catOk] = await Promise.all([this.refreshCatalog(), this.refreshCustomers()]);
+            this.preparingOffline = false;
+
+            if (!catOk || !this.catalogReady) {
+                // Couldn't fetch fresh data — fall back to whatever is already cached
+                if (this.catalog.length === 0) {
+                    alert(
+                        'Could not download product data, and nothing is cached yet.\n\n' +
+                        (this.catalogError || 'Please check your internet connection') + '\n\n' +
+                        'Make sure you are online and try again. If this keeps happening after a deploy, the server route cache may need clearing.'
+                    );
                     return;
                 }
-                if (!confirm('No internet right now — switch to offline mode using the data already downloaded? It may be slightly out of date.')) return;
-            } else {
-                // Online → download the latest catalog + customers first
-                this.preparingOffline = true;
-                await Promise.all([this.refreshCatalog(), this.refreshCustomers()]);
-                this.preparingOffline = false;
-                if (!this.catalogReady) {
-                    alert('Could not download product data. Please check your connection and try again.');
+                if (!confirm('Could not download the latest data (' + (this.catalogError || 'connection issue') + ').\n\nUse the ' + this.catalog.length + ' product(s) already cached and go offline anyway?')) {
                     return;
                 }
             }
@@ -1827,6 +1873,8 @@ function posApp() {
             // Refresh whatever is on screen from the cache
             if (this.searchQuery.length > 0) this.searchProducts();
             else if (this.selectedCategory) this.loadProducts();
+
+            alert('Offline mode is ON.\n\nSaved for offline use:\n• ' + this.catalog.length + ' product(s)\n• ' + this.offlineCustomers.length + ' customer(s)/vendor(s)\n\nYou can refresh the page and keep selling. Click "Go Online" to sync your sales.');
         },
 
         // Sync all queued sales and switch back to online mode.
