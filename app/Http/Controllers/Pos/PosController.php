@@ -541,7 +541,23 @@ class PosController extends Controller
             'exchange_item_name'  => 'nullable|string|max:200',
             'exchange_value'      => 'nullable|numeric|min:0',
             'promise_date'        => 'nullable|date',
+            'offline_ref'         => 'nullable|string|max:50',
+            'offline_created_at'  => 'nullable|date',
         ]);
+
+        // Idempotency: if this offline sale was already synced, return the
+        // existing order instead of creating a duplicate (handles lost responses).
+        if ($request->filled('offline_ref')) {
+            $existing = Order::where('offline_ref', $request->offline_ref)->first();
+            if ($existing) {
+                return response()->json([
+                    'success'      => true,
+                    'order_id'     => $existing->id,
+                    'order_number' => $existing->order_number,
+                    'already_synced' => true,
+                ]);
+            }
+        }
 
         DB::beginTransaction();
         try {
@@ -652,6 +668,7 @@ class PosController extends Controller
 
             $order = Order::create([
                 'source'          => 'pos',
+                'offline_ref'     => $request->offline_ref ?: null,
                 'customer_id'     => $customer?->id,
                 'vendor_id'       => $vendor?->id,
                 'customer_name'   => $customer?->name ?? $vendor?->name ?? 'Walk-in Customer',
@@ -673,6 +690,14 @@ class PosController extends Controller
                 'status'             => 'delivered',
                 'served_by'       => Auth::id(),
             ]);
+
+            // Preserve the original sale time for offline sales synced later,
+            // so the order lands in the correct day's books.
+            if ($request->filled('offline_created_at')) {
+                $order->forceFill([
+                    'created_at' => \Carbon\Carbon::parse($request->offline_created_at),
+                ])->save();
+            }
 
             foreach ($orderItems as $item) {
                 $orderItem = OrderItem::create([

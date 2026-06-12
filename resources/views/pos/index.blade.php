@@ -30,6 +30,20 @@
 
             {{-- Session info (desktop) --}}
             <div class="shrink-0 hidden md:flex items-center gap-2">
+                {{-- Connectivity indicator --}}
+                <span class="text-xs px-2.5 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 shrink-0"
+                      :class="isOnline ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
+                    <span class="w-2 h-2 rounded-full" :class="isOnline ? 'bg-green-500' : 'bg-red-500 animate-pulse'"></span>
+                    <span x-text="isOnline ? 'Online' : 'Offline'"></span>
+                </span>
+
+                {{-- Sync offline orders button --}}
+                <button x-show="offlineOrders.length > 0" @click="showOfflineModal = true"
+                        class="relative text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5">
+                    <i class="fas fa-cloud-upload-alt" :class="syncing ? 'fa-fade' : ''"></i>
+                    <span x-text="'Sync (' + offlineOrders.length + ')'"></span>
+                </button>
+
                 @if($session)
                 <div class="text-xs text-gray-500 hidden md:block">
                     Session: <span class="font-semibold text-green-600">Open</span>
@@ -69,12 +83,25 @@
                 <button @click="showMobileMenu = !showMobileMenu"
                         class="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors relative">
                     <i class="fas fa-bars"></i>
-                    {{-- Held orders dot indicator --}}
-                    <span x-show="heldOrders.length > 0"
+                    {{-- Pending offline orders dot (blue) takes priority over held (amber) --}}
+                    <span x-show="offlineOrders.length > 0"
+                          class="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white"></span>
+                    <span x-show="offlineOrders.length === 0 && heldOrders.length > 0"
                           class="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white"></span>
                 </button>
                 <div x-show="showMobileMenu" @click.outside="showMobileMenu = false" x-transition
                      class="absolute right-0 top-full mt-2 w-52 bg-white border border-gray-200 rounded-xl shadow-xl z-30 overflow-hidden py-1">
+                    {{-- Connectivity + sync (mobile) --}}
+                    <div class="px-4 py-2 flex items-center gap-2 border-b border-gray-100">
+                        <span class="w-2 h-2 rounded-full" :class="isOnline ? 'bg-green-500' : 'bg-red-500 animate-pulse'"></span>
+                        <span class="text-xs font-semibold" :class="isOnline ? 'text-green-600' : 'text-red-600'"
+                              x-text="isOnline ? 'Online' : 'Offline'"></span>
+                    </div>
+                    <button x-show="offlineOrders.length > 0" @click="showOfflineModal = true; showMobileMenu = false"
+                            class="w-full text-left px-4 py-2.5 text-sm text-blue-700 hover:bg-blue-50 flex items-center gap-2.5">
+                        <i class="fas fa-cloud-upload-alt w-4 text-center"></i>
+                        <span x-text="'Sync Orders (' + offlineOrders.length + ')'"></span>
+                    </button>
                     @if($session)
                     <div class="px-4 py-2 text-xs text-gray-400 border-b border-gray-100">
                         Session: <span class="font-semibold text-green-600">Open</span>
@@ -816,6 +843,152 @@
         </div>
     </template>
 
+    {{-- ── Offline Orders / Sync Modal ───────────────────────────────────── --}}
+    <template x-teleport="body">
+        <div x-show="showOfflineModal"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+             @keydown.window.escape="showOfflineModal = false"
+             @click.self="showOfflineModal = false">
+
+            <div class="bg-white rounded-2xl shadow-2xl flex flex-col"
+                 style="width:480px; max-width:100%; max-height:85vh; min-height:0;">
+
+                {{-- Header --}}
+                <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100" style="flex-shrink:0;">
+                    <h3 class="font-bold text-gray-900 text-base flex items-center gap-2">
+                        <span class="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-cloud-upload-alt text-blue-600 text-sm"></i>
+                        </span>
+                        Offline Orders
+                        <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold"
+                              x-text="offlineOrders.length"></span>
+                    </h3>
+                    <button @click="showOfflineModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+
+                {{-- Connectivity + sync action bar --}}
+                <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-3" style="flex-shrink:0;">
+                    <div class="flex items-center gap-2 text-sm">
+                        <span class="w-2 h-2 rounded-full" :class="isOnline ? 'bg-green-500' : 'bg-red-500 animate-pulse'"></span>
+                        <span class="font-medium" :class="isOnline ? 'text-green-700' : 'text-red-600'"
+                              x-text="isOnline ? 'Online — ready to sync' : 'Offline — connect to sync'"></span>
+                    </div>
+                    <button @click="syncOfflineOrders()"
+                            :disabled="syncing || offlineOrders.length === 0 || !isOnline"
+                            class="btn-primary btn-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span x-show="!syncing"><i class="fas fa-sync-alt mr-1.5"></i> Sync Now</span>
+                        <span x-show="syncing"><i class="fas fa-spinner fa-spin mr-1.5"></i> Syncing...</span>
+                    </button>
+                </div>
+
+                {{-- Last sync report --}}
+                <template x-if="lastSyncReport">
+                    <div class="px-5 py-2.5 text-xs border-b border-gray-100" style="flex-shrink:0;"
+                         :class="lastSyncReport.failed > 0 ? 'bg-amber-50 text-amber-800' : 'bg-green-50 text-green-800'">
+                        <i class="fas" :class="lastSyncReport.failed > 0 ? 'fa-exclamation-triangle' : 'fa-check-circle'"></i>
+                        <span x-text="lastSyncReport.success + ' synced'"></span>
+                        <template x-if="lastSyncReport.failed > 0">
+                            <span>· <span x-text="lastSyncReport.failed"></span> still pending</span>
+                        </template>
+                        <template x-if="lastSyncReport.networkAborted">
+                            <span> — connection lost during sync</span>
+                        </template>
+                    </div>
+                </template>
+
+                {{-- Scrollable body --}}
+                <div style="flex:1 1 0%; overflow-y:auto; padding:12px 16px;">
+
+                    {{-- Empty state --}}
+                    <div x-show="offlineOrders.length === 0" class="text-center py-12 text-gray-400">
+                        <i class="fas fa-cloud text-4xl mb-3"></i>
+                        <p class="text-sm font-medium">No offline orders</p>
+                        <p class="text-xs mt-1" style="color:#d1d5db;">Sales made while offline will queue here for syncing</p>
+                    </div>
+
+                    {{-- Offline order cards --}}
+                    <div style="display:flex; flex-direction:column; gap:12px;">
+                        <template x-for="(ord, idx) in offlineOrders" :key="ord.ref">
+                            <div :style="ord.error
+                                    ? 'border:1px solid #fecaca; background:#fef2f2; border-radius:12px; padding:14px;'
+                                    : 'border:1px solid #bfdbfe; background:#eff6ff; border-radius:12px; padding:14px;'">
+
+                                {{-- Top row: label + total --}}
+                                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:6px;">
+                                    <div style="min-width:0;">
+                                        <div style="font-weight:600; font-size:14px; color:#1f2937; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" x-text="ord.label"></div>
+                                        <div style="font-size:11px; color:#6b7280; display:flex; align-items:center; gap:6px; margin-top:2px; flex-wrap:wrap;">
+                                            <i class="fas fa-clock" style="font-size:9px;"></i>
+                                            <span x-text="ord.createdLabel"></span>
+                                            <span style="color:#d1d5db;">·</span>
+                                            <span x-text="ord.itemCount + (ord.itemCount === 1 ? ' item' : ' items')"></span>
+                                            <span style="color:#d1d5db;">·</span>
+                                            <span style="text-transform:capitalize;" x-text="ord.payment_method"></span>
+                                        </div>
+                                    </div>
+                                    <div style="font-weight:700; font-size:14px; color:#1d4ed8; flex-shrink:0;"
+                                         x-text="'Rs. ' + Number(ord.total).toLocaleString()"></div>
+                                </div>
+
+                                {{-- Item preview --}}
+                                <div style="margin-bottom:10px; padding-left:6px; border-left:2px solid #bfdbfe;">
+                                    <template x-for="(item, j) in ord.items.slice(0, 3)" :key="j">
+                                        <div style="font-size:11px; color:#4b5563; display:flex; align-items:center; gap:5px; padding:1px 0; overflow:hidden;">
+                                            <span style="display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; background:white; border:1px solid #bfdbfe; color:#2563eb; border-radius:50%; font-weight:700; font-size:9px; flex-shrink:0;"
+                                                  x-text="item.qty"></span>
+                                            <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" x-text="item.name"></span>
+                                            <template x-if="item.serial">
+                                                <span style="font-family:monospace; font-size:10px; color:#6366f1;" x-text="item.serial"></span>
+                                            </template>
+                                        </div>
+                                    </template>
+                                    <div x-show="ord.items.length > 3" style="font-size:10px; color:#9ca3af; padding-top:2px;"
+                                         x-text="'+ ' + (ord.items.length - 3) + ' more'"></div>
+                                </div>
+
+                                {{-- Error message (sync failure) --}}
+                                <template x-if="ord.error">
+                                    <div style="background:white; border:1px solid #fecaca; border-radius:8px; padding:8px 10px; margin-bottom:10px; font-size:11px; color:#b91c1c; display:flex; gap:6px;">
+                                        <i class="fas fa-exclamation-circle" style="margin-top:1px; flex-shrink:0;"></i>
+                                        <span x-text="ord.error"></span>
+                                    </div>
+                                </template>
+
+                                {{-- Actions --}}
+                                <div style="display:flex; gap:8px;">
+                                    <button @click="printOfflineReceipt(ord)"
+                                            style="flex:1; font-size:12px; font-weight:600; padding:7px; border-radius:8px; border:1px solid #bfdbfe; background:white; color:#1d4ed8;">
+                                        <i class="fas fa-print mr-1"></i> Reprint
+                                    </button>
+                                    <button @click="deleteOfflineOrder(idx)"
+                                            style="flex:1; font-size:12px; font-weight:600; padding:7px; border-radius:8px; border:1px solid #fecaca; background:white; color:#b91c1c;">
+                                        <i class="fas fa-trash-alt mr-1"></i> Discard
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                {{-- Footer --}}
+                <div class="px-5 py-3 border-t border-gray-100" style="flex-shrink:0;">
+                    <p class="text-xs text-gray-400 text-center">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Synced orders post to the live database with their original sale time. Failed ones stay here for review.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </template>
+
     {{-- ── Held Orders Modal ─────────────────────────────────────────────── --}}
     <template x-teleport="body">
         <div x-show="showHeldOrders"
@@ -1416,6 +1589,12 @@ $_posCategories = $categories->map(fn($c) => [
 @endphp
 @push('scripts')
 <script>
+// Shop details for the client-side offline receipt
+window.__posShop = {
+    name:    @json(\App\Models\Setting::get('shop_name', 'MobileHub')),
+    phone:   @json(\App\Models\Setting::get('shop_phone')),
+    address: @json(\App\Models\Setting::get('shop_address')),
+};
 function posApp() {
     return {
         // State
@@ -1474,6 +1653,13 @@ function posApp() {
         heldOrders: [],
         showHeldOrders: false,
 
+        // Offline mode + sync queue
+        isOnline: navigator.onLine,
+        offlineOrders: [],
+        showOfflineModal: false,
+        syncing: false,
+        lastSyncReport: null,   // { success, failed, networkAborted }
+
         // Session
         showOpenSession: false,
         showCloseSession: false,
@@ -1482,6 +1668,15 @@ function posApp() {
             this.focusBarcode();
             // Load held orders from localStorage
             try { this.heldOrders = JSON.parse(localStorage.getItem('pos_held_orders') || '[]'); } catch(e) { this.heldOrders = []; }
+            // Load any offline orders pending sync
+            try { this.offlineOrders = JSON.parse(localStorage.getItem('pos_offline_orders') || '[]'); } catch(e) { this.offlineOrders = []; }
+
+            // Connectivity monitoring — browser events + a real heartbeat to the server
+            window.addEventListener('online',  () => this.checkConnection());
+            window.addEventListener('offline', () => { this.isOnline = false; });
+            this.checkConnection();
+            setInterval(() => this.checkConnection(), 20000);
+
             // Start on category grid — no products loaded until category selected or searched
             window.addEventListener('pos:sale-deleted', () => {
                 if (this.searchQuery.length > 0) {
@@ -1491,6 +1686,17 @@ function posApp() {
                 }
                 // If in subcategory/category grid, no reload needed (no products shown)
             });
+        },
+
+        // Ping the server to confirm real connectivity (navigator.onLine only
+        // reports the network interface, not whether the server is reachable).
+        async checkConnection() {
+            try {
+                const res = await fetch('/pos/ping', { method: 'GET', cache: 'no-store' });
+                this.isOnline = res.ok;
+            } catch(e) {
+                this.isOnline = false;
+            }
         },
 
         // Focus the barcode input — desktop only (on mobile it pops the keyboard)
@@ -1861,45 +2067,190 @@ function posApp() {
             } catch(e) {}
         },
 
+        // Build the order payload sent to the server (shared by online + offline paths)
+        buildOrderPayload() {
+            return {
+                items: this.cart.map(i => ({ product_id: i.product_id, quantity: i.quantity, unit_price: i.price, color_id: i.color_id || null, serial_number: i.serial_number || null })),
+                discount: this.discountAmount,
+                payment_method: this.paymentMethod,
+                amount_paid: this.paymentMethod === 'partial' ? this.partialAmountPaid : null,
+                cash_amount: this.paymentMethod === 'split' ? this.splitCash : null,
+                bank_amount: this.paymentMethod === 'split' ? this.splitBank : null,
+                bank_account_id: ['bank_transfer', 'split'].includes(this.paymentMethod) ? this.bankAccountId : null,
+                customer_id: (this.selectedCustomer?.type === 'customer') ? (this.selectedCustomer?.id || null) : null,
+                vendor_id:   (this.selectedCustomer?.type === 'vendor')   ? (this.selectedCustomer?.id || null) : null,
+                notes: this.orderNotes || null,
+                cash_received: this.cashReceived,
+                promise_date: ['khata','partial'].includes(this.paymentMethod) ? (this.promiseDate || null) : null,
+                exchange_item_name: null,
+                exchange_value: 0,
+            };
+        },
+
+        resetAfterSale() {
+            this.clearCart();
+            this.selectedCustomer = null;
+            this.orderNotes = '';
+            this.paymentMethod = 'cash';
+            this.showMobileCart = false;
+            if (this.selectedCategory) this.loadProducts(); // reload same category
+        },
+
         async placeOrder() {
             if (this.cart.length === 0 || this.processingOrder) return;
             this.processingOrder = true;
+
+            const payload = this.buildOrderPayload();
+
+            // Offline → queue locally and print an interim receipt
+            if (!this.isOnline) {
+                this.queueOfflineOrder(payload);
+                this.processingOrder = false;
+                return;
+            }
+
             try {
                 const res = await fetch('/pos/order', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-                    body: JSON.stringify({
-                        items: this.cart.map(i => ({ product_id: i.product_id, quantity: i.quantity, unit_price: i.price, color_id: i.color_id || null, serial_number: i.serial_number || null })),
-                        discount: this.discountAmount,
-                        payment_method: this.paymentMethod,
-                        amount_paid: this.paymentMethod === 'partial' ? this.partialAmountPaid : null,
-                        cash_amount: this.paymentMethod === 'split' ? this.splitCash : null,
-                        bank_amount: this.paymentMethod === 'split' ? this.splitBank : null,
-                        bank_account_id: ['bank_transfer', 'split'].includes(this.paymentMethod) ? this.bankAccountId : null,
-                        customer_id: (this.selectedCustomer?.type === 'customer') ? (this.selectedCustomer?.id || null) : null,
-                        vendor_id:   (this.selectedCustomer?.type === 'vendor')   ? (this.selectedCustomer?.id || null) : null,
-                        notes: this.orderNotes || null,
-                        cash_received: this.cashReceived,
-                        promise_date: ['khata','partial'].includes(this.paymentMethod) ? (this.promiseDate || null) : null,
-                        exchange_item_name: null,
-                        exchange_value: 0,
-                    })
+                    body: JSON.stringify(payload)
                 });
                 const data = await res.json();
                 if (data.success && data.order_id) {
-                    this.clearCart();
-                    this.selectedCustomer = null;
-                    this.orderNotes = '';
-                    this.paymentMethod = 'cash';
-                    this.showMobileCart = false;
                     window.open(`/pos/receipt/${data.order_id}`, '_blank', 'width=400,height=700');
-                    if (this.selectedCategory) this.loadProducts(); // reload same category
+                    this.resetAfterSale();
                     window.dispatchEvent(new CustomEvent('pos:order-placed'));
                 } else {
+                    // Server reachable but rejected the sale (stock/serial/validation) — surface it
                     alert(data.error || data.message || 'Order failed. Please try again.');
                 }
-            } catch(e) { alert('Network error. Please try again.'); }
+            } catch(e) {
+                // Network dropped mid-request — fall back to offline queue so the sale isn't lost
+                this.isOnline = false;
+                this.queueOfflineOrder(payload);
+            }
             this.processingOrder = false;
+        },
+
+        // ── Offline queue ──────────────────────────────────────────────────────
+        queueOfflineOrder(payload) {
+            const ref     = 'OFF-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+            const nowIso  = new Date().toISOString();
+            const queued  = {
+                ref,
+                payload: { ...payload, offline_ref: ref, offline_created_at: nowIso },
+                // Display snapshot (for the modal + interim receipt)
+                label:     this.selectedCustomer?.name || 'Walk-in Customer',
+                items:     this.cart.map(i => ({ name: i.name, qty: i.quantity, price: i.price, serial: i.serial_number || null })),
+                total:     this.total,
+                subtotal:  this.subtotal,
+                discount:  this.discountAmount,
+                payment_method: this.paymentMethod,
+                itemCount: this.cart.reduce((s, i) => s + i.quantity, 0),
+                createdAt: nowIso,
+                createdLabel: new Date().toLocaleString('en-PK', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+                error: null,
+            };
+            this.offlineOrders.push(queued);
+            this._saveOfflineOrders();
+            this.printOfflineReceipt(queued);
+            this.resetAfterSale();
+        },
+
+        async syncOfflineOrders() {
+            if (this.syncing || this.offlineOrders.length === 0) return;
+            await this.checkConnection();
+            if (!this.isOnline) {
+                this.lastSyncReport = { success: 0, failed: this.offlineOrders.length, networkAborted: true };
+                return;
+            }
+            this.syncing = true;
+            let success = 0;
+            let networkAborted = false;
+
+            for (const ord of this.offlineOrders) {
+                try {
+                    const res  = await fetch('/pos/order', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                        body: JSON.stringify(ord.payload)
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (res.ok && data.success) {
+                        ord._synced = true;
+                        ord.error   = null;
+                        success++;
+                    } else {
+                        ord.error = data.error || data.message || 'Rejected by server.';
+                    }
+                } catch(e) {
+                    // Connection dropped again — stop and keep the rest queued
+                    this.isOnline   = false;
+                    networkAborted  = true;
+                    break;
+                }
+            }
+
+            // Drop the ones that synced; keep failures (with their error) in the queue
+            this.offlineOrders = this.offlineOrders.filter(o => !o._synced);
+            this._saveOfflineOrders();
+            this.syncing = false;
+            this.lastSyncReport = { success, failed: this.offlineOrders.length, networkAborted };
+
+            if (success > 0) window.dispatchEvent(new CustomEvent('pos:order-placed'));
+        },
+
+        deleteOfflineOrder(idx) {
+            if (!confirm('Discard this offline sale? It will NOT be synced and cannot be recovered.')) return;
+            this.offlineOrders.splice(idx, 1);
+            this._saveOfflineOrders();
+        },
+
+        _saveOfflineOrders() {
+            try { localStorage.setItem('pos_offline_orders', JSON.stringify(this.offlineOrders)); } catch(e) {}
+        },
+
+        // Minimal client-side receipt printed at the time of an offline sale
+        printOfflineReceipt(ord) {
+            const shop = window.__posShop || {};
+            const money = n => 'Rs. ' + Number(n || 0).toLocaleString();
+            const rows = ord.items.map(it =>
+                `<tr><td>${it.name}${it.serial ? `<br><span class="sn">${it.serial}</span>` : ''}</td>`
+                + `<td style="text-align:center">${it.qty}</td>`
+                + `<td style="text-align:right">${money(it.price * it.qty)}</td></tr>`
+            ).join('');
+            const html = `
+                <html><head><title>Offline Sale</title><style>
+                    *{font-family:monospace;font-size:12px;margin:0;padding:0}
+                    body{padding:10px;width:280px}
+                    h2{text-align:center;font-size:15px;margin-bottom:2px}
+                    .ctr{text-align:center}.muted{color:#555}
+                    .banner{background:#000;color:#fff;text-align:center;padding:4px;margin:8px 0;font-weight:bold}
+                    table{width:100%;border-collapse:collapse;margin-top:6px}
+                    td{padding:2px 0;vertical-align:top}
+                    .sn{font-size:10px;color:#555}
+                    .tot{border-top:1px dashed #000;margin-top:6px;padding-top:6px}
+                    .row{display:flex;justify-content:space-between}
+                    .big{font-size:14px;font-weight:bold}
+                </style></head><body>
+                    <h2>${shop.name || 'MobileHub'}</h2>
+                    ${shop.phone ? `<div class="ctr muted">${shop.phone}</div>` : ''}
+                    ${shop.address ? `<div class="ctr muted">${shop.address}</div>` : ''}
+                    <div class="banner">OFFLINE SALE — PENDING SYNC</div>
+                    <div class="muted">Ref: ${ord.ref}</div>
+                    <div class="muted">Date: ${ord.createdLabel}</div>
+                    <div class="muted">Customer: ${ord.label}</div>
+                    <div class="muted">Payment: ${ord.payment_method}</div>
+                    <table>${rows}</table>
+                    <div class="tot">
+                        <div class="row"><span>Subtotal</span><span>${money(ord.subtotal)}</span></div>
+                        ${ord.discount > 0 ? `<div class="row"><span>Discount</span><span>- ${money(ord.discount)}</span></div>` : ''}
+                        <div class="row big"><span>TOTAL</span><span>${money(ord.total)}</span></div>
+                    </div>
+                    <div class="ctr muted" style="margin-top:10px">This sale will sync once the shop is back online.</div>
+                </body></html>`;
+            const w = window.open('', '_blank', 'width=320,height=600');
+            if (w) { w.document.write(html); w.document.close(); w.focus(); setTimeout(() => w.print(), 200); }
         },
 
         async openSession(cash) {

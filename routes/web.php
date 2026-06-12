@@ -399,6 +399,9 @@ Route::prefix('pos')->name('pos.')->middleware(['auth', 'permission:pos.access']
     Route::post('/session/open', [Pos\PosController::class, 'openSession'])->name('session.open');
     Route::post('/session/close', [Pos\PosController::class, 'closeSession'])->name('session.close');
 
+    // Lightweight connectivity heartbeat for offline-mode detection
+    Route::get('/ping', fn() => response()->json(['ok' => true]))->name('ping');
+
     // AJAX endpoints for POS
     Route::post('/order', [Pos\PosController::class, 'createOrder'])->name('order.create');
     Route::get('/product/search', [Pos\PosController::class, 'searchProduct'])->name('product.search');
