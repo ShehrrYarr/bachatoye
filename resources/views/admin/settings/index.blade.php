@@ -1,13 +1,27 @@
 @extends('layouts.admin')
 @section('title', 'Settings')
 
+@push('styles')
+<style>
+    /* Masonry layout for the settings cards so short cards don't stretch to
+       match tall ones (which left large empty gaps inside the shorter cards).
+       Scoped CSS instead of Tailwind utilities so it works without a rebuild. */
+    .settings-grid > * { margin-bottom: 1.5rem; }
+    @media (min-width: 1280px) {
+        .settings-grid { column-count: 2; column-gap: 1.5rem; }
+        .settings-grid > * { break-inside: avoid; }
+        .settings-grid > .settings-grid-full { column-span: all; }
+    }
+</style>
+@endpush
+
 @section('content')
 <h1 class="text-xl font-bold text-gray-900 mb-6">Store Settings</h1>
 
 <form method="POST" action="{{ route('admin.settings.update') }}" enctype="multipart/form-data">
     @csrf
 
-    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+    <div class="settings-grid">
 
         {{-- Shop Identity --}}
         <div class="card">
@@ -297,7 +311,7 @@
         </div>
 
         {{-- Colour Customization --}}
-        <div class="card xl:col-span-2"
+        <div class="card settings-grid-full"
              x-data="{
                  primary:   '{{ old('primary_color',   $settings['primary_color']   ?? '#e11d48') }}',
                  secondary: '{{ old('secondary_color', $settings['secondary_color'] ?? '#be123c') }}',
