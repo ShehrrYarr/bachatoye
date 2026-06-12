@@ -109,48 +109,76 @@
                         <h3 class="font-semibold text-gray-700 text-sm mb-3">Select items to return:</h3>
                         <div class="space-y-3">
                             <template x-for="item in returnItems" :key="item.id">
-                                <div class="flex items-center gap-3 p-3 border rounded-xl transition-colors"
+                                <div class="border rounded-xl transition-colors"
                                      :class="item.returnable_qty === 0
                                         ? 'border-gray-200 bg-gray-50 opacity-60'
                                         : item.selected ? 'border-primary-300 bg-primary-50' : 'border-gray-200'">
+                                    <div class="flex items-center gap-3 p-3">
+                                        {{-- Checkbox — disabled when fully returned --}}
+                                        <input type="checkbox" x-model="item.selected"
+                                               :disabled="item.returnable_qty === 0"
+                                               @change="recalculate()"
+                                               class="w-4 h-4 text-primary-600 rounded disabled:cursor-not-allowed">
 
-                                    {{-- Checkbox — disabled when fully returned --}}
-                                    <input type="checkbox" x-model="item.selected"
-                                           :disabled="item.returnable_qty === 0"
-                                           @change="recalculate()"
-                                           class="w-4 h-4 text-primary-600 rounded disabled:cursor-not-allowed">
-
-                                    <div class="flex-1 min-w-0">
-                                        <div class="flex items-center gap-2 flex-wrap">
-                                            <span class="text-sm font-semibold text-gray-800" x-text="item.product_name"></span>
-                                            {{-- Fully returned badge --}}
-                                            <span x-show="item.returnable_qty === 0"
-                                                  class="text-xs font-semibold bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
-                                                Fully Returned
-                                            </span>
-                                            {{-- Partially returned badge --}}
-                                            <span x-show="item.already_returned > 0 && item.returnable_qty > 0"
-                                                  class="text-xs font-semibold bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full"
-                                                  x-text="`${item.already_returned} already returned`">
-                                            </span>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <span class="text-sm font-semibold text-gray-800" x-text="item.product_name"></span>
+                                                {{-- Serialized badge --}}
+                                                <span x-show="item.is_serialized"
+                                                      class="text-xs font-mono font-semibold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                                    <i class="fas fa-barcode text-[10px]"></i>
+                                                    <span x-text="item.serial_code"></span>
+                                                </span>
+                                                {{-- Fully returned badge --}}
+                                                <span x-show="item.returnable_qty === 0"
+                                                      class="text-xs font-semibold bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
+                                                    Fully Returned
+                                                </span>
+                                                {{-- Partially returned badge --}}
+                                                <span x-show="item.already_returned > 0 && item.returnable_qty > 0"
+                                                      class="text-xs font-semibold bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full"
+                                                      x-text="`${item.already_returned} already returned`">
+                                                </span>
+                                            </div>
+                                            <div class="text-xs text-gray-500 mt-0.5">
+                                                <span x-text="`Rs. ${Number(item.unit_price).toLocaleString()} × ${item.quantity} ordered`"></span>
+                                                <span x-show="item.returnable_qty > 0 && item.returnable_qty < item.quantity"
+                                                      class="text-orange-600 font-medium"
+                                                      x-text="` — ${item.returnable_qty} returnable`"></span>
+                                            </div>
                                         </div>
-                                        <div class="text-xs text-gray-500 mt-0.5">
-                                            <span x-text="`Rs. ${Number(item.unit_price).toLocaleString()} × ${item.quantity} ordered`"></span>
-                                            <span x-show="item.returnable_qty > 0 && item.returnable_qty < item.quantity"
-                                                  class="text-orange-600 font-medium"
-                                                  x-text="` — ${item.returnable_qty} returnable`"></span>
+
+                                        {{-- Qty input — only when selected and returnable --}}
+                                        <div x-show="item.selected && item.returnable_qty > 0" class="flex items-center gap-2">
+                                            <label class="text-xs text-gray-500">Qty:</label>
+                                            <input type="number" x-model.number="item.return_qty"
+                                                   :max="item.returnable_qty" min="1"
+                                                   @change="recalculate()"
+                                                   class="w-16 text-center text-sm border border-gray-300 rounded-lg py-1 px-2 focus:outline-none focus:ring-1 focus:ring-primary-500">
+                                            <span class="text-xs font-semibold text-primary-700"
+                                                  x-text="`Rs. ${Number(item.unit_price * item.return_qty).toLocaleString()}`"></span>
                                         </div>
                                     </div>
 
-                                    {{-- Qty input — only when selected and returnable --}}
-                                    <div x-show="item.selected && item.returnable_qty > 0" class="flex items-center gap-2">
-                                        <label class="text-xs text-gray-500">Qty:</label>
-                                        <input type="number" x-model.number="item.return_qty"
-                                               :max="item.returnable_qty" min="1"
-                                               @change="recalculate()"
-                                               class="w-16 text-center text-sm border border-gray-300 rounded-lg py-1 px-2 focus:outline-none focus:ring-1 focus:ring-primary-500">
-                                        <span class="text-xs font-semibold text-primary-700"
-                                              x-text="`Rs. ${Number(item.unit_price * item.return_qty).toLocaleString()}`"></span>
+                                    {{-- New cost price — only for selected serialized items --}}
+                                    <div x-show="item.selected && item.is_serialized && item.returnable_qty > 0"
+                                         class="px-3 pb-3 pt-0">
+                                        <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-3 flex items-center gap-3">
+                                            <i class="fas fa-tag text-indigo-500 shrink-0"></i>
+                                            <div class="flex-1 min-w-0">
+                                                <label class="text-xs font-semibold text-indigo-800 block">Set New Cost Price for this unit</label>
+                                                <p class="text-[11px] text-indigo-500 mt-0.5">
+                                                    Original cost: Rs. <span x-text="Number(item.current_cost_price || 0).toLocaleString()"></span>.
+                                                    Update if the returned unit's value has changed.
+                                                </p>
+                                            </div>
+                                            <div class="flex items-center gap-1 shrink-0">
+                                                <span class="text-xs text-gray-500 font-semibold">Rs.</span>
+                                                <input type="number" x-model.number="item.new_cost_price"
+                                                       min="0" step="1"
+                                                       class="w-28 text-center text-sm font-semibold text-indigo-700 border border-indigo-300 rounded-lg py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </template>
@@ -339,6 +367,7 @@ function returnApp() {
                         ...i,
                         selected: false,
                         return_qty: i.returnable_qty,
+                        new_cost_price: i.current_cost_price,
                     }));
                 }
             } catch(e) { this.error = 'Failed to load order. Please try again.'; }
@@ -360,7 +389,11 @@ function returnApp() {
             try {
                 const items = this.returnItems
                     .filter(i => i.selected)
-                    .map(i => ({ order_item_id: i.id, quantity: i.return_qty }));
+                    .map(i => ({
+                        order_item_id: i.id,
+                        quantity: i.return_qty,
+                        new_cost_price: i.is_serialized ? i.new_cost_price : null,
+                    }));
 
                 const res = await fetch('/pos/return', {
                     method: 'POST',

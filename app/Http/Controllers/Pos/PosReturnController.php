@@ -70,7 +70,7 @@ class PosReturnController extends Controller
     public function findOrder(string $orderNumber)
     {
         $order = Order::where('order_number', $orderNumber)
-                      ->with(['items.product'])
+                      ->with(['items.product', 'items.serialNumber'])
                       ->first();
 
         if (!$order) {
@@ -98,10 +98,14 @@ class PosReturnController extends Controller
             ->groupBy('order_item_id')
             ->pluck('total_returned', 'order_item_id');
 
-        // Annotate each item with returnable qty
+        // Annotate each item with returnable qty + serial info (for cost-price update on return)
         $order->items->each(function ($item) use ($returnedQtys) {
-            $item->already_returned = (int) ($returnedQtys[$item->id] ?? 0);
-            $item->returnable_qty   = max(0, $item->quantity - $item->already_returned);
+            $item->already_returned   = (int) ($returnedQtys[$item->id] ?? 0);
+            $item->returnable_qty     = max(0, $item->quantity - $item->already_returned);
+            $item->is_serialized      = (bool) $item->serial_number_id;
+            $item->serial_code        = $item->serialNumber?->serial_number;
+            $item->current_cost_price = $item->serialNumber ? (float) $item->serialNumber->cost_price : null;
+            $item->makeHidden('serialNumber');
         });
 
         // Block if every item has been fully returned
@@ -119,8 +123,9 @@ class PosReturnController extends Controller
         $request->validate([
             'order_id'       => 'required|exists:orders,id',
             'items'          => 'required|array|min:1',
-            'items.*.order_item_id' => 'required|exists:order_items,id',
-            'items.*.quantity'      => 'required|integer|min:1',
+            'items.*.order_item_id'  => 'required|exists:order_items,id',
+            'items.*.quantity'       => 'required|integer|min:1',
+            'items.*.new_cost_price' => 'nullable|numeric|min:0',
             'reason'               => 'nullable|string|max:500',
             'refund_method'        => 'required|in:cash,khata_credit,bank_transfer',
             'bank_account_id'      => 'nullable|exists:bank_accounts,id',
@@ -169,6 +174,11 @@ class PosReturnController extends Controller
                     ], 422);
                 }
             }
+            // Map of order_item_id => new cost price the operator entered for serialized units
+            $newCostPrices = collect($request->items)
+                ->filter(fn($i) => isset($i['new_cost_price']) && $i['new_cost_price'] !== '' && $i['new_cost_price'] !== null)
+                ->mapWithKeys(fn($i) => [$i['order_item_id'] => (float) $i['new_cost_price']]);
+
             $refund  = 0;
             $items   = [];
 
@@ -248,12 +258,29 @@ class PosReturnController extends Controller
                     $orderItem = OrderItem::with('serialNumber')
                         ->find($item['order_item_id']);
                     if ($orderItem && $orderItem->serialNumber) {
-                        $orderItem->serialNumber->update([
+                        $serial = $orderItem->serialNumber;
+                        $serialUpdate = [
                             'status'          => $shouldRestock ? 'in_stock' : 'returned',
                             'return_order_id' => $returnOrder->id,
-                            'order_id'        => $shouldRestock ? null : $orderItem->serialNumber->order_id,
-                            'order_item_id'   => $shouldRestock ? null : $orderItem->serialNumber->order_item_id,
-                        ]);
+                            'order_id'        => $shouldRestock ? null : $serial->order_id,
+                            'order_item_id'   => $shouldRestock ? null : $serial->order_item_id,
+                        ];
+
+                        // Operator set a revised cost price for this returned unit
+                        if ($newCostPrices->has($orderItem->id)) {
+                            $newCost = $newCostPrices->get($orderItem->id);
+                            $oldCost = (float) $serial->cost_price;
+                            if ($newCost != $oldCost) {
+                                $serialUpdate['cost_price'] = $newCost;
+                                $note = 'Cost revised on return ' . $returnOrder->return_number
+                                      . ': Rs. ' . number_format($oldCost) . ' → Rs. ' . number_format($newCost);
+                                $serialUpdate['notes'] = $serial->notes
+                                    ? $serial->notes . "\n" . $note
+                                    : $note;
+                            }
+                        }
+
+                        $serial->update($serialUpdate);
                     }
                 }
             }
