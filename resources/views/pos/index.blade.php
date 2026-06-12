@@ -321,6 +321,21 @@
                         <div class="col-span-5 text-center py-12 text-gray-400">
                             <i class="fas fa-box-open text-4xl mb-3"></i>
                             <p class="text-sm">No products found</p>
+                            {{-- Offline diagnostic --}}
+                            <template x-if="effectiveOffline()">
+                                <div class="mt-2 text-xs">
+                                    <p x-show="catalog.length === 0" class="text-red-500">
+                                        No products are cached for offline use. Go online and click <strong>Go Offline</strong> again to download them.
+                                    </p>
+                                    <p x-show="catalog.length > 0 && !catalogHasCategoryData" class="text-amber-600 max-w-sm mx-auto">
+                                        <span x-text="catalog.length"></span> products cached, but without category info.
+                                        Open the status pill → <strong>Refresh</strong> (online) to update the offline data.
+                                    </p>
+                                    <p x-show="catalog.length > 0 && catalogHasCategoryData" class="text-gray-400">
+                                        <span x-text="catalog.length"></span> products cached — none in this category. Try another category or search by name.
+                                    </p>
+                                </div>
+                            </template>
                         </div>
                     </template>
                     <template x-if="loading">
@@ -1049,6 +1064,14 @@
                             <i class="fas fa-exclamation-triangle mr-1"></i><span x-text="catalogError"></span>
                         </p>
                     </template>
+                    {{-- Warn if the cached catalog has no category data (stale cache / outdated server) --}}
+                    <template x-if="catalog.length > 0 && !catalogHasCategoryData">
+                        <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                            Cached products have no category info, so category browsing won't work offline.
+                            Click <strong>Refresh</strong> above (while online). If it stays this way, the server needs the latest update + caches cleared.
+                        </p>
+                    </template>
                     <p class="text-xs text-gray-400 text-center">
                         <i class="fas fa-info-circle mr-1"></i>
                         Synced orders post to the live database with their original sale time. Failed ones stay here for review.
@@ -1762,7 +1785,9 @@ function posApp() {
             // when genuinely offline (the existing cache is kept), and crucially
             // they are NOT gated by the heartbeat, so a missing /pos/ping route
             // can't prevent the catalog from downloading.
-            if (!this.offlineMode) {
+            // Also force a refresh if the cached catalog is in an old format that
+            // lacks category data (self-heals a stale cache that can't browse).
+            if (!this.offlineMode || (this.catalog.length > 0 && !this.catalogHasCategoryData)) {
                 this.refreshCatalog();
                 this.refreshCustomers();
             }
@@ -1904,11 +1929,41 @@ function posApp() {
             try { localStorage.setItem('pos_offline_mode', this.offlineMode ? '1' : '0'); } catch(e) {}
         },
 
+        // True only if the cached catalog actually carries category info. A
+        // stale cache (or an outdated server /pos/catalog) lacks category_id,
+        // which makes category browsing return nothing offline.
+        get catalogHasCategoryData() {
+            return this.catalog.length > 0 && this.catalog[0].category_id !== undefined;
+        },
+
+        // Build the set of category ids that count as "inside" the selected one:
+        // the category itself plus (if it's a parent) all of its subcategory ids.
+        // Returned as strings so number/string id mismatches never break matching.
+        _categoryMatchIds(catId) {
+            const ids = new Set([String(catId)]);
+            for (const c of this.categories) {
+                if (String(c.id) === String(catId) && Array.isArray(c.children)) {
+                    c.children.forEach(ch => ids.add(String(ch.id)));
+                }
+            }
+            return ids;
+        },
+
         // Filter the cached catalog by selected category (offline equivalent of loadProducts)
         catalogByCategory() {
             if (!this.selectedCategory) return [];
-            const id = this.selectedCategory.id;
-            return this.catalog.filter(p => p.category_id === id || p.subcategory_id === id);
+            const ids = this._categoryMatchIds(this.selectedCategory.id);
+            const matched = this.catalog.filter(p =>
+                ids.has(String(p.category_id)) || ids.has(String(p.subcategory_id))
+            );
+            // Diagnostic for the case the user is hitting now
+            if (matched.length === 0) {
+                console.warn('[POS offline] No products matched category', this.selectedCategory,
+                    '| cached:', this.catalog.length,
+                    '| sample item keys:', this.catalog[0] ? Object.keys(this.catalog[0]) : 'none',
+                    '| has category_id:', this.catalog[0] ? (this.catalog[0].category_id !== undefined) : 'n/a');
+            }
+            return matched;
         },
 
         // Filter the cached catalog by a search query (offline equivalent of searchProducts)
