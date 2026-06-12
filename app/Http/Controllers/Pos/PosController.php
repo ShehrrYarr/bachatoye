@@ -365,6 +365,63 @@ class PosController extends Controller
         return response()->json($products->concat($serialResults)->values());
     }
 
+    /**
+     * Full product catalog for offline POS use. The salesman's browser caches
+     * this while online so products (and serialized units) remain browsable
+     * after the connection drops. Mirrors searchProduct()'s item shape, plus
+     * category ids and embedded in-stock serials for client-side filtering.
+     */
+    public function catalog()
+    {
+        $allowedCategoryIds = Auth::user()->allowedCategoryIds();
+
+        $products = Product::active()->inStock()
+            ->when($allowedCategoryIds !== null, fn($q) => $q->whereIn('category_id', $allowedCategoryIds))
+            ->with([
+                'images',
+                'colors',
+                'category.section',
+                'serialNumbers' => fn($q) => $q->where('status', 'in_stock')->orderBy('serial_number'),
+            ])
+            ->get()
+            ->map(fn($p) => [
+                '_key'              => 'p_' . $p->id,
+                'id'                => $p->id,
+                'name'              => $p->name,
+                'sku'               => $p->sku,
+                'barcode'           => $p->barcode,
+                'price'             => $p->getDiscountedPrice(),
+                'cost_price'        => $p->cost_price,
+                'stock'             => $p->colors->count() > 0
+                                        ? $p->colors->sum('stock_quantity')
+                                        : $p->stock_quantity,
+                'image'             => $p->primary_image_url,
+                'exchange_eligible' => (bool)($p->category?->section?->exchange_enabled),
+                'is_serialized'     => (bool) $p->is_serialized,
+                'serial_number'     => null,
+                'serial_id'         => null,
+                'category_id'       => $p->category_id,
+                'subcategory_id'    => $p->subcategory_id,
+                'colors'            => $p->colors->map(fn($c) => [
+                    'id'             => $c->id,
+                    'name'           => $c->name,
+                    'hex_code'       => $c->hex_code,
+                    'stock_quantity' => $c->stock_quantity,
+                ])->values(),
+                'serials'           => $p->is_serialized
+                    ? $p->serialNumbers->map(fn($s) => [
+                        'id'            => $s->id,
+                        'serial_number' => $s->serial_number,
+                        'selling_price' => $s->selling_price ? (float) $s->selling_price : (float) $p->getDiscountedPrice(),
+                        'cost_price'    => $s->cost_price    ? (float) $s->cost_price    : (float) $p->cost_price,
+                        'attributes'    => $s->attributes ?? [],
+                    ])->values()
+                    : [],
+            ]);
+
+        return response()->json($products);
+    }
+
     public function getByBarcode(string $barcode)
     {
         $allowedCategoryIds = Auth::user()->allowedCategoryIds();

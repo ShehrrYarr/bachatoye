@@ -46,5 +46,14 @@
 <body class="bg-gray-100 font-sans antialiased" x-data>
 @yield('content')
 @stack('scripts')
+<script>
+    // Register the offline service worker so the POS can open without internet
+    // (after it has been loaded online at least once).
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').catch((e) => console.warn('POS offline worker failed to register:', e));
+        });
+    }
+</script>
 </body>
 </html>

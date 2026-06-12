@@ -1659,6 +1659,8 @@ function posApp() {
         showOfflineModal: false,
         syncing: false,
         lastSyncReport: null,   // { success, failed, networkAborted }
+        catalog: [],            // full product catalog cached for offline browsing
+        catalogReady: false,
 
         // Session
         showOpenSession: false,
@@ -1670,11 +1672,14 @@ function posApp() {
             try { this.heldOrders = JSON.parse(localStorage.getItem('pos_held_orders') || '[]'); } catch(e) { this.heldOrders = []; }
             // Load any offline orders pending sync
             try { this.offlineOrders = JSON.parse(localStorage.getItem('pos_offline_orders') || '[]'); } catch(e) { this.offlineOrders = []; }
+            // Load the cached product catalog (for offline browsing)
+            try { this.catalog = JSON.parse(localStorage.getItem('pos_catalog') || '[]'); } catch(e) { this.catalog = []; }
+            this.catalogReady = this.catalog.length > 0;
 
             // Connectivity monitoring — browser events + a real heartbeat to the server
-            window.addEventListener('online',  () => this.checkConnection());
+            window.addEventListener('online',  () => { this.checkConnection(); this.refreshCatalog(); });
             window.addEventListener('offline', () => { this.isOnline = false; });
-            this.checkConnection();
+            this.checkConnection().then(() => this.refreshCatalog());
             setInterval(() => this.checkConnection(), 20000);
 
             // Start on category grid — no products loaded until category selected or searched
@@ -1699,19 +1704,82 @@ function posApp() {
             }
         },
 
+        // Pull the full catalog while online and cache it for offline browsing.
+        async refreshCatalog() {
+            if (!this.isOnline) return;
+            try {
+                const res = await fetch('/pos/catalog', { cache: 'no-store' });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (Array.isArray(data)) {
+                    this.catalog = data;
+                    this.catalogReady = true;
+                    try { localStorage.setItem('pos_catalog', JSON.stringify(data)); } catch(e) {}
+                }
+            } catch(e) { /* offline or failed — keep the existing cache */ }
+        },
+
+        // Filter the cached catalog by selected category (offline equivalent of loadProducts)
+        catalogByCategory() {
+            if (!this.selectedCategory) return [];
+            const id = this.selectedCategory.id;
+            return this.catalog.filter(p => p.category_id === id || p.subcategory_id === id);
+        },
+
+        // Filter the cached catalog by a search query (offline equivalent of searchProducts)
+        catalogBySearch(q) {
+            const needle = q.toLowerCase();
+            const matched = this.catalog.filter(p =>
+                (p.name && p.name.toLowerCase().includes(needle)) ||
+                (p.barcode && String(p.barcode).toLowerCase().includes(needle)) ||
+                (p.sku && String(p.sku).toLowerCase().includes(needle))
+            );
+            // Also match individual serials (so scanning/typing an IMEI works offline)
+            const serialHits = [];
+            for (const p of this.catalog) {
+                if (!p.is_serialized || !Array.isArray(p.serials)) continue;
+                for (const s of p.serials) {
+                    if (s.serial_number.toLowerCase().includes(needle)) {
+                        serialHits.push({
+                            ...p,
+                            _key:          's_' + s.id,
+                            price:         s.selling_price,
+                            cost_price:    s.cost_price,
+                            stock:         1,
+                            serial_number: s.serial_number,
+                            serial_id:     s.id,
+                            attributes:    s.attributes || {},
+                            colors:        [],
+                        });
+                    }
+                }
+            }
+            return matched.concat(serialHits);
+        },
+
         // Focus the barcode input — desktop only (on mobile it pops the keyboard)
         focusBarcode() {
             if (window.innerWidth >= 1024) this.$refs.barcodeInput?.focus();
         },
 
         async loadProducts() {
+            // Offline → serve from the cached catalog
+            if (!this.isOnline) {
+                this.displayProducts = this.catalogByCategory();
+                this.loading = false;
+                return;
+            }
             this.loading = true;
             try {
                 let url = '/pos/product/search?q=';
                 if (this.selectedCategory) url += `&category=${this.selectedCategory.id}`;
                 const res = await fetch(url);
                 this.displayProducts = await res.json();
-            } catch(e) { console.error(e); }
+            } catch(e) {
+                // Network dropped mid-request — fall back to the cached catalog
+                this.isOnline = false;
+                this.displayProducts = this.catalogByCategory();
+            }
             this.loading = false;
         },
 
@@ -1757,17 +1825,33 @@ function posApp() {
                 }
                 return;
             }
+            // Offline → search the cached catalog
+            if (!this.isOnline) {
+                this.displayProducts = this.catalogBySearch(this.searchQuery);
+                this.loading = false;
+                return;
+            }
             this.loading = true;
             try {
                 // Search across ALL products (ignore category filter when searching)
                 const res = await fetch(`/pos/product/search?q=${encodeURIComponent(this.searchQuery)}`);
                 this.displayProducts = await res.json();
-            } catch(e) {}
+            } catch(e) {
+                this.isOnline = false;
+                this.displayProducts = this.catalogBySearch(this.searchQuery);
+            }
             this.loading = false;
         },
 
         async handleBarcodeEnter() {
             if (!this.searchQuery) return;
+
+            // Offline → resolve the scan against the cached catalog
+            if (!this.isOnline) {
+                this.handleOfflineScan(this.searchQuery.trim());
+                return;
+            }
+
             try {
                 const res = await fetch(`/pos/product/barcode/${encodeURIComponent(this.searchQuery)}`);
                 if (res.ok) {
@@ -1791,7 +1875,47 @@ function posApp() {
                         return;
                     }
                 }
-            } catch(e) {}
+            } catch(e) {
+                // Network dropped — resolve the scan offline instead
+                this.isOnline = false;
+                this.handleOfflineScan(this.searchQuery.trim());
+                return;
+            }
+            this.searchProducts();
+        },
+
+        // Resolve a scanned/typed code against the cached catalog while offline.
+        handleOfflineScan(code) {
+            if (!code) return;
+            const lc = code.toLowerCase();
+
+            // 1) Exact product barcode / SKU match
+            const product = this.catalog.find(p =>
+                (p.barcode && String(p.barcode).toLowerCase() === lc) ||
+                (p.sku && String(p.sku).toLowerCase() === lc)
+            );
+            if (product) {
+                this.addToCart(product);   // serialized → opens picker; else adds
+                this.searchQuery = '';
+                return;
+            }
+
+            // 2) Exact serial / IMEI match across serialized products
+            for (const p of this.catalog) {
+                if (!p.is_serialized || !Array.isArray(p.serials)) continue;
+                const s = p.serials.find(x => x.serial_number.toLowerCase() === lc);
+                if (s) {
+                    this.addSerializedToCart(
+                        { ...p, price: s.selling_price, cost_price: s.cost_price, attributes: s.attributes },
+                        s.serial_number,
+                        s.id
+                    );
+                    this.searchQuery = '';
+                    return;
+                }
+            }
+
+            // 3) No exact hit → show partial matches in the grid
             this.searchProducts();
         },
 
@@ -1844,13 +1968,29 @@ function posApp() {
                 this.serialPromptProduct = product;
                 this.serialPromptInput   = '';
                 this.serialPromptError   = '';
-                this.serialPromptLoading = true;
                 this.serialPromptSerials = [];
                 setTimeout(() => document.getElementById('serialPromptInput')?.focus(), 80);
+
+                // Offline → use the serials embedded in the cached catalog
+                if (!this.isOnline) {
+                    const cat = this.catalog.find(p => p.id === product.id);
+                    this.serialPromptSerials = product.serials || cat?.serials || [];
+                    this.serialPromptLoading = false;
+                    return;
+                }
+
+                this.serialPromptLoading = true;
                 fetch(`/pos/product/${product.id}/serials`)
                     .then(r => r.json())
                     .then(data => { this.serialPromptSerials = data.serials || []; })
-                    .catch(() => { this.serialPromptError = 'Could not load serials. Try scanning directly.'; })
+                    .catch(() => {
+                        // Fall back to cached serials if the request fails
+                        const cat = this.catalog.find(p => p.id === product.id);
+                        this.serialPromptSerials = product.serials || cat?.serials || [];
+                        if (this.serialPromptSerials.length === 0) {
+                            this.serialPromptError = 'Could not load serials. Try scanning directly.';
+                        }
+                    })
                     .finally(() => { this.serialPromptLoading = false; });
                 return;
             }
