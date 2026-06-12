@@ -442,6 +442,37 @@ class PosController extends Controller
         ], 404);
     }
 
+    public function getProductSerials(int $productId)
+    {
+        $allowedCategoryIds = Auth::user()->allowedCategoryIds();
+
+        $product = Product::active()
+            ->when($allowedCategoryIds !== null, fn($q) => $q->whereIn('category_id', $allowedCategoryIds))
+            ->where('id', $productId)
+            ->where('is_serialized', true)
+            ->firstOrFail();
+
+        $serials = SerialNumber::where('product_id', $product->id)
+            ->where('status', 'in_stock')
+            ->orderBy('serial_number')
+            ->get()
+            ->map(fn($s) => [
+                'id'            => $s->id,
+                'serial_number' => $s->serial_number,
+                'selling_price' => $s->selling_price ? (float) $s->selling_price : (float) $product->getDiscountedPrice(),
+                'cost_price'    => $s->cost_price    ? (float) $s->cost_price    : (float) $product->cost_price,
+                'attributes'    => $s->attributes ?? [],
+            ]);
+
+        return response()->json([
+            'product_id'   => $product->id,
+            'product_name' => $product->name,
+            'image'        => $product->primary_image_url,
+            'exchange_eligible' => (bool)($product->category?->section?->exchange_enabled ?? false),
+            'serials'      => $serials,
+        ]);
+    }
+
     public function searchCustomer(Request $request)
     {
         $q = $request->input('q', '');

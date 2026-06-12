@@ -403,6 +403,7 @@ Route::prefix('pos')->name('pos.')->middleware(['auth', 'permission:pos.access']
     Route::post('/order', [Pos\PosController::class, 'createOrder'])->name('order.create');
     Route::get('/product/search', [Pos\PosController::class, 'searchProduct'])->name('product.search');
     Route::get('/product/barcode/{barcode}', [Pos\PosController::class, 'getByBarcode'])->name('product.barcode');
+    Route::get('/product/{productId}/serials', [Pos\PosController::class, 'getProductSerials'])->name('product.serials');
     Route::get('/customer/search', [Pos\PosController::class, 'searchCustomer'])->name('customer.search');
     Route::post('/customer', [Pos\PosController::class, 'createCustomer'])->name('customer.create');
     Route::get('/receipt/{order}', [Pos\PosController::class, 'receipt'])->name('receipt');

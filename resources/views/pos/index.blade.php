@@ -674,43 +674,111 @@
         <div x-show="serialPromptProduct" x-transition
              class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
              @keydown.window.escape="serialPromptProduct = null">
-            <div class="bg-white rounded-2xl shadow-2xl p-6 w-96 max-w-full">
-                <div class="flex items-center gap-3 mb-4">
+            <div class="bg-white rounded-2xl shadow-2xl flex flex-col w-[480px] max-w-full" style="max-height: 85vh;">
+
+                {{-- Header --}}
+                <div class="flex items-center gap-3 p-5 border-b border-gray-100 shrink-0">
                     <div class="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
                         <i class="fas fa-barcode text-indigo-600 text-lg"></i>
                     </div>
-                    <div class="min-w-0">
+                    <div class="min-w-0 flex-1">
                         <h3 class="font-bold text-gray-900 text-base truncate" x-text="serialPromptProduct?.name"></h3>
-                        <p class="text-xs text-gray-500">Scan or type the IMEI / Serial number</p>
+                        <p class="text-xs text-gray-500">
+                            <span x-text="serialPromptSerials.length"></span> unit<span x-show="serialPromptSerials.length !== 1">s</span> in stock
+                        </p>
+                    </div>
+                    <button @click="serialPromptProduct = null" class="text-gray-400 hover:text-gray-600 transition-colors p-1 shrink-0">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+
+                {{-- Search / scan input --}}
+                <div class="px-5 pt-4 shrink-0">
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                        <input type="text"
+                               id="serialPromptInput"
+                               x-model="serialPromptInput"
+                               @keydown.enter.prevent="confirmSerialPrompt()"
+                               @keydown.escape="serialPromptProduct = null"
+                               @input="serialPromptError = ''"
+                               placeholder="Scan barcode or type IMEI to filter..."
+                               autocomplete="off"
+                               class="w-full border border-gray-300 rounded-xl pl-9 pr-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div x-show="serialPromptError" class="mt-2 flex items-start gap-1.5 text-xs text-red-600">
+                        <i class="fas fa-exclamation-circle mt-0.5 shrink-0"></i>
+                        <span x-text="serialPromptError"></span>
                     </div>
                 </div>
 
-                <input type="text"
-                       id="serialPromptInput"
-                       x-model="serialPromptInput"
-                       @keydown.enter.prevent="confirmSerialPrompt()"
-                       @keydown.escape="serialPromptProduct = null"
-                       placeholder="Scan barcode or type IMEI..."
-                       autocomplete="off"
-                       class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                {{-- Serial list --}}
+                <div class="flex-1 overflow-y-auto px-5 pt-3 pb-2 min-h-0">
 
-                <div x-show="serialPromptError" class="mt-2 flex items-start gap-1.5 text-xs text-red-600">
-                    <i class="fas fa-exclamation-circle mt-0.5 shrink-0"></i>
-                    <span x-text="serialPromptError"></span>
+                    {{-- Loading state --}}
+                    <template x-if="serialPromptLoading && serialPromptSerials.length === 0">
+                        <div class="flex items-center justify-center py-10 text-gray-400 gap-2">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <span class="text-sm">Loading serials...</span>
+                        </div>
+                    </template>
+
+                    {{-- Empty state --}}
+                    <template x-if="!serialPromptLoading && serialPromptSerials.length === 0">
+                        <div class="flex flex-col items-center justify-center py-10 text-gray-400 gap-2">
+                            <i class="fas fa-inbox text-3xl"></i>
+                            <span class="text-sm">No units in stock</span>
+                        </div>
+                    </template>
+
+                    {{-- Filtered list --}}
+                    <template x-if="serialPromptSerials.length > 0">
+                        <div class="space-y-2">
+                            <template x-for="s in serialPromptFilteredSerials" :key="s.id">
+                                <button type="button"
+                                        @click="pickSerial(s)"
+                                        :class="cart.find(i => i.serial_number === s.serial_number) ? 'opacity-40 cursor-not-allowed' : 'hover:bg-indigo-50 hover:border-indigo-400 cursor-pointer'"
+                                        :disabled="!!cart.find(i => i.serial_number === s.serial_number)"
+                                        class="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-white transition-all text-left group">
+                                    <div class="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
+                                        <i class="fas fa-fingerprint text-indigo-500 text-sm"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-sm font-mono font-semibold text-gray-800 truncate" x-text="s.serial_number"></div>
+                                        <template x-if="Object.keys(s.attributes || {}).length > 0">
+                                            <div class="flex flex-wrap gap-1 mt-0.5">
+                                                <template x-for="[k, v] in Object.entries(s.attributes || {})" :key="k">
+                                                    <span class="text-[10px] bg-gray-100 text-gray-600 rounded px-1.5 py-0.5 font-medium"
+                                                          x-text="`${k}: ${v}`"></span>
+                                                </template>
+                                            </div>
+                                        </template>
+                                        <template x-if="cart.find(i => i.serial_number === s.serial_number)">
+                                            <span class="text-[10px] text-orange-600 font-semibold mt-0.5 block">Already in cart</span>
+                                        </template>
+                                    </div>
+                                    <div class="text-right shrink-0">
+                                        <div class="text-sm font-bold text-indigo-700" x-text="`Rs. ${Number(s.selling_price).toLocaleString()}`"></div>
+                                        <div class="text-[10px] text-gray-400 group-hover:text-indigo-500">click to add</div>
+                                    </div>
+                                </button>
+                            </template>
+
+                            {{-- No match for filter --}}
+                            <template x-if="serialPromptFilteredSerials.length === 0 && serialPromptInput.trim()">
+                                <div class="text-center py-6 text-gray-400 text-sm">
+                                    No serial matching "<span x-text="serialPromptInput.trim()" class="font-mono"></span>"
+                                </div>
+                            </template>
+                        </div>
+                    </template>
                 </div>
 
-                <div class="flex gap-2 mt-4">
+                {{-- Footer --}}
+                <div class="px-5 py-4 border-t border-gray-100 shrink-0">
                     <button @click="serialPromptProduct = null"
-                            class="flex-1 py-2.5 px-4 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
-                        Cancel
-                    </button>
-                    <button @click="confirmSerialPrompt()"
-                            :disabled="serialPromptLoading"
-                            class="flex-1 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
-                            :class="serialPromptLoading ? 'opacity-70 cursor-wait' : ''">
-                        <i class="fas fa-spinner fa-spin" x-show="serialPromptLoading"></i>
-                        <i class="fas fa-plus" x-show="!serialPromptLoading"></i>
-                        <span x-text="serialPromptLoading ? 'Checking...' : 'Add to Cart'"></span>
+                            class="w-full py-2.5 px-4 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+                        Close
                     </button>
                 </div>
             </div>
@@ -1381,10 +1449,19 @@ function posApp() {
         colorPickerProduct: null,
 
         // Serial prompt (shown when a serialized product tile is clicked)
-        serialPromptProduct: null,
-        serialPromptInput:   '',
-        serialPromptError:   '',
-        serialPromptLoading: false,
+        serialPromptProduct:  null,
+        serialPromptInput:    '',
+        serialPromptError:    '',
+        serialPromptLoading:  false,
+        serialPromptSerials:  [],  // all in-stock serials for the product
+        get serialPromptFilteredSerials() {
+            const q = (this.serialPromptInput || '').trim().toLowerCase();
+            if (!q) return this.serialPromptSerials;
+            return this.serialPromptSerials.filter(s =>
+                s.serial_number.toLowerCase().includes(q) ||
+                Object.values(s.attributes || {}).some(v => String(v).toLowerCase().includes(q))
+            );
+        },
 
         // Customer
         customerSearch: '',
@@ -1556,13 +1633,19 @@ function posApp() {
                 return;
             }
 
-            // Serialized product tile (no specific IMEI yet) — show IMEI prompt
+            // Serialized product tile (no specific IMEI yet) — show serial picker modal
             if (product.is_serialized) {
                 this.serialPromptProduct = product;
                 this.serialPromptInput   = '';
                 this.serialPromptError   = '';
-                this.serialPromptLoading = false;
+                this.serialPromptLoading = true;
+                this.serialPromptSerials = [];
                 setTimeout(() => document.getElementById('serialPromptInput')?.focus(), 80);
+                fetch(`/pos/product/${product.id}/serials`)
+                    .then(r => r.json())
+                    .then(data => { this.serialPromptSerials = data.serials || []; })
+                    .catch(() => { this.serialPromptError = 'Could not load serials. Try scanning directly.'; })
+                    .finally(() => { this.serialPromptLoading = false; });
                 return;
             }
 
@@ -1574,10 +1657,32 @@ function posApp() {
             this.doAddToCart(product, null, null, product.stock);
         },
 
+        // Click a serial row in the list → add directly
+        pickSerial(s) {
+            if (this.cart.find(i => i.serial_number === s.serial_number)) return;
+            const p = this.serialPromptProduct;
+            this.addSerializedToCart(
+                { ...p, price: s.selling_price, cost_price: s.cost_price, attributes: s.attributes },
+                s.serial_number,
+                s.id
+            );
+            this.serialPromptProduct = null;
+            this.serialPromptInput   = '';
+            this.serialPromptSerials = [];
+            this.focusBarcode();
+        },
+
+        // Scan / type IMEI and press Enter — validates against server then adds
         async confirmSerialPrompt() {
             const sn = (this.serialPromptInput || '').trim();
             if (!sn) {
                 this.serialPromptError = 'Please enter or scan the IMEI / serial number.';
+                return;
+            }
+            // If the typed value matches a listed serial, pick it directly without a server round-trip
+            const listed = this.serialPromptSerials.find(s => s.serial_number.toLowerCase() === sn.toLowerCase());
+            if (listed) {
+                this.pickSerial(listed);
                 return;
             }
             this.serialPromptLoading = true;
@@ -1586,13 +1691,13 @@ function posApp() {
                 const res  = await fetch(`/pos/product/barcode/${encodeURIComponent(sn)}`);
                 const data = await res.json().catch(() => ({}));
                 if (res.ok && data.is_serialized && data.serial_number) {
-                    // Verify the serial belongs to the product the salesman clicked
                     if (data.id !== this.serialPromptProduct.id) {
                         this.serialPromptError = `This serial belongs to a different product: ${data.name}. Please scan the correct IMEI.`;
                     } else {
                         this.addSerializedToCart(data, data.serial_number, data.serial_id);
                         this.serialPromptProduct = null;
                         this.serialPromptInput   = '';
+                        this.serialPromptSerials = [];
                         this.focusBarcode();
                     }
                 } else {
