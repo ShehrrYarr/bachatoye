@@ -64,6 +64,14 @@
                     <span x-text="offlineOrders.length"></span>
                 </button>
 
+                {{-- View toggle --}}
+                <button @click="showViewModal = true"
+                        class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-2.5 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5"
+                        :title="posView === 'category' ? 'Category View — click to switch' : 'Product View — click to switch'">
+                    <i class="fas" :class="posView === 'category' ? 'fa-th-large' : 'fa-boxes'"></i>
+                    <span class="hidden xl:inline" x-text="posView === 'category' ? 'Categories' : 'Products'"></span>
+                </button>
+
                 @if($session)
                 <div class="text-xs text-gray-500 hidden md:block">
                     Session: <span class="font-semibold text-green-600">Open</span>
@@ -134,6 +142,11 @@
                         <i class="fas fa-receipt w-4 text-center"></i>
                         <span x-text="'Queued Sales (' + offlineOrders.length + ')'"></span>
                     </button>
+                    <button @click="showViewModal = true; showMobileMenu = false"
+                            class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 border-b border-gray-100">
+                        <i class="fas w-4 text-center" :class="posView === 'category' ? 'fa-th-large' : 'fa-boxes'"></i>
+                        <span x-text="posView === 'category' ? 'Category View' : 'Product View'"></span>
+                    </button>
                     @if($session)
                     <div class="px-4 py-2 text-xs text-gray-400 border-b border-gray-100">
                         Session: <span class="font-semibold text-green-600">Open</span>
@@ -186,8 +199,8 @@
             </button>
         </div>
 
-        {{-- Parent category grid (shown when no search + no parent selected + no product category) --}}
-        <div class="p-4 flex-1 overflow-y-auto" x-show="!searchQuery && !activeParent && !selectedCategory">
+        {{-- Parent category grid (shown when no search + no parent selected + no product category + category view) --}}
+        <div class="p-4 flex-1 overflow-y-auto" x-show="!searchQuery && !activeParent && !selectedCategory && posView === 'category'">
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
                 <template x-for="cat in categories" :key="cat.id">
                     <div @click="selectCategory(cat)"
@@ -220,8 +233,8 @@
             </div>
         </div>
 
-        {{-- Subcategory grid (shown when a parent is active but no leaf category selected) --}}
-        <div class="flex-1 flex flex-col overflow-hidden" x-show="!searchQuery && activeParent && !selectedCategory">
+        {{-- Subcategory grid (shown when a parent is active but no leaf category selected + category view) --}}
+        <div class="flex-1 flex flex-col overflow-hidden" x-show="!searchQuery && activeParent && !selectedCategory && posView === 'category'">
             {{-- Subcategory breadcrumb --}}
             <div class="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center gap-2 shrink-0">
                 <button @click="clearCategory()"
@@ -269,8 +282,8 @@
             </div>
         </div>
 
-        {{-- Product grid (shown when searching OR a leaf category is selected) --}}
-        <div class="flex-1 flex flex-col overflow-hidden" x-show="searchQuery || selectedCategory">
+        {{-- Product grid (shown when searching OR a leaf category is selected OR in product view) --}}
+        <div class="flex-1 flex flex-col overflow-hidden" x-show="searchQuery || selectedCategory || posView === 'product'">
             {{-- Breadcrumb + back button --}}
             <div x-show="selectedCategory && !searchQuery"
                  class="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center gap-2 shrink-0">
@@ -1221,6 +1234,42 @@
         </div>
     </div>
 
+    {{-- View Picker Modal (shown on every POS load) --}}
+    <div x-show="showViewModal" x-cloak
+         class="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8">
+            <div class="text-center mb-7">
+                <div class="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style="background: linear-gradient(135deg, var(--app-primary, #e11d48), var(--app-secondary, #be123c))">
+                    <i class="fas fa-cash-register text-white text-xl"></i>
+                </div>
+                <h2 class="text-lg font-bold text-gray-900">How do you want to browse?</h2>
+                <p class="text-sm text-gray-400 mt-1">Choose your preferred product view</p>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <button @click="switchView('category')"
+                        class="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-gray-200 hover:border-primary-400 hover:bg-primary-50 transition-all group cursor-pointer">
+                    <div class="w-12 h-12 bg-gray-100 group-hover:bg-primary-100 rounded-xl flex items-center justify-center transition-colors">
+                        <i class="fas fa-th-large text-gray-400 group-hover:text-primary-600 text-xl transition-colors"></i>
+                    </div>
+                    <div class="text-center">
+                        <div class="font-semibold text-gray-800 text-sm">Category View</div>
+                        <div class="text-xs text-gray-400 mt-0.5">Browse by category</div>
+                    </div>
+                </button>
+                <button @click="switchView('product')"
+                        class="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-gray-200 hover:border-primary-400 hover:bg-primary-50 transition-all group cursor-pointer">
+                    <div class="w-12 h-12 bg-gray-100 group-hover:bg-primary-100 rounded-xl flex items-center justify-center transition-colors">
+                        <i class="fas fa-boxes text-gray-400 group-hover:text-primary-600 text-xl transition-colors"></i>
+                    </div>
+                    <div class="text-center">
+                        <div class="font-semibold text-gray-800 text-sm">Product View</div>
+                        <div class="text-xs text-gray-400 mt-0.5">See all products</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
     {{-- New Customer Modal --}}
     <div x-show="showNewCustomer" x-transition class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl p-6 w-96 max-w-full" @click.outside="showNewCustomer = false">
@@ -1741,6 +1790,10 @@ function posApp() {
         showNewCustomer: false,
         newCustomer: { name: '', phone: '', address: '' },
 
+        // View picker (category grid vs all products — asked on every page load)
+        posView: null,
+        showViewModal: true,
+
         // Held orders (parked carts)
         heldOrders: [],
         showHeldOrders: false,
@@ -1799,7 +1852,7 @@ function posApp() {
             window.addEventListener('pos:sale-deleted', () => {
                 if (this.searchQuery.length > 0) {
                     this.searchProducts();
-                } else if (this.selectedCategory) {
+                } else if (this.selectedCategory || this.posView === 'product') {
                     this.loadProducts();
                 }
                 // If in subcategory/category grid, no reload needed (no products shown)
@@ -1951,7 +2004,7 @@ function posApp() {
 
         // Filter the cached catalog by selected category (offline equivalent of loadProducts)
         catalogByCategory() {
-            if (!this.selectedCategory) return [];
+            if (!this.selectedCategory) return this.posView === 'product' ? this.catalog : [];
             const ids = this._categoryMatchIds(this.selectedCategory.id);
             const matched = this.catalog.filter(p =>
                 ids.has(String(p.category_id)) || ids.has(String(p.subcategory_id))
@@ -2021,6 +2074,16 @@ function posApp() {
                 this.displayProducts = this.catalogByCategory();
             }
             this.loading = false;
+        },
+
+        switchView(view) {
+            this.posView = view;
+            this.selectedCategory = null;
+            this.activeParent = null;
+            this.searchQuery = '';
+            this.displayProducts = [];
+            this.showViewModal = false;
+            if (view === 'product') this.loadProducts();
         },
 
         selectCategory(cat) {
