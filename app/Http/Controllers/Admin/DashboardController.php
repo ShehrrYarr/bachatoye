@@ -11,7 +11,9 @@ use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\ReturnOrder;
 use App\Models\Setting;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -322,6 +324,110 @@ class DashboardController extends Controller
         }
 
         return view('salesman.today-report-print', compact('todayReport'));
+    }
+
+    public function dateRangeReport(Request $request)
+    {
+        $from = $request->filled('from') ? $request->date('from') : today();
+        $to   = $request->filled('to')   ? $request->date('to')   : today();
+        if ($to->lt($from)) $to = $from;
+
+        // ── POS sales ────────────────────────────────────────────────────────
+        $posOrders = Order::where('source', 'pos')
+            ->where('status', 'delivered')
+            ->whereBetween('created_at', [$from->startOfDay()->copy(), $to->copy()->endOfDay()])
+            ->get(['payment_method', 'total', 'cash_amount', 'bank_amount']);
+
+        $posCash  = $posOrders->sum(fn($o) => match($o->payment_method) {
+            'cash'  => (float) $o->total, 'split' => (float) $o->cash_amount, default => 0,
+        });
+        $posBank  = $posOrders->sum(fn($o) => match($o->payment_method) {
+            'bank_transfer' => (float) $o->total, 'split' => (float) $o->bank_amount, default => 0,
+        });
+        $posTotal = (float) $posOrders->sum('total');
+
+        // ── Khata receipts ───────────────────────────────────────────────────
+        $khataEntries = AccountLedger::where('type', 'credit')
+            ->whereBetween('created_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
+            ->get(['payment_method', 'amount']);
+
+        $khataCash  = (float) $khataEntries->where('payment_method', 'cash')->sum('amount');
+        $khataBank  = (float) $khataEntries->where('payment_method', 'bank_transfer')->sum('amount');
+        $khataOther = (float) $khataEntries->whereNotIn('payment_method', ['cash', 'bank_transfer'])->sum('amount');
+        $khataTotal = (float) $khataEntries->sum('amount');
+
+        // ── Expenses ─────────────────────────────────────────────────────────
+        $expensesData = Expense::whereBetween('expense_date', [$from->copy(), $to->copy()])
+            ->get(['payment_method', 'amount']);
+        $expenseTotal = (float) $expensesData->sum('amount');
+        $expenseCash  = (float) $expensesData->where('payment_method', 'cash')->sum('amount');
+        $expenseBank  = (float) $expensesData->where('payment_method', 'bank_transfer')->sum('amount');
+
+        // ── Returns ──────────────────────────────────────────────────────────
+        $returnOrders = ReturnOrder::whereIn('status', ['approved', 'completed'])
+            ->whereBetween('created_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
+            ->get(['refund_method', 'refund_amount']);
+        $returnCash  = (float) $returnOrders->where('refund_method', 'cash')->sum('refund_amount');
+        $returnBank  = (float) $returnOrders->where('refund_method', 'bank_transfer')->sum('refund_amount');
+        $returnTotal = (float) $returnOrders->sum('refund_amount');
+
+        // ── Purchases ────────────────────────────────────────────────────────
+        $purchasesData    = Purchase::whereBetween('purchase_date', [$from->copy(), $to->copy()])
+            ->get(['payment_method', 'total', 'amount_paid']);
+        $purchasesTotal   = (float) $purchasesData->sum('total');
+        $purchasesPaid    = (float) $purchasesData->sum('amount_paid');
+        $purchasesCash    = (float) $purchasesData->whereIn('payment_method', ['cash', 'partial'])->sum('amount_paid');
+        $purchasesBank    = (float) $purchasesData->where('payment_method', 'bank_transfer')->sum('amount_paid');
+        $purchasesDue     = $purchasesTotal - $purchasesPaid;
+
+        // ── Products sold ────────────────────────────────────────────────────
+        $productsSold = DB::table('order_items')
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->where('orders.status', 'delivered')
+            ->whereBetween('orders.created_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
+            ->whereNull('orders.deleted_at')
+            ->select(
+                'order_items.product_id',
+                'order_items.product_name',
+                DB::raw('SUM(order_items.quantity) as total_qty'),
+                DB::raw('SUM(order_items.line_total) as total_revenue')
+            )
+            ->groupBy('order_items.product_id', 'order_items.product_name')
+            ->orderByDesc('total_revenue')
+            ->get();
+
+        // ── Summary totals ───────────────────────────────────────────────────
+        $report = [
+            'pos_total'       => $posTotal,
+            'pos_cash'        => $posCash,
+            'pos_bank'        => $posBank,
+            'khata_total'     => $khataTotal,
+            'khata_cash'      => $khataCash,
+            'khata_bank'      => $khataBank,
+            'khata_other'     => $khataOther,
+            'expense_total'   => $expenseTotal,
+            'expense_cash'    => $expenseCash,
+            'expense_bank'    => $expenseBank,
+            'return_total'    => $returnTotal,
+            'return_cash'     => $returnCash,
+            'return_bank'     => $returnBank,
+            'purchases_total' => $purchasesTotal,
+            'purchases_paid'  => $purchasesPaid,
+            'purchases_due'   => $purchasesDue,
+            'purchases_cash'  => $purchasesCash,
+            'purchases_bank'  => $purchasesBank,
+            'total_cash'      => $posCash + $khataCash - $returnCash - $purchasesCash - $expenseCash,
+            'total_bank'      => $posBank + $khataBank - $returnBank - $purchasesBank - $expenseBank,
+            'grand_total'     => $posTotal + $khataTotal - $returnTotal - $purchasesPaid - $expenseTotal,
+            'total_orders'    => $posOrders->count(),
+            'date_from'       => $from->format('d M Y'),
+            'date_to'         => $to->format('d M Y'),
+            'is_single_day'   => $from->eq($to),
+        ];
+
+        $isSingleDay = $from->eq($to);
+
+        return view('admin.reports.date-range', compact('report', 'productsSold', 'from', 'to', 'isSingleDay'));
     }
 
     public function salesmanDashboard()

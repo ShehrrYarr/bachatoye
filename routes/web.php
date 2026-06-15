@@ -99,6 +99,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
 
     Route::get('/dashboard', [Admin\DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/today-report', [Admin\DashboardController::class, 'todayReportPrint'])->name('dashboard.today-report');
+    Route::get('/date-range-report', [Admin\DashboardController::class, 'dateRangeReport'])->name('date-range-report');
 
     // Products
     Route::get('products/generate-barcode', [Admin\ProductController::class, 'generateBarcodeAjax'])->name('products.generate_barcode');

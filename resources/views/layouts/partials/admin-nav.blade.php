@@ -75,6 +75,9 @@
 
 <div class="pt-3 pb-1 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Reports</div>
 
+<a href="{{ route('admin.date-range-report') }}" class="sidebar-link {{ request()->routeIs('admin.date-range-report') ? 'active' : '' }}">
+    <i class="fas fa-calendar-alt"></i> Date Range Report
+</a>
 <a href="{{ route('admin.reports.sales') }}" class="sidebar-link {{ $is('admin.reports.sales') ? 'active' : '' }}">
     <i class="fas fa-chart-bar"></i> Sales Report
 </a>
