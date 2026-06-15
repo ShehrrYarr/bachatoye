@@ -106,10 +106,17 @@ class ProductController extends Controller
                         ->where("attributes->{$primaryAttr->name}", $opt)
                         ->exists();
 
+                    $serialWithImage = SerialNumber::where('product_id', $product->id)
+                        ->where('status', 'in_stock')
+                        ->where("attributes->{$primaryAttr->name}", $opt)
+                        ->whereNotNull('image')
+                        ->value('image');
+
                     $attrOptions->push([
                         'value'    => $opt,
                         'price'    => $price,
                         'in_stock' => $inStock,
+                        'image'    => $serialWithImage ? \Illuminate\Support\Facades\Storage::disk('public')->url($serialWithImage) : null,
                     ]);
                 }
             }

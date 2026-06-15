@@ -62,6 +62,19 @@
                              class="absolute inset-0 w-full h-full object-contain p-4 transition-transform duration-500 ease-out select-none">
                         @endforeach
 
+                        {{-- Serial-specific image overlay (shown when an attribute with a unit photo is selected) --}}
+                        @if($attrOptions->whereNotNull('image')->isNotEmpty())
+                        <div x-show="$store.serialImg.url"
+                             style="display:none;"
+                             x-transition:enter="transition ease-out duration-300"
+                             x-transition:enter-start="opacity-0"
+                             x-transition:enter-end="opacity-100"
+                             class="absolute inset-0 z-20 bg-white rounded-2xl overflow-hidden">
+                            <img :src="$store.serialImg.url" alt="{{ $product->name }}"
+                                 class="absolute inset-0 w-full h-full object-contain p-4">
+                        </div>
+                        @endif
+
                         {{-- Prev / Next arrows --}}
                         @if($product->images->count() > 1)
                         <button @click.prevent="goTo((activeImg - 1 + total) % total)"
@@ -160,10 +173,13 @@
                 hasAttr:   {{ $attrOptions->isNotEmpty() ? 'true' : 'false' }},
                 selectedAttrOption: {{ $firstInStockAttrOption ? "'".addslashes($firstInStockAttrOption['value'])."'" : 'null' }},
                 selectedAttrPrice:  {{ $initialDisplayPrice }},
-                selectAttr(value, price) {
+                serialImage: {{ $firstInStockAttrOption && !empty($firstInStockAttrOption['image']) ? "'".addslashes($firstInStockAttrOption['image'])."'" : 'null' }},
+                selectAttr(value, price, image) {
                     this.selectedAttrOption = value;
                     this.selectedAttrPrice  = price;
                     this.displayPrice       = price;
+                    this.serialImage        = image || null;
+                    this.$store.serialImg.url = image || null;
                 },
                 canAdd() {
                     if (this.hasColors && !this.selectedColorId) return false;
@@ -282,7 +298,7 @@
                         @foreach($attrOptions as $opt)
                         @if($opt['in_stock'])
                         <button type="button"
-                                @click="selectAttr('{{ addslashes($opt['value']) }}', {{ $opt['price'] }})"
+                                @click="selectAttr('{{ addslashes($opt['value']) }}', {{ $opt['price'] }}, '{{ addslashes($opt['image'] ?? '') }}')"
                                 :class="selectedAttrOption === '{{ addslashes($opt['value']) }}'
                                     ? 'ring-2 ring-primary-500 ring-offset-2 border-primary-400 bg-primary-50 text-primary-700'
                                     : 'ring-1 ring-gray-300 hover:ring-gray-400 bg-white text-gray-700'"
@@ -458,6 +474,10 @@
 
 @push('scripts')
 <script>
+document.addEventListener('alpine:init', () => {
+    Alpine.store('serialImg', { url: @json($firstInStockAttrOption['image'] ?? null) });
+});
+
 function productGallery(total, intervalMs) {
     return {
         activeImg: 0,

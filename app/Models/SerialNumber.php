@@ -19,6 +19,7 @@ class SerialNumber extends Model
         'order_item_id',
         'return_order_id',
         'notes',
+        'image',
     ];
 
     protected function casts(): array

@@ -218,6 +218,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::get('purchases', [Admin\PurchaseController::class, 'index'])->name('purchases.index');
     Route::get('purchases/create', [Admin\PurchaseController::class, 'create'])->name('purchases.create');
     Route::post('purchases', [Admin\PurchaseController::class, 'store'])->name('purchases.store');
+    Route::post('purchases/temp-serial-image', [Admin\PurchaseController::class, 'tempSerialImage'])->name('purchases.temp-serial-image');
     Route::get('purchases/{purchase}', [Admin\PurchaseController::class, 'show'])->name('purchases.show');
     Route::get('purchases/{purchase}/edit', [Admin\PurchaseController::class, 'edit'])->name('purchases.edit');
     Route::put('purchases/{purchase}', [Admin\PurchaseController::class, 'update'])->name('purchases.update');
@@ -342,6 +343,8 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
         ->middleware('permission:purchases.manage')->name('purchases.create');
     Route::post('purchases', [Admin\PurchaseController::class, 'store'])
         ->middleware('permission:purchases.manage')->name('purchases.store');
+    Route::post('purchases/temp-serial-image', [Admin\PurchaseController::class, 'tempSerialImage'])
+        ->middleware('permission:purchases.manage')->name('purchases.temp-serial-image');
     Route::get('purchases/{purchase}', [Admin\PurchaseController::class, 'show'])
         ->middleware('permission:purchases.view')->name('purchases.show');
     // Serial number routes for salesman

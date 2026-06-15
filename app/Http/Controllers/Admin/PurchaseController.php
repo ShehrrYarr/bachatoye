@@ -17,6 +17,7 @@ use App\Models\VendorLedger;
 use App\Services\BarcodeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class PurchaseController extends Controller
@@ -181,6 +182,7 @@ class PurchaseController extends Controller
             'items.*.serials.*.selling_price'   => 'nullable|numeric|min:0',
             'items.*.serials.*.attributes'      => 'nullable|array',
             'items.*.serials.*.attributes.*'    => 'nullable|string|max:200',
+            'items.*.serials.*.image_path'      => 'nullable|string|max:500',
         ]);
 
         // Server-side serial validation for serialized products
@@ -303,6 +305,7 @@ class PurchaseController extends Controller
                             'selling_price'    => isset($snData['selling_price']) && is_numeric($snData['selling_price'])
                                                   ? $snData['selling_price'] : null,
                             'attributes'       => !empty($snData['attributes']) ? $snData['attributes'] : null,
+                            'image'            => $snData['image_path'] ?? null,
                             'status'           => 'in_stock',
                             'purchase_id'      => $purchase->id,
                             'purchase_item_id' => $purchaseItem->id,
@@ -696,5 +699,15 @@ class PurchaseController extends Controller
         ];
 
         return view('admin.reports.purchases', compact('purchases', 'vendors', 'summary'));
+    }
+
+    public function tempSerialImage(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $request->validate(['image' => 'required|image|max:4096']);
+        $path = $request->file('image')->store('serials', 'public');
+        return response()->json([
+            'path' => $path,
+            'url'  => Storage::disk('public')->url($path),
+        ]);
     }
 }

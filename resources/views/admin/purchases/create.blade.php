@@ -234,6 +234,34 @@
                                                                             class="w-full text-xs text-indigo-600 hover:text-indigo-800 border border-dashed border-indigo-300 hover:border-indigo-500 rounded-lg py-1.5 transition-colors flex items-center justify-center gap-1.5">
                                                                         <i class="fas fa-plus text-[10px]"></i> Add field
                                                                     </button>
+
+                                                                    {{-- Unit image upload --}}
+                                                                    <div class="pt-1">
+                                                                        <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide block mb-1">
+                                                                            <i class="fas fa-camera mr-1"></i> Unit Photo
+                                                                        </label>
+                                                                        <template x-if="!csn.imagePreviewUrl">
+                                                                            <div>
+                                                                                <input type="file" accept="image/*"
+                                                                                       @change="uploadSerialImage(clr.serials[csi], $event.target.files[0])"
+                                                                                       class="w-full text-xs border border-dashed border-gray-300 rounded-lg px-2 py-1.5 file:mr-2 file:text-xs file:border-0 file:rounded file:bg-indigo-50 file:text-indigo-700 file:px-2 file:py-0.5 cursor-pointer">
+                                                                                <div x-show="csn.imageUploading" class="text-xs text-indigo-600 mt-1 flex items-center gap-1">
+                                                                                    <i class="fas fa-spinner fa-spin"></i> Uploading…
+                                                                                </div>
+                                                                                <div x-show="csn.imageError" x-text="csn.imageError" class="text-xs text-red-500 mt-1"></div>
+                                                                            </div>
+                                                                        </template>
+                                                                        <template x-if="csn.imagePreviewUrl">
+                                                                            <div class="flex items-center gap-2">
+                                                                                <img :src="csn.imagePreviewUrl" class="w-14 h-14 object-cover rounded-lg border border-gray-200">
+                                                                                <button type="button"
+                                                                                        @click="clr.serials[csi].image_path = null; clr.serials[csi].imagePreviewUrl = null"
+                                                                                        class="text-xs text-red-500 hover:text-red-700 flex items-center gap-1">
+                                                                                    <i class="fas fa-times"></i> Remove
+                                                                                </button>
+                                                                            </div>
+                                                                        </template>
+                                                                    </div>
                                                                 </div>
                                                             </template>
                                                         </div>
@@ -346,6 +374,34 @@
                                                             class="w-full text-xs text-indigo-600 hover:text-indigo-800 border border-dashed border-indigo-300 hover:border-indigo-500 rounded-lg py-1.5 transition-colors flex items-center justify-center gap-1.5">
                                                         <i class="fas fa-plus text-[10px]"></i> Add field
                                                     </button>
+
+                                                    {{-- Unit image upload --}}
+                                                    <div class="pt-1">
+                                                        <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide block mb-1">
+                                                            <i class="fas fa-camera mr-1"></i> Unit Photo
+                                                        </label>
+                                                        <template x-if="!sn.imagePreviewUrl">
+                                                            <div>
+                                                                <input type="file" accept="image/*"
+                                                                       @change="uploadSerialImage(item.serials[si], $event.target.files[0])"
+                                                                       class="w-full text-xs border border-dashed border-gray-300 rounded-lg px-2 py-1.5 file:mr-2 file:text-xs file:border-0 file:rounded file:bg-indigo-50 file:text-indigo-700 file:px-2 file:py-0.5 cursor-pointer">
+                                                                <div x-show="sn.imageUploading" class="text-xs text-indigo-600 mt-1 flex items-center gap-1">
+                                                                    <i class="fas fa-spinner fa-spin"></i> Uploading…
+                                                                </div>
+                                                                <div x-show="sn.imageError" x-text="sn.imageError" class="text-xs text-red-500 mt-1"></div>
+                                                            </div>
+                                                        </template>
+                                                        <template x-if="sn.imagePreviewUrl">
+                                                            <div class="flex items-center gap-2">
+                                                                <img :src="sn.imagePreviewUrl" class="w-14 h-14 object-cover rounded-lg border border-gray-200">
+                                                                <button type="button"
+                                                                        @click="item.serials[si].image_path = null; item.serials[si].imagePreviewUrl = null"
+                                                                        class="text-xs text-red-500 hover:text-red-700 flex items-center gap-1">
+                                                                    <i class="fas fa-times"></i> Remove
+                                                                </button>
+                                                            </div>
+                                                        </template>
+                                                    </div>
                                                 </div>
                                             </template>
                                         </div>
@@ -527,8 +583,9 @@
 @endphp
 <script>
     const _categoriesData    = {!! $categoriesJson !!};
-    const _serialAttrDefs    = {!! json_encode($serialAttributeDefs->map(fn($d) => ['name' => $d->name, 'options' => $d->options])->values()) !!};
-    const _serialCheckUrl    = '/{{ auth()->user()->hasRole('admin') ? 'admin' : 'salesman' }}/api/serials/check';
+    const _serialAttrDefs         = {!! json_encode($serialAttributeDefs->map(fn($d) => ['name' => $d->name, 'options' => $d->options])->values()) !!};
+    const _serialCheckUrl         = '/{{ auth()->user()->hasRole('admin') ? 'admin' : 'salesman' }}/api/serials/check';
+    const _serialImageUploadUrl   = '/{{ auth()->user()->hasRole('admin') ? 'admin' : 'salesman' }}/purchases/temp-serial-image';
 </script>
 
 <div x-data="purchaseCreateModal()"
@@ -668,7 +725,29 @@ function purchaseForm() {
         },
 
         newSerialRow() {
-            return { serial: '', cost_price: '', selling_price: '', attributes: {}, extraFields: [], serialError: null, serialChecking: false };
+            return { serial: '', cost_price: '', selling_price: '', attributes: {}, extraFields: [],
+                     serialError: null, serialChecking: false,
+                     image_path: null, imagePreviewUrl: null, imageUploading: false, imageError: null };
+        },
+
+        async uploadSerialImage(snObj, file) {
+            if (!file) return;
+            snObj.imageUploading = true;
+            snObj.imageError = null;
+            const fd = new FormData();
+            fd.append('image', file);
+            fd.append('_token', document.querySelector('meta[name=csrf-token]').content);
+            try {
+                const res = await fetch(_serialImageUploadUrl, { method: 'POST', body: fd });
+                if (!res.ok) throw new Error('Upload failed');
+                const data = await res.json();
+                snObj.image_path     = data.path;
+                snObj.imagePreviewUrl = data.url;
+            } catch (e) {
+                snObj.imageError = 'Upload failed — please try again';
+            } finally {
+                snObj.imageUploading = false;
+            }
         },
 
         serialInputClass(snObj) {
@@ -842,6 +921,7 @@ function purchaseForm() {
                     mk('serial',        snObj.serial        || '');
                     mk('cost_price',    snObj.cost_price    || '');
                     mk('selling_price', snObj.selling_price || '');
+                    if (snObj.image_path) mk('image_path', snObj.image_path);
 
                     // Merge pre-defined attribute dropdowns + user-added extra fields
                     const allAttrs = { ...(snObj.attributes || {}) };
