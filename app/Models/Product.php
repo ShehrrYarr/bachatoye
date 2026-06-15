@@ -13,7 +13,7 @@ class Product extends Model
         'name', 'slug', 'sku', 'barcode', 'short_description', 'description',
         'price', 'cost_price', 'compare_price', 'stock_quantity',
         'low_stock_threshold', 'low_stock_dismissed', 'category_id', 'subcategory_id', 'brand_id',
-        'is_active', 'is_featured', 'show_in_ecom', 'track_inventory', 'is_serialized', 'free_delivery', 'cod_enabled',
+        'is_active', 'is_featured', 'show_in_ecom', 'track_inventory', 'is_serialized', 'free_delivery', 'bank_free_delivery', 'cod_enabled',
         'primary_serial_attribute_id', 'serial_attribute_ids',
     ];
 
@@ -30,6 +30,7 @@ class Product extends Model
             'is_serialized'          => 'boolean',
             'low_stock_dismissed'    => 'boolean',
             'free_delivery'          => 'boolean',
+            'bank_free_delivery'     => 'boolean',
             'cod_enabled'            => 'boolean',
             'serial_attribute_ids'   => 'array',
         ];

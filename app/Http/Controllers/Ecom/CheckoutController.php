@@ -28,7 +28,9 @@ class CheckoutController extends Controller
         $couponDiscount = (float) session('coupon_discount', 0);
         $total = max(0, $subtotal + $deliveryCharge - $couponDiscount);
 
-        $codAvailable = collect($items)->every(fn($item) => $item['product']->cod_enabled);
+        $codAvailable        = collect($items)->every(fn($item) => $item['product']->cod_enabled);
+        $allBankFreeDelivery = $deliveryCharge > 0
+            && collect($items)->every(fn($item) => $item['product']->bank_free_delivery);
 
         $cartProductIds = collect($items)->pluck('product.id')->all();
         $triggeredDeals = Deal::active()
@@ -38,7 +40,7 @@ class CheckoutController extends Controller
             ->filter(fn($deal) => $deal->isTriggeredBy($cartProductIds))
             ->values();
 
-        return view('ecom.checkout', compact('items', 'subtotal', 'deliveryCharge', 'couponCode', 'couponDiscount', 'total', 'codAvailable', 'triggeredDeals'));
+        return view('ecom.checkout', compact('items', 'subtotal', 'deliveryCharge', 'couponCode', 'couponDiscount', 'total', 'codAvailable', 'allBankFreeDelivery', 'triggeredDeals'));
     }
 
     public function store(Request $request)
@@ -58,7 +60,7 @@ class CheckoutController extends Controller
         $items    = $this->hydrateCart($cart);
         $subtotal = collect($items)->sum('line_total');
 
-        $deliveryCharge = $this->resolveDelivery($items, $subtotal);
+        $deliveryCharge = $this->resolveDelivery($items, $subtotal, $data['payment_method']);
 
         $couponId       = session('coupon_id');
         $couponDiscount = (float) session('coupon_discount', 0);
@@ -174,9 +176,10 @@ class CheckoutController extends Controller
      * Free delivery if:
      *   - subtotal >= free_delivery_above threshold, OR
      *   - any cart item's product has free_delivery = true, OR
-     *   - any cart item's product belongs to a category with free_delivery = true
+     *   - any cart item's product belongs to a category with free_delivery = true, OR
+     *   - payment is bank_transfer AND every cart item has bank_free_delivery = true
      */
-    private function resolveDelivery(array $items, float $subtotal): float
+    private function resolveDelivery(array $items, float $subtotal, ?string $paymentMethod = null): float
     {
         $charge    = (float) Setting::get('delivery_charge', 150);
         $freeAbove = (float) Setting::get('free_delivery_above', 5000);
@@ -187,6 +190,11 @@ class CheckoutController extends Controller
             $product = $item['product'];
             if ($product->free_delivery) return 0;
             if ($product->category && $product->category->free_delivery) return 0;
+        }
+
+        if ($paymentMethod === 'bank_transfer'
+            && collect($items)->every(fn($item) => $item['product']->bank_free_delivery)) {
+            return 0;
         }
 
         return $charge;

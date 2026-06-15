@@ -30,6 +30,9 @@
 <a href="{{ route('admin.coupons.index') }}" class="sidebar-link {{ $is('admin.coupons') ? 'active' : '' }}">
     <i class="fas fa-ticket-alt"></i> Coupons
 </a>
+<a href="{{ route('admin.bank-free-delivery.index') }}" class="sidebar-link {{ request()->routeIs('admin.bank-free-delivery.*') ? 'active' : '' }}">
+    <i class="fas fa-university"></i> Bank Free Delivery
+</a>
 <a href="{{ route('admin.banners.index') }}" class="sidebar-link {{ $is('admin.banners') ? 'active' : '' }}">
     <i class="fas fa-image"></i> Banners
 </a>

@@ -145,6 +145,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::resource('coupons', Admin\CouponController::class);
     Route::patch('coupons/{coupon}/toggle', [Admin\CouponController::class, 'toggle'])->name('coupons.toggle');
 
+    // Bank Free Delivery
+    Route::get('bank-free-delivery', [Admin\BankFreeDeliveryController::class, 'index'])->name('bank-free-delivery.index');
+    Route::patch('bank-free-delivery/{product}/toggle', [Admin\BankFreeDeliveryController::class, 'toggle'])->name('bank-free-delivery.toggle');
+
     // Orders
     Route::get('orders', [Admin\OrderController::class, 'index'])->name('orders.index');
     Route::get('orders/deleted', [Admin\OrderController::class, 'deletedSales'])->name('orders.deleted');

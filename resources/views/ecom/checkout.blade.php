@@ -25,7 +25,17 @@
 
         {{-- Left: Customer info + Payment (this IS the checkout form) --}}
         <form id="checkout-form" method="POST" action="{{ route('checkout.store') }}" enctype="multipart/form-data"
-              x-data="{ paymentMethod: '{{ old('payment_method', $codAvailable ? 'cash' : 'bank_transfer') }}' }"
+              x-data="{
+                  paymentMethod: '{{ old('payment_method', $codAvailable ? 'cash' : 'bank_transfer') }}',
+                  allBankFreeDelivery: {{ $allBankFreeDelivery ? 'true' : 'false' }},
+                  baseDelivery: {{ $deliveryCharge }},
+                  get effectiveDelivery() {
+                      return this.allBankFreeDelivery && this.paymentMethod === 'bank_transfer' ? 0 : this.baseDelivery;
+                  },
+                  get effectiveTotal() {
+                      return Math.max(0, {{ $subtotal - $couponDiscount }} + this.effectiveDelivery);
+                  }
+              }"
               class="lg:col-span-2 space-y-6">
             @csrf
 
@@ -134,6 +144,17 @@
                             </div>
                         </div>
 
+                        {{-- Bank free delivery nudge --}}
+                        @if($allBankFreeDelivery)
+                        <div x-show="paymentMethod !== 'bank_transfer'" x-transition
+                             class="mt-3 flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                            <i class="fas fa-truck text-green-600 shrink-0"></i>
+                            <p class="text-sm text-green-800">
+                                <strong>Free delivery available!</strong> Switch to <strong>Bank Transfer</strong> to get free delivery on this order.
+                            </p>
+                        </div>
+                        @endif
+
                         @error('payment_method') <p class="form-error">{{ $message }}</p> @enderror
                     </div>
                 </div>
@@ -220,8 +241,15 @@
                         </div>
                         <div class="flex justify-between text-gray-600">
                             <span>Delivery</span>
-                            @if($deliveryCharge == 0)
+                            @if($deliveryCharge == 0 && !$allBankFreeDelivery)
                                 <span class="text-green-600 font-semibold">Free</span>
+                            @elseif($allBankFreeDelivery)
+                                <span>
+                                    <span x-show="effectiveDelivery === 0" class="text-green-600 font-semibold flex items-center gap-1">
+                                        <i class="fas fa-university text-xs"></i> Free
+                                    </span>
+                                    <span x-show="effectiveDelivery > 0" x-text="'Rs. ' + effectiveDelivery.toLocaleString()"></span>
+                                </span>
                             @else
                                 <span>Rs. {{ number_format($deliveryCharge) }}</span>
                             @endif
@@ -236,7 +264,11 @@
                         @endif
                         <div class="flex justify-between font-bold text-gray-900 text-base border-t border-gray-200 pt-2">
                             <span>Total</span>
-                            <span class="text-primary-700">Rs. {{ number_format($total) }}</span>
+                            @if($allBankFreeDelivery)
+                                <span class="text-primary-700" x-text="'Rs. ' + effectiveTotal.toLocaleString()"></span>
+                            @else
+                                <span class="text-primary-700">Rs. {{ number_format($total) }}</span>
+                            @endif
                         </div>
                     </div>
 
