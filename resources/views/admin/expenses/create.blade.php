@@ -9,7 +9,8 @@
 </div>
 
 <div class="max-w-xl">
-    <form method="POST" action="{{ route("{$rPrefix}.expenses.store") }}" enctype="multipart/form-data">
+    <form method="POST" action="{{ route("{$rPrefix}.expenses.store") }}" enctype="multipart/form-data"
+          x-data="{ paymentMethod: '{{ old('payment_method', 'cash') }}' }">
         @csrf
         <div class="card p-6 space-y-4">
             <div>
@@ -41,14 +42,29 @@
                            class="form-input" required>
                 </div>
                 <div>
-                    <label class="form-label">Payment Method</label>
-                    <select name="payment_method" class="form-select">
+                    <label class="form-label">Payment Method *</label>
+                    <select name="payment_method" x-model="paymentMethod" class="form-select">
                         <option value="cash">Cash</option>
                         <option value="bank_transfer">Bank Transfer</option>
-                        <option value="card">Card</option>
                     </select>
                 </div>
             </div>
+
+            {{-- Bank account selector — only shown when Bank Transfer is selected --}}
+            <div x-show="paymentMethod === 'bank_transfer'" x-transition>
+                <label class="form-label">Bank Account *</label>
+                <select name="bank_account_id" class="form-select @error('bank_account_id') border-red-500 @enderror"
+                        :required="paymentMethod === 'bank_transfer'">
+                    <option value="">— Select bank account —</option>
+                    @foreach($banks as $bank)
+                    <option value="{{ $bank->id }}" {{ old('bank_account_id') == $bank->id ? 'selected' : '' }}>
+                        {{ $bank->label }} — {{ $bank->account_title }}
+                    </option>
+                    @endforeach
+                </select>
+                @error('bank_account_id') <p class="form-error">{{ $message }}</p> @enderror
+            </div>
+
             <div>
                 <label class="form-label">Notes</label>
                 <textarea name="notes" rows="2" class="form-textarea" placeholder="Additional details...">{{ old('notes') }}</textarea>

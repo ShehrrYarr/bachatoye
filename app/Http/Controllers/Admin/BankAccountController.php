@@ -85,23 +85,25 @@ class BankAccountController extends Controller
                 ->whereIn('status', ['approved', 'completed'])
                 ->sum('refund_amount');
 
-            $bank->computed_in      = $bankInSales + $bankInSplit + $bankInKhata;
-            $bank->computed_out     = $bankOutPurchases + $bankOutReturns;
-            $bank->computed_balance = (float) $bank->opening_balance + $bank->computed_in - $bank->computed_out;
+            $bankOutExpenses = (float) Expense::where('payment_method', 'bank_transfer')
+                ->where('bank_account_id', $bank->id)
+                ->sum('amount');
+
+            $bank->computed_in          = $bankInSales + $bankInSplit + $bankInKhata;
+            $bank->computed_out         = $bankOutPurchases + $bankOutReturns + $bankOutExpenses;
+            $bank->computed_out_expenses = $bankOutExpenses;
+            $bank->computed_balance     = (float) $bank->opening_balance + $bank->computed_in - $bank->computed_out;
         }
 
-        // ── Unattributed bank totals (for reference note) ───────────────────
+        // ── Unattributed bank totals (ecom orders not linked to a specific account) ─
         $unattributedEcomBank = (float) Order::where('status', 'delivered')
             ->where('source', 'ecommerce')
             ->where('payment_method', 'bank_transfer')
             ->whereNull('deleted_at')
             ->sum('total');
 
-        $unattributedExpenseBank = (float) Expense::whereIn('payment_method', ['bank_transfer', 'card', 'other'])
-            ->sum('amount');
-
         return view('admin.bank-accounts.index', compact(
-            'banks', 'cashSummary', 'unattributedEcomBank', 'unattributedExpenseBank'
+            'banks', 'cashSummary', 'unattributedEcomBank'
         ));
     }
 

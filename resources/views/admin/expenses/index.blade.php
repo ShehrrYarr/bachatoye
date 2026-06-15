@@ -80,15 +80,31 @@
                     @else <span class="text-gray-400">—</span> @endif
                 </td>
                 <td class="text-right font-semibold text-gray-800">Rs. {{ number_format($expense->amount) }}</td>
-                <td class="text-sm text-gray-500">{{ ucfirst($expense->payment_method ?? 'cash') }}</td>
+                <td class="text-sm text-gray-500">
+                    @if($expense->payment_method === 'bank_transfer')
+                        <span class="inline-flex items-center gap-1 text-blue-700 font-medium">
+                            <i class="fas fa-university text-xs"></i>
+                            {{ $expense->bankAccount?->label ?? 'Bank Transfer' }}
+                        </span>
+                    @else
+                        <span class="inline-flex items-center gap-1 text-gray-600">
+                            <i class="fas fa-money-bill-wave text-xs"></i> Cash
+                        </span>
+                    @endif
+                </td>
                 <td class="text-sm text-gray-500">{{ $expense->expense_date->format('d M Y') }}</td>
                 <td class="text-sm text-gray-500">{{ $expense->user?->name ?? '—' }}</td>
                 <td class="text-right">
-                    <form method="POST" action="{{ route("{$rPrefix}.expenses.destroy", $expense) }}"
-                          onsubmit="return confirm('Delete this expense?')">
-                        @csrf @method('DELETE')
-                        <button type="submit" class="btn-danger btn-sm"><i class="fas fa-trash"></i></button>
-                    </form>
+                    <div class="flex items-center justify-end gap-2">
+                        <a href="{{ route("{$rPrefix}.expenses.edit", $expense) }}" class="btn-outline btn-sm">
+                            <i class="fas fa-pencil-alt"></i>
+                        </a>
+                        <form method="POST" action="{{ route("{$rPrefix}.expenses.destroy", $expense) }}"
+                              onsubmit="return confirm('Delete this expense?')">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="btn-danger btn-sm"><i class="fas fa-trash"></i></button>
+                        </form>
+                    </div>
                 </td>
             </tr>
             @empty

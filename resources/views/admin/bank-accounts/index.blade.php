@@ -153,8 +153,14 @@
                 <div class="border-t border-gray-100 my-1"></div>
                 <div class="flex justify-between text-red-600">
                     <span>− Purchases paid</span>
-                    <span>Rs. {{ number_format($bank->computed_out) }}</span>
+                    <span>Rs. {{ number_format($bank->computed_out - $bank->computed_out_expenses) }}</span>
                 </div>
+                @if($bank->computed_out_expenses > 0)
+                <div class="flex justify-between text-red-600">
+                    <span>− Expenses paid</span>
+                    <span>Rs. {{ number_format($bank->computed_out_expenses) }}</span>
+                </div>
+                @endif
             </div>
             {{-- Edit bank account --}}
             <div class="px-5 pb-4 pt-1 border-t border-gray-100">
@@ -172,21 +178,15 @@
 
 </div>
 
-{{-- Unattributed note --}}
-@if($unattributedEcomBank > 0 || $unattributedExpenseBank > 0)
+{{-- Ecom bank note (no specific account linked to ecom orders) --}}
+@if($unattributedEcomBank > 0)
 <div class="mb-6 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 text-sm">
     <p class="font-semibold mb-1"><i class="fas fa-info-circle mr-1.5"></i>Unattributed Bank Transactions</p>
     <p class="text-xs text-amber-700">
-        The following amounts are via bank but not linked to a specific account
-        — include them in your opening balances when reconciling:
+        Ecom bank transfers are not linked to a specific account — include them in your opening balance when reconciling:
     </p>
-    <ul class="mt-2 space-y-0.5 text-xs">
-        @if($unattributedEcomBank > 0)
+    <ul class="mt-2 text-xs">
         <li><span class="font-medium">Ecom bank transfers received:</span> Rs. {{ number_format($unattributedEcomBank) }}</li>
-        @endif
-        @if($unattributedExpenseBank > 0)
-        <li><span class="font-medium">Expenses via bank/card:</span> Rs. {{ number_format($unattributedExpenseBank) }}</li>
-        @endif
     </ul>
 </div>
 @endif

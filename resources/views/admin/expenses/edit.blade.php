@@ -9,7 +9,8 @@
 </div>
 
 <div class="max-w-xl">
-    <form method="POST" action="{{ route("{$rPrefix}.expenses.update", $expense) }}">
+    <form method="POST" action="{{ route("{$rPrefix}.expenses.update", $expense) }}"
+          x-data="{ paymentMethod: '{{ old('payment_method', $expense->payment_method) }}' }">
         @csrf @method('PUT')
         <div class="card p-6 space-y-4">
             <div>
@@ -44,15 +45,30 @@
                            class="form-input" required>
                 </div>
                 <div>
-                    <label class="form-label">Payment Method</label>
-                    <select name="payment_method" class="form-select">
-                        <option value="cash" {{ old('payment_method', $expense->payment_method) === 'cash' ? 'selected' : '' }}>Cash</option>
-                        <option value="bank_transfer" {{ old('payment_method', $expense->payment_method) === 'bank_transfer' ? 'selected' : '' }}>Bank Transfer</option>
-                        <option value="card" {{ old('payment_method', $expense->payment_method) === 'card' ? 'selected' : '' }}>Card</option>
-                        <option value="other" {{ old('payment_method', $expense->payment_method) === 'other' ? 'selected' : '' }}>Other</option>
+                    <label class="form-label">Payment Method *</label>
+                    <select name="payment_method" x-model="paymentMethod" class="form-select">
+                        <option value="cash">Cash</option>
+                        <option value="bank_transfer">Bank Transfer</option>
                     </select>
                 </div>
             </div>
+
+            {{-- Bank account selector --}}
+            <div x-show="paymentMethod === 'bank_transfer'" x-transition>
+                <label class="form-label">Bank Account *</label>
+                <select name="bank_account_id" class="form-select @error('bank_account_id') border-red-500 @enderror"
+                        :required="paymentMethod === 'bank_transfer'">
+                    <option value="">— Select bank account —</option>
+                    @foreach($banks as $bank)
+                    <option value="{{ $bank->id }}"
+                        {{ old('bank_account_id', $expense->bank_account_id) == $bank->id ? 'selected' : '' }}>
+                        {{ $bank->label }} — {{ $bank->account_title }}
+                    </option>
+                    @endforeach
+                </select>
+                @error('bank_account_id') <p class="form-error">{{ $message }}</p> @enderror
+            </div>
+
             <div>
                 <label class="form-label">Notes</label>
                 <textarea name="notes" rows="2" class="form-textarea" placeholder="Additional details...">{{ old('notes', $expense->notes) }}</textarea>

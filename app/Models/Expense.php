@@ -8,7 +8,7 @@ class Expense extends Model
 {
     protected $fillable = [
         'expense_category_id', 'amount', 'description', 'notes',
-        'receipt_image', 'expense_date', 'user_id', 'payment_method',
+        'receipt_image', 'expense_date', 'user_id', 'payment_method', 'bank_account_id',
     ];
 
     protected function casts(): array
@@ -27,5 +27,10 @@ class Expense extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function bankAccount()
+    {
+        return $this->belongsTo(BankAccount::class);
     }
 }
