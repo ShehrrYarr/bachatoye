@@ -82,7 +82,12 @@ class CustomerController extends Controller
 
     public function show(Customer $customer)
     {
-        $customer->load(['orders.items', 'ledgerEntries.user']);
+        $customer->load([
+            'orders.items',
+            'returns.items',
+            'returns.order',
+            'ledgerEntries.user',
+        ]);
         $ledger = $customer->ledgerEntries()->latest()->paginate(20);
         $hasPosActivity = $customer->orders->where('source', 'pos')->count() > 0
                        || $customer->credit_balance != 0;
