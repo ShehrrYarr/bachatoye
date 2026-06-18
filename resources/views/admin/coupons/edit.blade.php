@@ -179,13 +179,11 @@
                     <i class="fas fa-save mr-2"></i> Update Coupon
                 </button>
 
-                <form method="POST" action="{{ route('admin.coupons.destroy', $coupon) }}"
-                      onsubmit="return confirm('Delete this coupon permanently?')">
-                    @csrf @method('DELETE')
-                    <button type="submit" class="btn-danger w-full justify-center text-sm">
-                        <i class="fas fa-trash mr-2"></i> Delete
-                    </button>
-                </form>
+                <button type="button"
+                        onclick="if(confirm('Delete this coupon permanently?')) document.getElementById('delete-coupon-form').submit()"
+                        class="btn-danger w-full justify-center text-sm">
+                    <i class="fas fa-trash mr-2"></i> Delete
+                </button>
 
                 <a href="{{ route('admin.coupons.index') }}"
                    class="block text-center text-sm text-gray-500 hover:text-gray-700">Cancel</a>
@@ -193,6 +191,11 @@
         </div>
 
     </div>
+</form>
+
+{{-- Standalone delete form — not nested inside the update form --}}
+<form id="delete-coupon-form" method="POST" action="{{ route('admin.coupons.destroy', $coupon) }}" style="display:none">
+    @csrf @method('DELETE')
 </form>
 
 @push('scripts')
