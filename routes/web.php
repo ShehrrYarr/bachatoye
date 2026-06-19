@@ -176,6 +176,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
 
     // Vendors & Purchases
     Route::resource('vendors', Admin\VendorController::class);
+    Route::get('vendors/{vendor}/khata', [Admin\VendorController::class, 'khata'])->name('vendors.khata');
+    Route::get('vendors/{vendor}/khata/print', [Admin\VendorController::class, 'khataPrint'])->name('vendors.khata.print');
     Route::post('vendors/{vendor}/ledger', [Admin\VendorController::class, 'addLedgerEntry'])->name('vendors.ledger.add');
     Route::get('api/vendors/{vendor}/balance', fn(\App\Models\Vendor $vendor) => response()->json(['balance' => $vendor->balance]))->name('api.vendor.balance');
     Route::get('api/serials/check', function (\Illuminate\Http\Request $request) {

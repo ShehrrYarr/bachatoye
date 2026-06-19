@@ -64,10 +64,14 @@
                     </td>
                     <td class="text-right">
                         <div class="flex items-center justify-end gap-2">
-                            <a href="{{ route('admin.vendors.show', $vendor) }}" class="btn-outline btn-sm">
+                            <a href="{{ route('admin.vendors.show', $vendor) }}" class="btn-outline btn-sm" title="View Details">
                                 <i class="fas fa-eye"></i>
                             </a>
-                            <a href="{{ route('admin.vendors.edit', $vendor) }}" class="btn-outline btn-sm">
+                            <a href="{{ route('admin.vendors.khata', $vendor) }}"
+                               class="btn-outline btn-sm text-purple-600 border-purple-300 hover:bg-purple-50" title="Khata / Ledger">
+                                <i class="fas fa-book"></i>
+                            </a>
+                            <a href="{{ route('admin.vendors.edit', $vendor) }}" class="btn-outline btn-sm" title="Edit">
                                 <i class="fas fa-edit"></i>
                             </a>
                         </div>

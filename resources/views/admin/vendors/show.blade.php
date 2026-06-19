@@ -14,6 +14,9 @@
         <a href="{{ route('admin.purchases.create') }}?vendor_id={{ $vendor->id }}" class="btn-primary btn-sm">
             <i class="fas fa-plus mr-1"></i> New Purchase
         </a>
+        <a href="{{ route('admin.vendors.khata', $vendor) }}" class="btn-outline btn-sm text-purple-700 border-purple-300 hover:bg-purple-50">
+            <i class="fas fa-book mr-1"></i> Khata
+        </a>
         <a href="{{ route('admin.vendors.edit', $vendor) }}" class="btn-outline btn-sm">
             <i class="fas fa-edit mr-1"></i> Edit
         </a>
@@ -22,7 +25,7 @@
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-    {{-- Left: ledger + purchases --}}
+    {{-- Left: purchases --}}
     <div class="lg:col-span-2 space-y-5">
 
         {{-- Purchases list --}}
@@ -69,61 +72,9 @@
                 </table>
             </div>
         </div>
-
-        {{-- Ledger --}}
-        <div class="card">
-            <div class="card-header"><h2 class="font-semibold text-gray-800">Khata / Ledger</h2></div>
-            <div class="overflow-x-auto">
-                <table class="data-table text-sm">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Description</th>
-                            <th>Type</th>
-                            <th>Method</th>
-                            <th class="text-right">Amount</th>
-                            <th class="text-right">Balance After</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($ledger as $entry)
-                        <tr>
-                            <td class="text-xs">{{ $entry->created_at->format('d M Y H:i') }}</td>
-                            <td class="text-gray-600">{{ $entry->description ?? '—' }}</td>
-                            <td>
-                                <span class="badge {{ $entry->type === 'credit' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700' }}">
-                                    {{ $entry->type === 'credit' ? 'Credit (owed)' : 'Debit (paid)' }}
-                                </span>
-                            </td>
-                            <td class="text-xs text-gray-500">
-                                @if($entry->payment_method === 'cash')
-                                    <span class="inline-flex items-center gap-1"><i class="fas fa-money-bill-wave text-green-500"></i> Cash</span>
-                                @elseif($entry->payment_method === 'bank_transfer')
-                                    <span class="inline-flex items-center gap-1"><i class="fas fa-university text-blue-500"></i>
-                                        {{ $entry->bankAccount?->label ?? 'Bank' }}
-                                    </span>
-                                @else
-                                    —
-                                @endif
-                            </td>
-                            <td class="text-right font-semibold {{ $entry->type === 'credit' ? 'text-red-600' : 'text-green-600' }}">
-                                {{ $entry->type === 'credit' ? '+' : '–' }} Rs. {{ number_format($entry->amount) }}
-                            </td>
-                            <td class="text-right text-xs font-mono">Rs. {{ number_format($entry->balance_after) }}</td>
-                        </tr>
-                        @empty
-                        <tr><td colspan="6" class="text-center text-gray-400 py-6">No ledger entries.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-            @if($ledger->hasPages())
-            <div class="px-5 py-3 border-t border-gray-100">{{ $ledger->links() }}</div>
-            @endif
-        </div>
     </div>
 
-    {{-- Right: info + manual payment --}}
+    {{-- Right: info + quick payment --}}
     <div class="space-y-5">
 
         {{-- Balance card --}}
@@ -151,6 +102,10 @@
                     <dd class="font-semibold">Rs. {{ number_format($vendor->purchases->sum('total')) }}</dd>
                 </div>
             </dl>
+            <a href="{{ route('admin.vendors.khata', $vendor) }}"
+               class="mt-4 flex items-center justify-center gap-2 w-full py-2 rounded-lg border border-purple-300 text-purple-700 text-sm font-medium hover:bg-purple-50 transition-colors">
+                <i class="fas fa-book"></i> View Full Khata
+            </a>
         </div>
 
         {{-- Contact info --}}
@@ -175,7 +130,7 @@
             </dl>
         </div>
 
-        {{-- Manual payment entry --}}
+        {{-- Quick payment --}}
         @if($vendor->balance != 0)
         <div class="card p-5">
             <h2 class="font-semibold text-gray-800 mb-3">Record Payment</h2>
@@ -191,7 +146,6 @@
                            class="form-input" placeholder="0.00" required>
                 </div>
 
-                {{-- Payment method --}}
                 <div>
                     <label class="form-label text-sm">Payment Method</label>
                     <div class="flex gap-3 mt-1">
@@ -208,7 +162,6 @@
                     </div>
                 </div>
 
-                {{-- Bank account selector (only for bank transfer) --}}
                 <div x-show="payMethod === 'bank_transfer'" x-transition style="display:none;">
                     <label class="form-label text-sm">Bank Account</label>
                     <select name="bank_account_id" class="form-input"

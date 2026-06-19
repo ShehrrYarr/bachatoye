@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\BankAccount;
+use App\Models\Setting;
 use App\Models\Vendor;
 use App\Models\VendorLedger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class VendorController extends Controller
 {
@@ -52,9 +54,33 @@ class VendorController extends Controller
     public function show(Vendor $vendor)
     {
         $vendor->load('purchases');
-        $ledger      = $vendor->ledgerEntries()->with(['createdBy', 'bankAccount'])->latest()->paginate(25);
         $bankAccounts = BankAccount::active()->orderBy('sort_order')->orderBy('id')->get();
-        return view('admin.vendors.show', compact('vendor', 'ledger', 'bankAccounts'));
+        return view('admin.vendors.show', compact('vendor', 'bankAccounts'));
+    }
+
+    public function khata(Vendor $vendor)
+    {
+        $entries      = $vendor->ledgerEntries()->with(['createdBy', 'bankAccount'])->latest()->paginate(30);
+        $bankAccounts = BankAccount::active()->orderBy('sort_order')->orderBy('id')->get();
+        return view('admin.vendors.khata', compact('vendor', 'entries', 'bankAccounts'));
+    }
+
+    public function khataPrint(Request $request, Vendor $vendor)
+    {
+        $dateFrom = $request->input('date_from');
+        $dateTo   = $request->input('date_to');
+
+        $query = $vendor->ledgerEntries()->with(['createdBy', 'bankAccount'])->oldest();
+        if ($dateFrom) $query->whereDate('created_at', '>=', $dateFrom);
+        if ($dateTo)   $query->whereDate('created_at', '<=', $dateTo);
+
+        $entries      = $query->get();
+        $storeName    = Setting::get('shop_name', config('app.name'));
+        $storePhone   = Setting::get('shop_phone', '');
+        $storeAddress = Setting::get('shop_address', '');
+        return view('admin.vendors.khata-print', compact(
+            'vendor', 'entries', 'storeName', 'storePhone', 'storeAddress', 'dateFrom', 'dateTo'
+        ));
     }
 
     public function edit(Vendor $vendor)
@@ -86,30 +112,33 @@ class VendorController extends Controller
     public function addLedgerEntry(Request $request, Vendor $vendor)
     {
         $data = $request->validate([
-            'type'           => 'required|in:credit,debit',
-            'amount'         => 'required|numeric|min:0.01',
-            'description'    => 'nullable|string|max:255',
-            'payment_method' => 'nullable|in:cash,bank_transfer',
-            'bank_account_id'=> 'required_if:payment_method,bank_transfer|nullable|exists:bank_accounts,id',
+            'type'            => 'required|in:credit,debit',
+            'amount'          => 'required|numeric|min:0.01',
+            'description'     => 'nullable|string|max:255',
+            'payment_method'  => 'required_if:type,debit|nullable|in:cash,bank_transfer',
+            'bank_account_id' => 'required_if:payment_method,bank_transfer|nullable|exists:bank_accounts,id',
         ]);
 
-        $newBalance = $vendor->balance + ($data['type'] === 'credit' ? $data['amount'] : -$data['amount']);
+        $isDebit   = $data['type'] === 'debit';
+        $payMethod = $isDebit ? ($data['payment_method'] ?? null) : null;
+        $bankAccId = ($payMethod === 'bank_transfer') ? ($data['bank_account_id'] ?? null) : null;
 
-        $payMethod  = $data['payment_method'] ?? null;
-        $bankAccId  = ($payMethod === 'bank_transfer') ? ($data['bank_account_id'] ?? null) : null;
+        DB::transaction(function () use ($data, $vendor, $payMethod, $bankAccId, $isDebit) {
+            $newBalance = $vendor->balance + ($isDebit ? -$data['amount'] : $data['amount']);
 
-        VendorLedger::create([
-            'vendor_id'      => $vendor->id,
-            'type'           => $data['type'],
-            'amount'         => $data['amount'],
-            'balance_after'  => $newBalance,
-            'description'    => $data['description'] ?? 'Manual entry',
-            'payment_method' => $payMethod,
-            'bank_account_id'=> $bankAccId,
-            'created_by'     => auth()->id(),
-        ]);
+            VendorLedger::create([
+                'vendor_id'       => $vendor->id,
+                'type'            => $data['type'],
+                'amount'          => $data['amount'],
+                'balance_after'   => $newBalance,
+                'description'     => $data['description'] ?? 'Manual entry',
+                'payment_method'  => $payMethod,
+                'bank_account_id' => $bankAccId,
+                'created_by'      => auth()->id(),
+            ]);
 
-        $vendor->update(['balance' => $newBalance]);
+            $vendor->update(['balance' => $newBalance]);
+        });
 
         return back()->with('success', 'Ledger entry added.');
     }
