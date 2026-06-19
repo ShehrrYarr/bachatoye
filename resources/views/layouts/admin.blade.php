@@ -132,7 +132,10 @@
         document.addEventListener('DOMContentLoaded', function () {
             const activeLink = document.querySelector('nav .sidebar-link.active');
             if (activeLink) {
-                activeLink.scrollIntoView({ block: 'center', behavior: 'instant' });
+                const nav = activeLink.closest('nav');
+                if (nav) {
+                    nav.scrollTop = activeLink.offsetTop - (nav.clientHeight / 2) + (activeLink.clientHeight / 2);
+                }
             }
         });
     </script>
