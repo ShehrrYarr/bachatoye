@@ -10,7 +10,7 @@ class Order extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'order_number', 'offline_ref', 'source', 'customer_id', 'vendor_id', 'customer_name', 'customer_phone',
+        'order_number', 'offline_ref', 'source', 'customer_id', 'vendor_id', 'delivery_platform_id', 'cod_status', 'customer_name', 'customer_phone',
         'customer_email', 'delivery_address', 'city', 'delivery_notes',
         'subtotal', 'discount_amount', 'delivery_charge', 'total', 'amount_paid',
         'cash_amount', 'bank_amount', 'bank_account_id',
@@ -84,6 +84,18 @@ class Order extends Model
     public function bankAccount()
     {
         return $this->belongsTo(BankAccount::class);
+    }
+
+    public function deliveryPlatform()
+    {
+        return $this->belongsTo(DeliveryPlatform::class);
+    }
+
+    public function platformPayouts()
+    {
+        return $this->belongsToMany(PlatformPayout::class, 'platform_payout_orders')
+                    ->withPivot('order_amount')
+                    ->withTimestamps();
     }
 
     public function getStatusBadgeAttribute(): string

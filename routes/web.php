@@ -158,6 +158,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::patch('orders/{order}/payment-status', [Admin\OrderController::class, 'updatePaymentStatus'])->name('orders.payment_status');
     Route::get('orders/{order}/invoice', [Admin\OrderController::class, 'invoice'])->name('orders.invoice');
     Route::get('orders/{order}/invoice/pdf', [Admin\OrderController::class, 'invoicePdf'])->name('orders.invoice_pdf');
+    Route::patch('orders/{order}/dispatch', [Admin\OrderController::class, 'dispatch'])->name('orders.dispatch');
 
     // Returns
     Route::get('returns', [Admin\ReturnController::class, 'index'])->name('returns.index');
@@ -173,6 +174,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::patch('customer-accounts/{account}/toggle', [Admin\CustomerAccountController::class, 'toggle'])->name('customer-accounts.toggle');
     Route::get('customers/{customer}/ledger/print', [Admin\CustomerController::class, 'ledgerPrint'])->name('customers.ledger.print');
     Route::post('customers/{customer}/ledger', [Admin\CustomerController::class, 'addLedgerEntry'])->name('customers.ledger.add');
+
+    // Delivery Platforms
+    Route::resource('delivery-platforms', Admin\DeliveryPlatformController::class)->except(['create','show','edit']);
+
+    // Platform Payouts
+    Route::get('platform-payouts', [Admin\PlatformPayoutController::class, 'index'])->name('platform-payouts.index');
+    Route::get('platform-payouts/create', [Admin\PlatformPayoutController::class, 'create'])->name('platform-payouts.create');
+    Route::post('platform-payouts', [Admin\PlatformPayoutController::class, 'store'])->name('platform-payouts.store');
+    Route::delete('platform-payouts/{platformPayout}', [Admin\PlatformPayoutController::class, 'destroy'])->name('platform-payouts.destroy');
 
     // Vendors & Purchases
     Route::resource('vendors', Admin\VendorController::class);

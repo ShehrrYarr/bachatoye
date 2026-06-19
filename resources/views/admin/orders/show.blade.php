@@ -154,6 +154,81 @@
             </dl>
         </div>
 
+        {{-- Dispatch / COD card (ecom orders only) --}}
+        @if($order->source === 'ecommerce')
+        <div class="card p-5">
+            <h2 class="font-semibold text-gray-800 mb-4">Delivery & COD</h2>
+
+            @if($order->deliveryPlatform)
+                {{-- Already dispatched --}}
+                <div class="flex items-center gap-2 mb-3">
+                    <i class="fas fa-truck text-blue-500"></i>
+                    <span class="font-medium text-gray-800">{{ $order->deliveryPlatform->name }}</span>
+                    @if($order->tracking_number)
+                        <span class="text-xs text-gray-400 font-mono">{{ $order->tracking_number }}</span>
+                    @endif
+                </div>
+                @if($order->cod_status === 'pending')
+                    <div class="flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg text-sm">
+                        <i class="fas fa-clock text-orange-500"></i>
+                        <span class="text-orange-700 font-medium">COD — Awaiting Platform Payment</span>
+                    </div>
+                @elseif($order->cod_status === 'settled')
+                    <div class="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-sm">
+                        <i class="fas fa-check-circle text-green-500"></i>
+                        <span class="text-green-700 font-medium">COD — Settled by Platform</span>
+                    </div>
+                @else
+                    <div class="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+                        <i class="fas fa-credit-card text-blue-500"></i>
+                        <span class="text-blue-700 font-medium">Prepaid</span>
+                    </div>
+                @endif
+            @endif
+
+            {{-- Dispatch form (admin only, not settled) --}}
+            @can('orders.manage')
+            @if($order->cod_status !== 'settled' && !in_array($order->status, ['cancelled', 'returned']))
+            <div class="{{ $order->deliveryPlatform ? 'mt-4 pt-4 border-t border-gray-100' : '' }}">
+                <p class="text-xs text-gray-500 mb-3">
+                    {{ $order->deliveryPlatform ? 'Update dispatch details:' : 'Assign a delivery platform:' }}
+                </p>
+                <form method="POST" action="{{ route('admin.orders.dispatch', $order) }}"
+                      x-data="{ isCod: {{ $order->cod_status === 'pending' ? 'true' : 'false' }} }">
+                    @csrf @method('PATCH')
+                    <div class="space-y-3">
+                        <select name="delivery_platform_id" class="form-select text-sm" required>
+                            <option value="">— Select Platform —</option>
+                            @foreach($deliveryPlatforms as $dp)
+                                <option value="{{ $dp->id }}"
+                                    {{ $order->delivery_platform_id == $dp->id ? 'selected' : '' }}>
+                                    {{ $dp->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <input type="text" name="tracking_number" class="form-input text-sm"
+                               placeholder="Tracking / CN number"
+                               value="{{ $order->tracking_number }}">
+                        <label class="flex items-center gap-2 cursor-pointer text-sm">
+                            <input type="hidden" name="is_cod" value="0">
+                            <input type="checkbox" name="is_cod" value="1" x-model="isCod"
+                                   class="rounded text-orange-500">
+                            <span :class="isCod ? 'text-orange-700 font-medium' : 'text-gray-600'">
+                                Cash on Delivery (COD)
+                            </span>
+                        </label>
+                        <button type="submit" class="btn-primary btn-sm w-full justify-center">
+                            <i class="fas fa-paper-plane mr-1.5"></i>
+                            {{ $order->deliveryPlatform ? 'Update Dispatch' : 'Dispatch Order' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+            @endif
+            @endcan
+        </div>
+        @endif
+
         <div class="card p-5">
             <h2 class="font-semibold text-gray-800 mb-4">Order Info</h2>
             <dl class="space-y-2 text-sm">

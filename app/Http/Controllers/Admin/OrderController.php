@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\DeliveryPlatform;
 use App\Models\Order;
 use App\Models\StockMovement;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -41,8 +42,29 @@ class OrderController extends Controller
 
     public function show(Order $order)
     {
-        $order->load(['items.product', 'customer', 'servedBy', 'deal', 'returns.items']);
-        return view('admin.orders.show', compact('order'));
+        $order->load(['items.product', 'customer', 'servedBy', 'deal', 'returns.items', 'deliveryPlatform']);
+        $deliveryPlatforms = DeliveryPlatform::active()->orderBy('name')->get();
+        return view('admin.orders.show', compact('order', 'deliveryPlatforms'));
+    }
+
+    public function dispatch(Request $request, Order $order)
+    {
+        $data = $request->validate([
+            'delivery_platform_id' => 'required|exists:delivery_platforms,id',
+            'tracking_number'      => 'nullable|string|max:100',
+            'is_cod'               => 'nullable|boolean',
+        ]);
+
+        $isCod = (bool) ($data['is_cod'] ?? false);
+
+        $order->update([
+            'delivery_platform_id' => $data['delivery_platform_id'],
+            'tracking_number'      => $data['tracking_number'] ?? $order->tracking_number,
+            'cod_status'           => $isCod ? 'pending' : null,
+            'status'               => in_array($order->status, ['pending', 'processing']) ? 'shipped' : $order->status,
+        ]);
+
+        return back()->with('success', 'Order dispatched' . ($isCod ? ' — COD tracking enabled.' : '.'));
     }
 
     public function updateStatus(Request $request, Order $order)
