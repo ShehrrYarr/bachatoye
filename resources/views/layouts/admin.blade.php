@@ -128,5 +128,13 @@
     </div>
 
     @stack('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const activeLink = document.querySelector('nav .sidebar-link.active');
+            if (activeLink) {
+                activeLink.scrollIntoView({ block: 'center', behavior: 'instant' });
+            }
+        });
+    </script>
 </body>
 </html>
