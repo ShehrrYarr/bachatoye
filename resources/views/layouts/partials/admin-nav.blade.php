@@ -60,6 +60,12 @@
 <a href="{{ route('admin.purchases.index') }}" class="sidebar-link {{ $is('admin.purchases') ? 'active' : '' }}">
     <i class="fas fa-file-invoice-dollar"></i> Purchases
 </a>
+<a href="{{ route('admin.delivery-platforms.index') }}" class="sidebar-link {{ $is('admin.delivery-platforms') ? 'active' : '' }}">
+    <i class="fas fa-truck"></i> Delivery Platforms
+</a>
+<a href="{{ route('admin.platform-payouts.index') }}" class="sidebar-link {{ $is('admin.platform-payouts') ? 'active' : '' }}">
+    <i class="fas fa-money-check-alt"></i> Platform Payouts
+</a>
 <a href="{{ route('admin.serials.lookup') }}" class="sidebar-link {{ $is('admin.serials.lookup') ? 'active' : '' }}">
     <i class="fas fa-barcode"></i> Serial Lookup
 </a>
