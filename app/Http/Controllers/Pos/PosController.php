@@ -606,8 +606,9 @@ class PosController extends Controller
     {
         $q = $request->input('q', '');
 
-        $customers = Customer::where('name', 'like', "%{$q}%")
-            ->orWhere('phone', 'like', "%{$q}%")
+        $customers = Customer::where('source', '!=', 'online')
+            ->where(fn($q2) => $q2->where('name', 'like', "%{$q}%")
+                                  ->orWhere('phone', 'like', "%{$q}%"))
             ->limit(8)
             ->get(['id', 'name', 'phone', 'credit_balance'])
             ->map(fn($c) => [
