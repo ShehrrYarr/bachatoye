@@ -111,6 +111,24 @@
         </div>
     </div>
 
+    {{-- Vendor Payments --}}
+    @if(($report['vendor_pay_total'] ?? 0) > 0)
+    <div class="card p-4 border-l-4 border-yellow-400">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-semibold text-yellow-700"><i class="fas fa-handshake mr-1.5"></i>Vendor Payments (Out)</span>
+            <span class="text-lg font-bold text-yellow-900">– Rs. {{ number_format($report['vendor_pay_total']) }}</span>
+        </div>
+        <div class="flex flex-wrap gap-3 text-xs text-yellow-700">
+            @if($report['vendor_pay_cash'] > 0)
+            <span><i class="fas fa-money-bill-wave mr-1"></i>Cash: Rs. {{ number_format($report['vendor_pay_cash']) }}</span>
+            @endif
+            @if($report['vendor_pay_bank'] > 0)
+            <span><i class="fas fa-university mr-1"></i>Bank: Rs. {{ number_format($report['vendor_pay_bank']) }}</span>
+            @endif
+        </div>
+    </div>
+    @endif
+
     {{-- Net totals --}}
     <div class="card p-4 border-l-4 border-gray-800 bg-gray-50">
         <div class="flex items-center justify-between mb-3">

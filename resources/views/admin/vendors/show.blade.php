@@ -80,6 +80,7 @@
                             <th>Date</th>
                             <th>Description</th>
                             <th>Type</th>
+                            <th>Method</th>
                             <th class="text-right">Amount</th>
                             <th class="text-right">Balance After</th>
                         </tr>
@@ -94,13 +95,24 @@
                                     {{ $entry->type === 'credit' ? 'Credit (owed)' : 'Debit (paid)' }}
                                 </span>
                             </td>
+                            <td class="text-xs text-gray-500">
+                                @if($entry->payment_method === 'cash')
+                                    <span class="inline-flex items-center gap-1"><i class="fas fa-money-bill-wave text-green-500"></i> Cash</span>
+                                @elseif($entry->payment_method === 'bank_transfer')
+                                    <span class="inline-flex items-center gap-1"><i class="fas fa-university text-blue-500"></i>
+                                        {{ $entry->bankAccount?->label ?? 'Bank' }}
+                                    </span>
+                                @else
+                                    —
+                                @endif
+                            </td>
                             <td class="text-right font-semibold {{ $entry->type === 'credit' ? 'text-red-600' : 'text-green-600' }}">
                                 {{ $entry->type === 'credit' ? '+' : '–' }} Rs. {{ number_format($entry->amount) }}
                             </td>
                             <td class="text-right text-xs font-mono">Rs. {{ number_format($entry->balance_after) }}</td>
                         </tr>
                         @empty
-                        <tr><td colspan="5" class="text-center text-gray-400 py-6">No ledger entries.</td></tr>
+                        <tr><td colspan="6" class="text-center text-gray-400 py-6">No ledger entries.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -167,19 +179,52 @@
         @if($vendor->balance != 0)
         <div class="card p-5">
             <h2 class="font-semibold text-gray-800 mb-3">Record Payment</h2>
-            <form method="POST" action="{{ route('admin.vendors.ledger.add', $vendor) }}" class="space-y-3">
+            <form method="POST" action="{{ route('admin.vendors.ledger.add', $vendor) }}" class="space-y-3"
+                  x-data="{ payMethod: 'cash' }">
                 @csrf
                 <input type="hidden" name="type" value="debit">
+
                 <div>
                     <label class="form-label text-sm">Amount Paid (Rs.)</label>
                     <input type="number" name="amount" min="0.01" step="0.01"
                            max="{{ $vendor->balance }}"
                            class="form-input" placeholder="0.00" required>
                 </div>
+
+                {{-- Payment method --}}
                 <div>
-                    <label class="form-label text-sm">Note</label>
-                    <input type="text" name="description" class="form-input" placeholder="Cash payment, bank transfer...">
+                    <label class="form-label text-sm">Payment Method</label>
+                    <div class="flex gap-3 mt-1">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="payment_method" value="cash"
+                                   x-model="payMethod" class="text-primary-600">
+                            <span class="text-sm font-medium"><i class="fas fa-money-bill-wave text-green-500 mr-1"></i>Cash</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="payment_method" value="bank_transfer"
+                                   x-model="payMethod" class="text-primary-600">
+                            <span class="text-sm font-medium"><i class="fas fa-university text-blue-500 mr-1"></i>Bank Transfer</span>
+                        </label>
+                    </div>
                 </div>
+
+                {{-- Bank account selector (only for bank transfer) --}}
+                <div x-show="payMethod === 'bank_transfer'" x-transition style="display:none;">
+                    <label class="form-label text-sm">Bank Account</label>
+                    <select name="bank_account_id" class="form-input"
+                            :required="payMethod === 'bank_transfer'">
+                        <option value="">— Select Bank —</option>
+                        @foreach($bankAccounts as $bank)
+                            <option value="{{ $bank->id }}">{{ $bank->label }} — {{ $bank->account_title }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="form-label text-sm">Note (optional)</label>
+                    <input type="text" name="description" class="form-input" placeholder="Add a note...">
+                </div>
+
                 <button type="submit" class="btn-primary w-full justify-center">
                     <i class="fas fa-check mr-2"></i> Record Payment
                 </button>

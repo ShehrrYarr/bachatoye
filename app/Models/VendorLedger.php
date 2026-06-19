@@ -8,7 +8,7 @@ class VendorLedger extends Model
 {
     protected $table = 'vendor_ledger';
 
-    protected $fillable = ['vendor_id', 'purchase_id', 'order_id', 'type', 'amount', 'balance_after', 'description', 'reference', 'created_by'];
+    protected $fillable = ['vendor_id', 'purchase_id', 'order_id', 'type', 'amount', 'balance_after', 'description', 'reference', 'payment_method', 'bank_account_id', 'created_by'];
 
     protected function casts(): array
     {
@@ -31,6 +31,11 @@ class VendorLedger extends Model
     public function order()
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function bankAccount()
+    {
+        return $this->belongsTo(BankAccount::class);
     }
 
     public function createdBy()

@@ -233,6 +233,26 @@
                     @endif
                 </button>
 
+                {{-- Vendor Payments --}}
+                @if(($todayReport['vendor_pay_total'] ?? 0) > 0)
+                <div class="w-full text-left bg-yellow-50 rounded-xl p-3">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-sm font-semibold text-yellow-800">
+                            <i class="fas fa-handshake mr-1.5"></i>Vendor Payments (Out)
+                        </span>
+                        <span class="font-bold text-yellow-900">– Rs. {{ number_format($todayReport['vendor_pay_total']) }}</span>
+                    </div>
+                    <div class="flex gap-4 text-xs text-yellow-700 flex-wrap">
+                        @if($todayReport['vendor_pay_cash'] > 0)
+                        <span><i class="fas fa-money-bill-wave mr-1"></i>Cash: Rs. {{ number_format($todayReport['vendor_pay_cash']) }}</span>
+                        @endif
+                        @if($todayReport['vendor_pay_bank'] > 0)
+                        <span><i class="fas fa-university mr-1"></i>Bank: Rs. {{ number_format($todayReport['vendor_pay_bank']) }}</span>
+                        @endif
+                    </div>
+                </div>
+                @endif
+
                 {{-- Returns --}}
                 <button type="button" @click="activeModal = 'returns'"
                         class="w-full text-left bg-orange-50 hover:bg-orange-100 rounded-xl p-3 transition-colors cursor-pointer group">
@@ -269,6 +289,12 @@
                     <div class="flex justify-between text-sm text-gray-600">
                         <span><i class="fas fa-truck text-purple-500 mr-1.5"></i>Purchases (Out)</span>
                         <span class="font-semibold text-purple-700">– Rs. {{ number_format($todayReport['purchases_paid']) }}</span>
+                    </div>
+                    @endif
+                    @if(($todayReport['vendor_pay_total'] ?? 0) > 0)
+                    <div class="flex justify-between text-sm text-gray-600">
+                        <span><i class="fas fa-handshake text-yellow-500 mr-1.5"></i>Vendor Payments (Out)</span>
+                        <span class="font-semibold text-yellow-700">– Rs. {{ number_format($todayReport['vendor_pay_total']) }}</span>
                     </div>
                     @endif
                     <div class="flex justify-between text-base font-bold text-gray-900 border-t border-gray-200 pt-2 mt-1">

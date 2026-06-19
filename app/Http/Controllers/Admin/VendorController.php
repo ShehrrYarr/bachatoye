@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\BankAccount;
 use App\Models\Vendor;
 use App\Models\VendorLedger;
 use Illuminate\Http\Request;
@@ -51,8 +52,9 @@ class VendorController extends Controller
     public function show(Vendor $vendor)
     {
         $vendor->load('purchases');
-        $ledger = $vendor->ledgerEntries()->with('createdBy')->latest()->paginate(25);
-        return view('admin.vendors.show', compact('vendor', 'ledger'));
+        $ledger      = $vendor->ledgerEntries()->with(['createdBy', 'bankAccount'])->latest()->paginate(25);
+        $bankAccounts = BankAccount::active()->orderBy('sort_order')->orderBy('id')->get();
+        return view('admin.vendors.show', compact('vendor', 'ledger', 'bankAccounts'));
     }
 
     public function edit(Vendor $vendor)
@@ -84,20 +86,27 @@ class VendorController extends Controller
     public function addLedgerEntry(Request $request, Vendor $vendor)
     {
         $data = $request->validate([
-            'type'        => 'required|in:credit,debit',
-            'amount'      => 'required|numeric|min:0.01',
-            'description' => 'nullable|string|max:255',
+            'type'           => 'required|in:credit,debit',
+            'amount'         => 'required|numeric|min:0.01',
+            'description'    => 'nullable|string|max:255',
+            'payment_method' => 'nullable|in:cash,bank_transfer',
+            'bank_account_id'=> 'required_if:payment_method,bank_transfer|nullable|exists:bank_accounts,id',
         ]);
 
         $newBalance = $vendor->balance + ($data['type'] === 'credit' ? $data['amount'] : -$data['amount']);
 
+        $payMethod  = $data['payment_method'] ?? null;
+        $bankAccId  = ($payMethod === 'bank_transfer') ? ($data['bank_account_id'] ?? null) : null;
+
         VendorLedger::create([
-            'vendor_id'    => $vendor->id,
-            'type'         => $data['type'],
-            'amount'       => $data['amount'],
-            'balance_after' => $newBalance,
-            'description'  => $data['description'] ?? 'Manual entry',
-            'created_by'   => auth()->id(),
+            'vendor_id'      => $vendor->id,
+            'type'           => $data['type'],
+            'amount'         => $data['amount'],
+            'balance_after'  => $newBalance,
+            'description'    => $data['description'] ?? 'Manual entry',
+            'payment_method' => $payMethod,
+            'bank_account_id'=> $bankAccId,
+            'created_by'     => auth()->id(),
         ]);
 
         $vendor->update(['balance' => $newBalance]);

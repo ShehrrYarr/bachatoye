@@ -11,6 +11,7 @@ use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\ReturnOrder;
 use App\Models\Setting;
+use App\Models\VendorLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -103,30 +104,41 @@ class DashboardController extends Controller
         $purchasesCashPaid  = (float) $todayPurchases->whereIn('payment_method', ['cash', 'partial'])->sum('amount_paid');
         $purchasesBankPaid  = (float) $todayPurchases->where('payment_method', 'bank_transfer')->sum('amount_paid');
 
+        // Manual vendor payments (cash/bank) recorded via vendor ledger page (not tied to a purchase)
+        $vendorPayData  = VendorLedger::whereDate('created_at', today())
+            ->where('type', 'debit')->whereNull('purchase_id')->whereNotNull('payment_method')
+            ->get(['payment_method', 'amount']);
+        $vendorPayCash  = (float) $vendorPayData->where('payment_method', 'cash')->sum('amount');
+        $vendorPayBank  = (float) $vendorPayData->where('payment_method', 'bank_transfer')->sum('amount');
+        $vendorPayTotal = (float) $vendorPayData->sum('amount');
+
         $todayReport = [
-            'pos_total'      => $posOrders->sum('total'),
-            'pos_cash'       => $posCash,
-            'pos_bank'       => $posBank,
-            'expenses'       => $todayExpenses,
-            'expense_cash'   => $expenseCash,
-            'expense_bank'   => $expenseBank,
-            'khata_total'    => $khataTotal,
-            'khata_cash'     => $khataCash,
-            'khata_bank'     => $khataBank,
-            'khata_other'    => $khataOther,
-            'return_total'   => $returnTotal,
-            'return_cash'    => $returnCash,
-            'return_bank'    => $returnBank,
-            'total_cash'        => $posCash + $khataCash - $returnCash - $purchasesCashPaid - $expenseCash,
-            'total_bank'        => $posBank + $khataBank - $returnBank - $purchasesBankPaid - $expenseBank,
-            'grand_total'       => $posCash + $posBank + $khataTotal - $returnTotal - $purchasesPaid - $todayExpenses,
-            'purchases_total'   => $purchasesTotal,
-            'purchases_paid'    => $purchasesPaid,
-            'purchases_due'     => $purchasesDue,
-            'purchases_cash'    => $purchasesCashPaid,
-            'purchases_bank'    => $purchasesBankPaid,
-            'store_name'        => Setting::get('shop_name', config('app.name')),
-            'date'              => today()->format('d M Y'),
+            'pos_total'           => $posOrders->sum('total'),
+            'pos_cash'            => $posCash,
+            'pos_bank'            => $posBank,
+            'expenses'            => $todayExpenses,
+            'expense_cash'        => $expenseCash,
+            'expense_bank'        => $expenseBank,
+            'khata_total'         => $khataTotal,
+            'khata_cash'          => $khataCash,
+            'khata_bank'          => $khataBank,
+            'khata_other'         => $khataOther,
+            'return_total'        => $returnTotal,
+            'return_cash'         => $returnCash,
+            'return_bank'         => $returnBank,
+            'vendor_pay_total'    => $vendorPayTotal,
+            'vendor_pay_cash'     => $vendorPayCash,
+            'vendor_pay_bank'     => $vendorPayBank,
+            'total_cash'          => $posCash + $khataCash - $returnCash - $purchasesCashPaid - $expenseCash - $vendorPayCash,
+            'total_bank'          => $posBank + $khataBank - $returnBank - $purchasesBankPaid - $expenseBank - $vendorPayBank,
+            'grand_total'         => $posCash + $posBank + $khataTotal - $returnTotal - $purchasesPaid - $todayExpenses - $vendorPayTotal,
+            'purchases_total'     => $purchasesTotal,
+            'purchases_paid'      => $purchasesPaid,
+            'purchases_due'       => $purchasesDue,
+            'purchases_cash'      => $purchasesCashPaid,
+            'purchases_bank'      => $purchasesBankPaid,
+            'store_name'          => Setting::get('shop_name', config('app.name')),
+            'date'                => today()->format('d M Y'),
         ];
 
         // ── Detail rows for Today's Report modals ────────────────────────
@@ -204,6 +216,13 @@ class DashboardController extends Controller
         $printExpenseCash  = (float) $printExpenses->where('payment_method', 'cash')->sum('amount');
         $printExpenseBank  = (float) $printExpenses->where('payment_method', 'bank_transfer')->sum('amount');
 
+        $printVendorPay     = VendorLedger::whereDate('created_at', today())
+            ->where('type', 'debit')->whereNull('purchase_id')->whereNotNull('payment_method')
+            ->get(['payment_method', 'amount']);
+        $printVendorPayCash  = (float) $printVendorPay->where('payment_method', 'cash')->sum('amount');
+        $printVendorPayBank  = (float) $printVendorPay->where('payment_method', 'bank_transfer')->sum('amount');
+        $printVendorPayTotal = (float) $printVendorPay->sum('amount');
+
         // Per-bank breakdown for print
         $khataByBank = $khataEntries
             ->where('payment_method', 'bank_transfer')
@@ -219,31 +238,34 @@ class DashboardController extends Controller
             ->values();
 
         $todayReport = [
-            'pos_total'    => $posOrders->sum('total'),
-            'pos_cash'     => $posCash,
-            'pos_bank'     => $posBank,
-            'expenses'     => $printExpenseTotal,
-            'expense_cash' => $printExpenseCash,
-            'expense_bank' => $printExpenseBank,
-            'khata_total'  => $khataTotal,
-            'khata_cash'   => $khataCash,
-            'khata_bank'   => $khataBank,
-            'khata_other'  => $khataEntries->whereNotIn('payment_method', ['cash','bank_transfer'])->sum('amount'),
-            'khata_by_bank'=> $khataByBank,
-            'return_total'      => $returnTotal,
-            'return_cash'       => $returnCash,
-            'return_bank'       => $returnBank,
-            'purchases_total'   => $purchasesTotalPrint,
-            'purchases_paid'    => $purchasesPaidPrint,
-            'purchases_due'     => $purchasesTotalPrint - $purchasesPaidPrint,
-            'purchases_cash'    => $purchasesCashPrint,
-            'purchases_bank'    => $purchasesBankPrint,
-            'total_cash'        => $posCash + $khataCash - $returnCash - $purchasesCashPrint - $printExpenseCash,
-            'total_bank'        => $posBank + $khataBank - $returnBank - $purchasesBankPrint - $printExpenseBank,
-            'grand_total'       => $posOrders->sum('total') + $khataTotal - $returnTotal - $purchasesPaidPrint - $printExpenseTotal,
-            'store_name'        => Setting::get('shop_name', config('app.name')),
-            'store_phone'       => Setting::get('shop_phone', ''),
-            'date'              => today()->format('d M Y'),
+            'pos_total'           => $posOrders->sum('total'),
+            'pos_cash'            => $posCash,
+            'pos_bank'            => $posBank,
+            'expenses'            => $printExpenseTotal,
+            'expense_cash'        => $printExpenseCash,
+            'expense_bank'        => $printExpenseBank,
+            'khata_total'         => $khataTotal,
+            'khata_cash'          => $khataCash,
+            'khata_bank'          => $khataBank,
+            'khata_other'         => $khataEntries->whereNotIn('payment_method', ['cash','bank_transfer'])->sum('amount'),
+            'khata_by_bank'       => $khataByBank,
+            'return_total'        => $returnTotal,
+            'return_cash'         => $returnCash,
+            'return_bank'         => $returnBank,
+            'purchases_total'     => $purchasesTotalPrint,
+            'purchases_paid'      => $purchasesPaidPrint,
+            'purchases_due'       => $purchasesTotalPrint - $purchasesPaidPrint,
+            'purchases_cash'      => $purchasesCashPrint,
+            'purchases_bank'      => $purchasesBankPrint,
+            'vendor_pay_total'    => $printVendorPayTotal,
+            'vendor_pay_cash'     => $printVendorPayCash,
+            'vendor_pay_bank'     => $printVendorPayBank,
+            'total_cash'          => $posCash + $khataCash - $returnCash - $purchasesCashPrint - $printExpenseCash - $printVendorPayCash,
+            'total_bank'          => $posBank + $khataBank - $returnBank - $purchasesBankPrint - $printExpenseBank - $printVendorPayBank,
+            'grand_total'         => $posOrders->sum('total') + $khataTotal - $returnTotal - $purchasesPaidPrint - $printExpenseTotal - $printVendorPayTotal,
+            'store_name'          => Setting::get('shop_name', config('app.name')),
+            'store_phone'         => Setting::get('shop_phone', ''),
+            'date'                => today()->format('d M Y'),
         ];
 
         return view('admin.dashboard.today-report-print', compact('todayReport'));
@@ -380,6 +402,14 @@ class DashboardController extends Controller
         $purchasesBank    = (float) $purchasesData->where('payment_method', 'bank_transfer')->sum('amount_paid');
         $purchasesDue     = $purchasesTotal - $purchasesPaid;
 
+        // ── Manual vendor payments ────────────────────────────────────────────
+        $rangeVendorPay     = VendorLedger::whereBetween('created_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
+            ->where('type', 'debit')->whereNull('purchase_id')->whereNotNull('payment_method')
+            ->get(['payment_method', 'amount']);
+        $rangeVendorPayCash  = (float) $rangeVendorPay->where('payment_method', 'cash')->sum('amount');
+        $rangeVendorPayBank  = (float) $rangeVendorPay->where('payment_method', 'bank_transfer')->sum('amount');
+        $rangeVendorPayTotal = (float) $rangeVendorPay->sum('amount');
+
         // ── Products sold ────────────────────────────────────────────────────
         $productsSold = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
@@ -398,31 +428,34 @@ class DashboardController extends Controller
 
         // ── Summary totals ───────────────────────────────────────────────────
         $report = [
-            'pos_total'       => $posTotal,
-            'pos_cash'        => $posCash,
-            'pos_bank'        => $posBank,
-            'khata_total'     => $khataTotal,
-            'khata_cash'      => $khataCash,
-            'khata_bank'      => $khataBank,
-            'khata_other'     => $khataOther,
-            'expense_total'   => $expenseTotal,
-            'expense_cash'    => $expenseCash,
-            'expense_bank'    => $expenseBank,
-            'return_total'    => $returnTotal,
-            'return_cash'     => $returnCash,
-            'return_bank'     => $returnBank,
-            'purchases_total' => $purchasesTotal,
-            'purchases_paid'  => $purchasesPaid,
-            'purchases_due'   => $purchasesDue,
-            'purchases_cash'  => $purchasesCash,
-            'purchases_bank'  => $purchasesBank,
-            'total_cash'      => $posCash + $khataCash - $returnCash - $purchasesCash - $expenseCash,
-            'total_bank'      => $posBank + $khataBank - $returnBank - $purchasesBank - $expenseBank,
-            'grand_total'     => $posTotal + $khataTotal - $returnTotal - $purchasesPaid - $expenseTotal,
-            'total_orders'    => $posOrders->count(),
-            'date_from'       => $from->format('d M Y'),
-            'date_to'         => $to->format('d M Y'),
-            'is_single_day'   => $from->eq($to),
+            'pos_total'          => $posTotal,
+            'pos_cash'           => $posCash,
+            'pos_bank'           => $posBank,
+            'khata_total'        => $khataTotal,
+            'khata_cash'         => $khataCash,
+            'khata_bank'         => $khataBank,
+            'khata_other'        => $khataOther,
+            'expense_total'      => $expenseTotal,
+            'expense_cash'       => $expenseCash,
+            'expense_bank'       => $expenseBank,
+            'return_total'       => $returnTotal,
+            'return_cash'        => $returnCash,
+            'return_bank'        => $returnBank,
+            'purchases_total'    => $purchasesTotal,
+            'purchases_paid'     => $purchasesPaid,
+            'purchases_due'      => $purchasesDue,
+            'purchases_cash'     => $purchasesCash,
+            'purchases_bank'     => $purchasesBank,
+            'vendor_pay_total'   => $rangeVendorPayTotal,
+            'vendor_pay_cash'    => $rangeVendorPayCash,
+            'vendor_pay_bank'    => $rangeVendorPayBank,
+            'total_cash'         => $posCash + $khataCash - $returnCash - $purchasesCash - $expenseCash - $rangeVendorPayCash,
+            'total_bank'         => $posBank + $khataBank - $returnBank - $purchasesBank - $expenseBank - $rangeVendorPayBank,
+            'grand_total'        => $posTotal + $khataTotal - $returnTotal - $purchasesPaid - $expenseTotal - $rangeVendorPayTotal,
+            'total_orders'       => $posOrders->count(),
+            'date_from'          => $from->format('d M Y'),
+            'date_to'            => $to->format('d M Y'),
+            'is_single_day'      => $from->eq($to),
         ];
 
         $isSingleDay = $from->eq($to);
