@@ -81,6 +81,17 @@ class PosController extends Controller
             ->latest()
             ->get();
 
+        // Vendor payments paid out today (admin only — manual debit entries on vendor ledger)
+        $todayVendorPayList = $isAdmin
+            ? VendorLedger::whereDate('created_at', today())
+                ->where('type', 'debit')
+                ->whereNull('purchase_id')
+                ->whereNotNull('payment_method')
+                ->with(['vendor', 'bankAccount'])
+                ->latest()
+                ->get()
+            : collect();
+
         // Aggregated totals for the summary bar
         $cashTotal = $todaySalesOrders->sum(function ($o) {
             return match ($o->payment_method) {
@@ -112,13 +123,19 @@ class PosController extends Controller
             'payment_count'   => $todayPaymentsList->count(),
             'total_collected' => $todayPaymentsList->sum('amount'),
         ];
+        $todayVendorPayments = (object)[
+            'vendor_pay_count' => $todayVendorPayList->count(),
+            'vendor_pay_total' => (float) $todayVendorPayList->sum('amount'),
+            'vendor_pay_cash'  => (float) $todayVendorPayList->where('payment_method', 'cash')->sum('amount'),
+            'vendor_pay_bank'  => (float) $todayVendorPayList->where('payment_method', 'bank_transfer')->sum('amount'),
+        ];
 
         $bankAccounts = BankAccount::active()->orderBy('sort_order')->orderBy('id')->get();
 
         return view('pos.index', compact(
             'session', 'categories', 'featuredProducts',
-            'todaySales', 'todayReturns', 'todayPayments',
-            'todaySalesOrders', 'todayReturnsList', 'todayPaymentsList',
+            'todaySales', 'todayReturns', 'todayPayments', 'todayVendorPayments',
+            'todaySalesOrders', 'todayReturnsList', 'todayPaymentsList', 'todayVendorPayList',
             'bankAccounts'
         ));
     }
@@ -159,15 +176,25 @@ class PosController extends Controller
             ->when(!$isAdmin, fn($q) => $q->where('user_id', $user->id))
             ->get(['amount']);
 
+        $vendorPayData = $isAdmin
+            ? VendorLedger::whereDate('created_at', today())
+                ->where('type', 'debit')->whereNull('purchase_id')->whereNotNull('payment_method')
+                ->get(['payment_method', 'amount'])
+            : collect();
+
         return response()->json([
-            'order_count'     => $todaySalesOrders->count(),
-            'total_revenue'   => (float) $todaySalesOrders->sum('total'),
-            'cash_total'      => (float) $cashTotal,
-            'bank_total'      => (float) $bankTotal,
-            'return_count'    => $todayReturnsList->count(),
-            'total_refunded'  => (float) $todayReturnsList->sum('refund_amount'),
-            'payment_count'   => $todayPaymentsList->count(),
-            'total_collected' => (float) $todayPaymentsList->sum('amount'),
+            'order_count'      => $todaySalesOrders->count(),
+            'total_revenue'    => (float) $todaySalesOrders->sum('total'),
+            'cash_total'       => (float) $cashTotal,
+            'bank_total'       => (float) $bankTotal,
+            'return_count'     => $todayReturnsList->count(),
+            'total_refunded'   => (float) $todayReturnsList->sum('refund_amount'),
+            'payment_count'    => $todayPaymentsList->count(),
+            'total_collected'  => (float) $todayPaymentsList->sum('amount'),
+            'vendor_pay_count' => $vendorPayData->count(),
+            'vendor_pay_total' => (float) $vendorPayData->sum('amount'),
+            'vendor_pay_cash'  => (float) $vendorPayData->where('payment_method', 'cash')->sum('amount'),
+            'vendor_pay_bank'  => (float) $vendorPayData->where('payment_method', 'bank_transfer')->sum('amount'),
         ]);
     }
 
@@ -238,7 +265,23 @@ class PosController extends Controller
                 'balance_after'  => (float) ($p->balance_after ?? 0),
             ])->values();
 
-        return response()->json(compact('orders', 'returns', 'payments'));
+        $vendor_payments = $isAdmin
+            ? VendorLedger::whereDate('created_at', today())
+                ->where('type', 'debit')->whereNull('purchase_id')->whereNotNull('payment_method')
+                ->latest()->with(['vendor', 'bankAccount'])
+                ->get()
+                ->map(fn($v) => [
+                    'time'            => $v->created_at->format('H:i'),
+                    'vendor_name'     => $v->vendor?->name ?? '—',
+                    'description'     => $v->description ?? null,
+                    'payment_method'  => $v->payment_method,
+                    'bank_label'      => $v->bankAccount?->label ?? null,
+                    'amount'          => (float) $v->amount,
+                    'balance_after'   => (float) $v->balance_after,
+                ])->values()
+            : collect()->values();
+
+        return response()->json(compact('orders', 'returns', 'payments', 'vendor_payments'));
     }
 
     public function openSession(Request $request)

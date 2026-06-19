@@ -1351,6 +1351,19 @@
             <span class="text-yellow-500" x-text="stats.payment_count + ' payments'"></span>
         </button>
 
+        {{-- Vendor payments chip (only shown when there are any) --}}
+        <template x-if="stats.vendor_pay_total > 0">
+            <div class="flex items-center gap-1.5 shrink-0">
+                <div class="w-px h-4 bg-gray-700 shrink-0"></div>
+                <button @click="activeTab = 'vendors'; showDailyModal = true"
+                        class="flex items-center gap-1.5 bg-orange-900/60 hover:bg-orange-800 text-orange-300 px-2.5 py-1 rounded-lg transition-colors">
+                    <i class="fas fa-handshake"></i>
+                    <span class="font-semibold" x-text="'– Rs. ' + fmt(stats.vendor_pay_total)"></span>
+                    <span class="text-orange-400" x-text="stats.vendor_pay_count + ' vendor'"></span>
+                </button>
+            </div>
+        </template>
+
         <div class="w-px h-4 bg-gray-700 shrink-0"></div>
 
         {{-- Net --}}
@@ -1414,6 +1427,14 @@
                     <i class="fas fa-hand-holding-usd mr-1.5"></i>
                     Payments <span class="ml-1 text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full font-semibold" x-text="stats.payment_count"></span>
                 </button>
+                <template x-if="stats.vendor_pay_count > 0">
+                    <button @click="activeTab = 'vendors'"
+                            :class="activeTab === 'vendors' ? 'border-b-2 border-orange-500 text-orange-700 font-semibold' : 'text-gray-500 hover:text-gray-700'"
+                            class="py-2.5 px-4 text-sm transition-colors">
+                        <i class="fas fa-handshake mr-1.5"></i>
+                        Vendor Paid <span class="ml-1 text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full font-semibold" x-text="stats.vendor_pay_count"></span>
+                    </button>
+                </template>
             </div>
 
             {{-- Tab content --}}
@@ -1700,6 +1721,88 @@
                     </div>
                 </div>
 
+                {{-- ======== VENDOR PAYMENTS TABLE ======== --}}
+                <div x-show="activeTab === 'vendors'" class="p-4">
+
+                    <div class="grid grid-cols-3 gap-3 mb-4">
+                        <div class="bg-orange-50 border border-orange-100 rounded-xl px-4 py-3 text-center">
+                            <div class="text-lg font-bold text-orange-700" x-text="'Rs. ' + fmt(stats.vendor_pay_total)"></div>
+                            <div class="text-xs text-orange-600">Total Paid Out</div>
+                        </div>
+                        <div class="bg-green-50 border border-green-100 rounded-xl px-4 py-3 text-center">
+                            <div class="text-lg font-bold text-green-700" x-text="'Rs. ' + fmt(stats.vendor_pay_cash)"></div>
+                            <div class="text-xs text-green-600">Cash Paid</div>
+                        </div>
+                        <div class="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-center">
+                            <div class="text-lg font-bold text-blue-700" x-text="'Rs. ' + fmt(stats.vendor_pay_bank)"></div>
+                            <div class="text-xs text-blue-600">Bank Paid</div>
+                        </div>
+                    </div>
+
+                    <div x-show="activityLoading" class="text-center py-16 text-gray-300">
+                        <i class="fas fa-spinner fa-spin text-4xl mb-3"></i>
+                        <p class="text-sm text-gray-400">Loading...</p>
+                    </div>
+                    <div x-show="!activityLoading && vendor_payments.length === 0" class="text-center py-16 text-gray-300">
+                        <i class="fas fa-handshake text-4xl mb-3"></i>
+                        <p class="text-sm text-gray-400">No vendor payments recorded today</p>
+                    </div>
+                    <div x-show="!activityLoading && vendor_payments.length > 0" class="overflow-x-auto rounded-xl border border-gray-100">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                                <tr>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Time</th>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Vendor</th>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Description</th>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Method</th>
+                                    <th class="text-right px-4 py-2.5 font-semibold">Paid</th>
+                                    <th class="text-right px-4 py-2.5 font-semibold">Balance After</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-50">
+                                <template x-for="(v, idx) in vendor_payments" :key="idx">
+                                    <tr class="hover:bg-gray-50 transition-colors">
+                                        <td class="px-4 py-3 text-xs text-gray-500 whitespace-nowrap" x-text="v.time"></td>
+                                        <td class="px-4 py-3">
+                                            <div class="font-medium text-sm text-gray-800" x-text="v.vendor_name"></div>
+                                        </td>
+                                        <td class="px-4 py-3 text-xs text-gray-600 max-w-xs" x-text="v.description || '—'"></td>
+                                        <td class="px-4 py-3 text-xs">
+                                            <span x-show="v.payment_method === 'cash'"
+                                                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
+                                                <i class="fas fa-money-bill-wave text-[10px]"></i> Cash
+                                            </span>
+                                            <span x-show="v.payment_method === 'bank_transfer'"
+                                                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">
+                                                <i class="fas fa-university text-[10px]"></i>
+                                                <span x-text="v.bank_label || 'Bank'"></span>
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right">
+                                            <span class="font-bold text-orange-600 text-sm" x-text="'– Rs. ' + fmt(v.amount)"></span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right text-xs">
+                                            <span class="font-semibold"
+                                                  :class="v.balance_after > 0 ? 'text-red-500' : 'text-gray-500'"
+                                                  x-text="v.balance_after > 0 ? 'Rs. ' + fmt(v.balance_after) + ' owed' : 'Settled'">
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                            <tfoot class="bg-gray-50 border-t-2 border-gray-200">
+                                <tr>
+                                    <td colspan="3" class="px-4 py-3 text-sm font-bold text-gray-700"
+                                        x-text="`Total — ${vendor_payments.length} payment(s)`"></td>
+                                    <td colspan="2"></td>
+                                    <td class="px-4 py-3 text-right font-bold text-lg text-orange-600"
+                                        x-text="'– Rs. ' + fmt(vendor_payments.reduce((s,v) => s + v.amount, 0))"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
             </div>{{-- end overflow-y-auto --}}
         </div>
     </div>
@@ -1708,14 +1811,18 @@
 
 @php
 $_posStats = [
-    'order_count'     => $todaySales->order_count ?? 0,
-    'total_revenue'   => $todaySales->total_revenue ?? 0,
-    'cash_total'      => $todaySales->cash_total ?? 0,
-    'bank_total'      => $todaySales->bank_total ?? 0,
-    'return_count'    => $todayReturns->return_count ?? 0,
-    'total_refunded'  => $todayReturns->total_refunded ?? 0,
-    'payment_count'   => $todayPayments->payment_count ?? 0,
-    'total_collected' => $todayPayments->total_collected ?? 0,
+    'order_count'      => $todaySales->order_count ?? 0,
+    'total_revenue'    => $todaySales->total_revenue ?? 0,
+    'cash_total'       => $todaySales->cash_total ?? 0,
+    'bank_total'       => $todaySales->bank_total ?? 0,
+    'return_count'     => $todayReturns->return_count ?? 0,
+    'total_refunded'   => $todayReturns->total_refunded ?? 0,
+    'payment_count'    => $todayPayments->payment_count ?? 0,
+    'total_collected'  => $todayPayments->total_collected ?? 0,
+    'vendor_pay_count' => $todayVendorPayments->vendor_pay_count ?? 0,
+    'vendor_pay_total' => $todayVendorPayments->vendor_pay_total ?? 0,
+    'vendor_pay_cash'  => $todayVendorPayments->vendor_pay_cash ?? 0,
+    'vendor_pay_bank'  => $todayVendorPayments->vendor_pay_bank ?? 0,
 ];
 $_posCategories = $categories->map(fn($c) => [
     'id'       => $c->id,
@@ -2813,10 +2920,11 @@ function posStats() {
         orders: [],
         returns: [],
         payments: [],
+        vendor_payments: [],
         activityLoading: false,
 
         get netRevenue() {
-            return this.stats.total_revenue - this.stats.total_refunded;
+            return this.stats.total_revenue - this.stats.total_refunded - this.stats.vendor_pay_total;
         },
 
         init() {
@@ -2837,9 +2945,10 @@ function posStats() {
                 const res = await fetch('/pos/today-activity');
                 if (res.ok) {
                     const data = await res.json();
-                    this.orders   = data.orders   ?? [];
-                    this.returns  = data.returns  ?? [];
-                    this.payments = data.payments ?? [];
+                    this.orders          = data.orders          ?? [];
+                    this.returns         = data.returns         ?? [];
+                    this.payments        = data.payments        ?? [];
+                    this.vendor_payments = data.vendor_payments ?? [];
                 }
             } catch(e) { console.error('Activity load failed', e); }
             this.activityLoading = false;
