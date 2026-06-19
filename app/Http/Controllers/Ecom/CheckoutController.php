@@ -55,6 +55,7 @@ class CheckoutController extends Controller
             'city'           => 'required|string|max:100',
             'notes'          => 'nullable|string',
             'payment_method' => 'required|in:cash,bank_transfer',
+            'payment_proof'  => 'required_if:payment_method,bank_transfer|nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
         ]);
 
         $items    = $this->hydrateCart($cart);
@@ -85,6 +86,11 @@ class CheckoutController extends Controller
                 ]);
             }
 
+            $proofPath = null;
+            if ($request->hasFile('payment_proof')) {
+                $proofPath = $request->file('payment_proof')->store('payment-proofs', 'public');
+            }
+
             $order = Order::create([
                 'source'           => 'ecommerce',
                 'customer_id'      => $customer->id,
@@ -100,6 +106,7 @@ class CheckoutController extends Controller
                 'total'            => $total,
                 'payment_method'   => $data['payment_method'],
                 'payment_status'   => 'pending',
+                'payment_proof'    => $proofPath,
                 'status'           => 'pending',
             ]);
 

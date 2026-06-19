@@ -126,10 +126,29 @@
 
         @if($order->payment_proof)
         <div class="card p-5">
-            <h2 class="font-semibold text-gray-800 mb-3">Payment Proof</h2>
-            <a href="{{ asset('storage/'.$order->payment_proof) }}" target="_blank">
-                <img src="{{ asset('storage/'.$order->payment_proof) }}" class="max-h-48 rounded-xl border border-gray-200">
-            </a>
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="font-semibold text-gray-800">Payment Receipt</h2>
+                <a href="{{ asset('storage/'.$order->payment_proof) }}" target="_blank"
+                   class="btn-outline btn-sm text-xs">
+                    <i class="fas fa-external-link-alt mr-1"></i> Open Full Size
+                </a>
+            </div>
+            @php $isPdf = str_ends_with(strtolower($order->payment_proof), '.pdf'); @endphp
+            @if($isPdf)
+                <a href="{{ asset('storage/'.$order->payment_proof) }}" target="_blank"
+                   class="flex items-center gap-3 px-4 py-4 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition-colors">
+                    <i class="fas fa-file-pdf text-red-500 text-3xl"></i>
+                    <div>
+                        <div class="font-medium text-red-700">PDF Receipt</div>
+                        <div class="text-xs text-red-400">Click to open</div>
+                    </div>
+                </a>
+            @else
+                <a href="{{ asset('storage/'.$order->payment_proof) }}" target="_blank">
+                    <img src="{{ asset('storage/'.$order->payment_proof) }}"
+                         class="w-full max-h-72 object-contain rounded-xl border border-gray-200 bg-gray-50">
+                </a>
+            @endif
         </div>
         @endif
     </div>
