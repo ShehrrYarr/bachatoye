@@ -21,13 +21,14 @@
         : collect();
     $hasColors = $productColors->isNotEmpty();
 @endphp
-<div class="ecom-product-card group">
+<div class="ecom-product-card" x-data="{ hovered: false }" @mouseenter="hovered = true" @mouseleave="hovered = false">
     {{-- Image --}}
     <div class="relative overflow-hidden bg-white aspect-square">
         <a href="{{ route('products.show', $product->slug) }}">
             <img src="{{ $product->primary_image_url }}"
                  alt="{{ $product->name }}"
-                 class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500 p-1">
+                 class="w-full h-full object-contain transition-transform duration-500 p-1"
+                 :class="hovered ? 'scale-105' : 'scale-100'">
         </a>
 
         @if($deal || $product->free_delivery || $product->category?->free_delivery)
@@ -51,7 +52,15 @@
 
         {{-- Quick add overlay --}}
         @if($product->isInStock())
-        <div class="absolute bottom-0 left-0 right-0 opacity-0 translate-y-3 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 pointer-events-none group-hover:pointer-events-auto">
+        <div x-show="hovered"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 translate-y-3"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100 translate-y-0"
+             x-transition:leave-end="opacity-0 translate-y-2"
+             class="absolute bottom-0 left-0 right-0"
+             style="display:none;">
             @if($hasColors)
                 {{-- Product has colors: open color picker modal --}}
                 <button type="button"
