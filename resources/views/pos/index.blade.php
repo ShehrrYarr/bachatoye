@@ -3,6 +3,22 @@
 @section('content')
 <div class="pos-grid no-print" x-data="posApp()" x-init="init()" @keydown.f1.window.prevent="showCostPrice = !showCostPrice">
 
+    {{-- ===== BOOT LOADER (covers the Alpine FOUC while the POS initialises) ===== --}}
+    {{-- No x-cloak: this must be visible on first paint, before Alpine boots. --}}
+    <div x-show="loading"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         style="z-index: 200"
+         class="fixed inset-0 bg-white flex flex-col items-center justify-center gap-4">
+        <div class="w-14 h-14 rounded-2xl flex items-center justify-center"
+             style="background: linear-gradient(135deg, var(--app-primary, #e11d48), var(--app-secondary, #be123c))">
+            <i class="fas fa-cash-register text-white text-xl"></i>
+        </div>
+        <i class="fas fa-spinner fa-spin text-2xl" style="color: var(--app-primary, #e11d48)"></i>
+        <p class="text-sm text-gray-400 font-medium">Loading POS…</p>
+    </div>
+
     {{-- ===== LEFT PANEL: Products ===== --}}
     <div class="pos-left bg-gray-100 flex flex-col">
 
@@ -1902,6 +1918,9 @@ function posApp() {
         showNewCustomer: false,
         newCustomer: { name: '', phone: '', address: '' },
 
+        // Boot loader — masks the Alpine init flash until the page is ready
+        loading: true,
+
         // View picker (category grid vs all products — asked on every page load)
         posView: null,
         showViewModal: true,
@@ -1946,6 +1965,11 @@ function posApp() {
                 this.showViewModal = false;
                 if (savedView === 'product') this.loadProducts();
             }
+
+            // The view decision is made — reveal the page (and the view picker if
+            // it's a first-time load). $nextTick ensures Alpine has applied the
+            // showViewModal state before we fade the loader out, so nothing flashes.
+            this.$nextTick(() => { this.loading = false; });
 
             // Connectivity monitoring — browser events + a real heartbeat to the server
             window.addEventListener('online',  () => { this.checkConnection(); });
