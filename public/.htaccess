@@ -1,13 +1,13 @@
-# Disable LiteSpeed image optimization for uploaded product images
-<IfModule LiteSpeed>
-    RewriteRule ^storage/.*\.(jpg|jpeg|png|gif|webp)$ - [E=cache-control:no-transform,L]
-</IfModule>
-
-# Prevent CDN/proxy from transforming images
-<FilesMatch "\.(jpg|jpeg|png|gif|webp)$">
-    Header set Cache-Control "public, max-age=31536000"
+# Prevent server/CDN from compressing or transforming uploaded images
+<FilesMatch "\.(jpg|jpeg|png|gif|webp|png)$">
+    Header set Cache-Control "no-transform, public, max-age=31536000"
     Header set X-Content-Type-Options "nosniff"
 </FilesMatch>
+
+# LiteSpeed: disable image optimization for storage assets
+<IfModule LiteSpeed>
+    RewriteRule ^storage/ - [E=no-gzip:1,E=dont-vary:1,L]
+</IfModule>
 
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
