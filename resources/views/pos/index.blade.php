@@ -1827,6 +1827,13 @@ function posApp() {
             this.catalogReady = this.catalog.length > 0;
             // Restore manual offline mode so a refresh keeps the POS offline
             try { this.offlineMode = localStorage.getItem('pos_offline_mode') === '1'; } catch(e) { this.offlineMode = false; }
+            // Restore last-used product view — skip the picker if already chosen
+            const savedView = localStorage.getItem('pos_view');
+            if (savedView === 'category' || savedView === 'product') {
+                this.posView = savedView;
+                this.showViewModal = false;
+                if (savedView === 'product') this.loadProducts();
+            }
 
             // Connectivity monitoring — browser events + a real heartbeat to the server
             window.addEventListener('online',  () => { this.checkConnection(); });
@@ -2083,6 +2090,7 @@ function posApp() {
             this.searchQuery = '';
             this.displayProducts = [];
             this.showViewModal = false;
+            localStorage.setItem('pos_view', view);
             if (view === 'product') this.loadProducts();
         },
 
