@@ -400,7 +400,7 @@
                     <input type="text" x-model="customerSearch" @input.debounce.300ms="searchCustomers()"
                            placeholder="Search customer (optional)..."
                            class="w-full text-xs px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500">
-                    <div x-show="customerResults.length > 0"
+                    <div x-show="customerSearch.length >= 2"
                          class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 overflow-hidden">
                         <template x-for="cust in customerResults" :key="cust.type + '_' + cust.id">
                             <div @click="selectCustomer(cust)"
@@ -414,9 +414,14 @@
                                       x-text="cust.type === 'vendor' ? 'Vendor' : 'Customer'"></span>
                             </div>
                         </template>
-                        <div @click="showNewCustomer = true; customerResults = []"
-                             class="px-3 py-2 hover:bg-primary-50 cursor-pointer text-xs text-primary-600 font-medium flex items-center gap-1">
-                            <i class="fas fa-plus"></i> Add new customer
+                        <div x-show="customerResults.length === 0"
+                             class="px-3 py-2.5 flex items-center gap-2 text-xs text-gray-400 border-b border-gray-100">
+                            <i class="fas fa-search"></i>
+                            <span>No customer found for "<span class="font-medium text-gray-600" x-text="customerSearch"></span>"</span>
+                        </div>
+                        <div @click="showNewCustomer = true; customerResults = []; customerSearch = ''"
+                             class="px-3 py-2 hover:bg-primary-50 cursor-pointer text-xs text-primary-600 font-medium flex items-center gap-1.5">
+                            <i class="fas fa-user-plus"></i> Add new customer
                         </div>
                     </div>
                 </div>
