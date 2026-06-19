@@ -51,7 +51,7 @@
 
         {{-- Quick add overlay --}}
         @if($product->isInStock())
-        <div class="absolute bottom-0 left-0 right-0 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+        <div class="absolute bottom-0 left-0 right-0 opacity-0 translate-y-3 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 pointer-events-none group-hover:pointer-events-auto">
             @if($hasColors)
                 {{-- Product has colors: open color picker modal --}}
                 <button type="button"
