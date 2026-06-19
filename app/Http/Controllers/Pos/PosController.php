@@ -874,6 +874,36 @@ class PosController extends Controller
                     'user_id'       => Auth::id(),
                 ]);
                 $customer->update(['credit_balance' => $newBal]);
+            } elseif ($khataDue == 0 && $customer) {
+                // Full cash/bank payment — record sale + payment in ledger without changing balance
+                $bal = $customer->credit_balance;
+                $payLabel = match($payMethod) {
+                    'bank_transfer' => 'Bank Transfer',
+                    'split'         => "Cash: Rs.{$cashAmount} + Bank: Rs.{$bankAmount}",
+                    default         => 'Cash',
+                };
+                $bankAccId = in_array($payMethod, ['bank_transfer', 'split']) ? $request->bank_account_id : null;
+
+                AccountLedger::create([
+                    'customer_id'    => $customer->id,
+                    'type'           => 'debit',
+                    'amount'         => $total,
+                    'balance_after'  => $bal - $total,
+                    'description'    => "Sale — {$order->order_number} | Rs.{$total} | Items: {$itemsList}",
+                    'reference'      => $order->order_number,
+                    'user_id'        => Auth::id(),
+                ]);
+                AccountLedger::create([
+                    'customer_id'    => $customer->id,
+                    'type'           => 'credit',
+                    'payment_method' => in_array($payMethod, ['cash', 'split']) ? 'cash' : 'bank_transfer',
+                    'bank_account_id' => $bankAccId,
+                    'amount'         => $total,
+                    'balance_after'  => $bal,
+                    'description'    => "Payment Received — {$order->order_number} | Rs.{$total} via {$payLabel}",
+                    'reference'      => $order->order_number,
+                    'user_id'        => Auth::id(),
+                ]);
             }
 
             // Update POS session totals
@@ -1295,6 +1325,37 @@ class PosController extends Controller
                     'user_id'       => Auth::id(),
                 ]);
                 $customer->update(['credit_balance' => $newBal]);
+            } elseif ($khataDue == 0 && $customer) {
+                // Full cash/bank payment on edit — record without changing balance
+                $customer->refresh();
+                $bal = $customer->credit_balance;
+                $payLabel = match($payMethod) {
+                    'bank_transfer' => 'Bank Transfer',
+                    'split'         => "Cash: Rs.{$cashAmount} + Bank: Rs.{$bankAmount}",
+                    default         => 'Cash',
+                };
+                $bankAccId = in_array($payMethod, ['bank_transfer', 'split']) ? $request->bank_account_id : null;
+
+                AccountLedger::create([
+                    'customer_id'    => $customer->id,
+                    'type'           => 'debit',
+                    'amount'         => $newTotal,
+                    'balance_after'  => $bal - $newTotal,
+                    'description'    => "Edited Sale — {$order->order_number} | Rs.{$newTotal} | Items: {$itemsList}",
+                    'reference'      => $order->order_number,
+                    'user_id'        => Auth::id(),
+                ]);
+                AccountLedger::create([
+                    'customer_id'    => $customer->id,
+                    'type'           => 'credit',
+                    'payment_method' => in_array($payMethod, ['cash', 'split']) ? 'cash' : 'bank_transfer',
+                    'bank_account_id' => $bankAccId,
+                    'amount'         => $newTotal,
+                    'balance_after'  => $bal,
+                    'description'    => "Payment Received — {$order->order_number} | Rs.{$newTotal} via {$payLabel}",
+                    'reference'      => $order->order_number,
+                    'user_id'        => Auth::id(),
+                ]);
             }
 
             // ── 7. Update order record ────────────────────────────────────
