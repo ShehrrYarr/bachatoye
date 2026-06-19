@@ -23,12 +23,11 @@
 @endphp
 <div class="ecom-product-card group">
     {{-- Image --}}
-    <div class="relative overflow-hidden bg-gray-100 aspect-square">
+    <div class="relative overflow-hidden bg-white aspect-square">
         <a href="{{ route('products.show', $product->slug) }}">
             <img src="{{ $product->primary_image_url }}"
                  alt="{{ $product->name }}"
-                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                 loading="lazy">
+                 class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500 p-1">
         </a>
 
         @if($deal || $product->free_delivery || $product->category?->free_delivery)

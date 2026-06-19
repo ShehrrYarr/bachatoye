@@ -1,3 +1,14 @@
+# Disable LiteSpeed image optimization for uploaded product images
+<IfModule LiteSpeed>
+    RewriteRule ^storage/.*\.(jpg|jpeg|png|gif|webp)$ - [E=cache-control:no-transform,L]
+</IfModule>
+
+# Prevent CDN/proxy from transforming images
+<FilesMatch "\.(jpg|jpeg|png|gif|webp)$">
+    Header set Cache-Control "public, max-age=31536000"
+    Header set X-Content-Type-Options "nosniff"
+</FilesMatch>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
