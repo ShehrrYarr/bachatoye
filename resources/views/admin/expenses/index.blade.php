@@ -96,14 +96,18 @@
                 <td class="text-sm text-gray-500">{{ $expense->user?->name ?? '—' }}</td>
                 <td class="text-right">
                     <div class="flex items-center justify-end gap-2">
+                        @can('expenses.edit')
                         <a href="{{ route("{$rPrefix}.expenses.edit", $expense) }}" class="btn-outline btn-sm">
                             <i class="fas fa-pencil-alt"></i>
                         </a>
+                        @endcan
+                        @can('expenses.delete')
                         <form method="POST" action="{{ route("{$rPrefix}.expenses.destroy", $expense) }}"
                               onsubmit="return confirm('Delete this expense?')">
                             @csrf @method('DELETE')
                             <button type="submit" class="btn-danger btn-sm"><i class="fas fa-trash"></i></button>
                         </form>
+                        @endcan
                     </div>
                 </td>
             </tr>

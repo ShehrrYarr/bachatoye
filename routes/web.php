@@ -340,11 +340,11 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
     Route::post('expenses', [Admin\ExpenseController::class, 'store'])
         ->middleware('permission:expenses.manage')->name('expenses.store');
     Route::get('expenses/{expense}/edit', [Admin\ExpenseController::class, 'edit'])
-        ->middleware('permission:expenses.manage')->name('expenses.edit');
+        ->middleware('permission:expenses.edit')->name('expenses.edit');
     Route::put('expenses/{expense}', [Admin\ExpenseController::class, 'update'])
-        ->middleware('permission:expenses.manage')->name('expenses.update');
+        ->middleware('permission:expenses.edit')->name('expenses.update');
     Route::delete('expenses/{expense}', [Admin\ExpenseController::class, 'destroy'])
-        ->middleware('permission:expenses.manage')->name('expenses.destroy');
+        ->middleware('permission:expenses.delete')->name('expenses.destroy');
 
     Route::get('reports/sales', [Admin\ReportController::class, 'sales'])
         ->middleware('permission:reports.view')->name('reports.sales');
