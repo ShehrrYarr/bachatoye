@@ -1,7 +1,7 @@
 @extends('layouts.pos')
 
 @section('content')
-<div class="pos-grid no-print" x-data="posApp()" x-init="init()" @keydown.f1.window.prevent="showCostPrice = !showCostPrice">
+<div class="pos-grid no-print" x-data="posApp()" x-init="init()" @keydown.f1.window.prevent="canViewCost && (showCostPrice = !showCostPrice)">
 
     {{-- ===== BOOT LOADER (covers the Alpine FOUC while the POS initialises) ===== --}}
     {{-- No x-cloak: this must be visible on first paint, before Alpine boots. --}}
@@ -1893,6 +1893,7 @@ function posApp() {
         quickCash: [500, 1000, 2000, 5000],
         orderNotes: '',
         processingOrder: false,
+        canViewCost: {{ $canViewCost ? 'true' : 'false' }},
         showCostPrice: false,
         colorPickerProduct: null,
 

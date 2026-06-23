@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
             'orders.manage',
             'products.view',
             'products.manage',
+            'products.view_cost',
             'inventory.view',
             'inventory.adjust',
             'customers.view',

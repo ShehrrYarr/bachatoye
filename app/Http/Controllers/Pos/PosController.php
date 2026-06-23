@@ -131,12 +131,13 @@ class PosController extends Controller
         ];
 
         $bankAccounts = BankAccount::active()->orderBy('sort_order')->orderBy('id')->get();
+        $canViewCost  = $user->can('products.view_cost');
 
         return view('pos.index', compact(
             'session', 'categories', 'featuredProducts',
             'todaySales', 'todayReturns', 'todayPayments', 'todayVendorPayments',
             'todaySalesOrders', 'todayReturnsList', 'todayPaymentsList', 'todayVendorPayList',
-            'bankAccounts'
+            'bankAccounts', 'canViewCost'
         ));
     }
 
