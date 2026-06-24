@@ -21,21 +21,21 @@
     </div>
     @endif
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8"
+         x-data="{
+             paymentMethod: '{{ old('payment_method', $codAvailable ? 'cash' : 'bank_transfer') }}',
+             allBankFreeDelivery: {{ $allBankFreeDelivery ? 'true' : 'false' }},
+             baseDelivery: {{ $deliveryCharge }},
+             get effectiveDelivery() {
+                 return this.allBankFreeDelivery && this.paymentMethod === 'bank_transfer' ? 0 : this.baseDelivery;
+             },
+             get effectiveTotal() {
+                 return Math.max(0, {{ $subtotal - $couponDiscount }} + this.effectiveDelivery);
+             }
+         }">
 
         {{-- Left: Customer info + Payment (this IS the checkout form) --}}
         <form id="checkout-form" method="POST" action="{{ route('checkout.store') }}" enctype="multipart/form-data"
-              x-data="{
-                  paymentMethod: '{{ old('payment_method', $codAvailable ? 'cash' : 'bank_transfer') }}',
-                  allBankFreeDelivery: {{ $allBankFreeDelivery ? 'true' : 'false' }},
-                  baseDelivery: {{ $deliveryCharge }},
-                  get effectiveDelivery() {
-                      return this.allBankFreeDelivery && this.paymentMethod === 'bank_transfer' ? 0 : this.baseDelivery;
-                  },
-                  get effectiveTotal() {
-                      return Math.max(0, {{ $subtotal - $couponDiscount }} + this.effectiveDelivery);
-                  }
-              }"
               class="lg:col-span-2 space-y-6">
             @csrf
 
