@@ -204,8 +204,12 @@
 
     {{-- Footer --}}
     <div class="center" style="font-size: 11px; margin-top: 4px;">
-        <div>Thank you for shopping with us!</div>
-        <div style="margin-top: 2px;">Exchange within 7 days with receipt</div>
+        @if(\App\Models\Setting::get('receipt_header'))
+        <div>{{ \App\Models\Setting::get('receipt_header') }}</div>
+        @endif
+        @if(\App\Models\Setting::get('receipt_footer'))
+        <div style="margin-top: 2px;">{{ \App\Models\Setting::get('receipt_footer') }}</div>
+        @endif
         <div style="margin-top: 2px;">{{ \App\Models\Setting::get('shop_phone') }}</div>
         <div style="margin-top: 4px; font-size: 10px;">Printed: {{ now()->format('d/m/Y H:i:s') }}</div>
     </div>

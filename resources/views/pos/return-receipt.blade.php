@@ -80,7 +80,12 @@
 <div class="divider-solid"></div>
 
     <div class="center" style="font-size: 11px; margin-top: 4px;">
-        <div>Items exchanged/returned within 7-day policy</div>
+        @if(\App\Models\Setting::get('receipt_header'))
+        <div>{{ \App\Models\Setting::get('receipt_header') }}</div>
+        @endif
+        @if(\App\Models\Setting::get('receipt_footer'))
+        <div style="margin-top: 2px;">{{ \App\Models\Setting::get('receipt_footer') }}</div>
+        @endif
         <div style="margin-top: 2px;">{{ \App\Models\Setting::get('shop_phone') }}</div>
         <div style="margin-top: 4px; font-size: 10px;">Printed: {{ now()->format('d/m/Y H:i:s') }}</div>
     </div>
