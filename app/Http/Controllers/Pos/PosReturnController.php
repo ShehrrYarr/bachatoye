@@ -297,6 +297,7 @@ class PosReturnController extends Controller
                     'description'   => "Return Credit — {$returnOrder->return_number}",
                     'reference'     => $returnOrder->return_number,
                     'user_id'       => Auth::id(),
+                    'return_id'     => $returnOrder->id,
                 ]);
                 $customer->update(['credit_balance' => $newBal]);
             }

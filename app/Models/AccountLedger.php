@@ -10,7 +10,7 @@ class AccountLedger extends Model
 
     protected $fillable = [
         'customer_id', 'type', 'payment_method', 'bank_account_id', 'amount', 'balance_after',
-        'description', 'promise_date', 'reference', 'user_id',
+        'description', 'promise_date', 'reference', 'user_id', 'return_id',
     ];
 
     protected function casts(): array
@@ -35,5 +35,10 @@ class AccountLedger extends Model
     public function bankAccount()
     {
         return $this->belongsTo(BankAccount::class);
+    }
+
+    public function returnOrder()
+    {
+        return $this->belongsTo(\App\Models\ReturnOrder::class, 'return_id');
     }
 }

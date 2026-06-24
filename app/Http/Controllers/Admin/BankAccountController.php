@@ -34,6 +34,7 @@ class BankAccountController extends Controller
             ->sum('total');
 
         $cashInKhata = (float) AccountLedger::where('type', 'credit')
+            ->whereNull('return_id')
             ->where('payment_method', 'cash')
             ->sum('amount');
 
@@ -72,6 +73,7 @@ class BankAccountController extends Controller
                 ->sum('bank_amount');
 
             $bankInKhata = (float) AccountLedger::where('type', 'credit')
+                ->whereNull('return_id')
                 ->where('payment_method', 'bank_transfer')
                 ->where('bank_account_id', $bank->id)
                 ->sum('amount');

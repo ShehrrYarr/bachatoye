@@ -73,9 +73,10 @@ class PosController extends Controller
             ->latest()
             ->get();
 
-        // Daily customer payments received (khata credit entries — salesman sees their own)
+        // Daily customer payments received (khata credit entries — salesman sees their own; excludes return credits)
         $todayPaymentsList = \App\Models\AccountLedger::whereDate('created_at', today())
             ->where('type', 'credit')
+            ->whereNull('return_id')
             ->when(!$isAdmin, fn($q) => $q->where('user_id', $user->id))
             ->with(['customer', 'user'])
             ->latest()
@@ -174,6 +175,7 @@ class PosController extends Controller
 
         $todayPaymentsList = \App\Models\AccountLedger::whereDate('created_at', today())
             ->where('type', 'credit')
+            ->whereNull('return_id')
             ->when(!$isAdmin, fn($q) => $q->where('user_id', $user->id))
             ->get(['amount']);
 
@@ -251,6 +253,7 @@ class PosController extends Controller
 
         $payments = \App\Models\AccountLedger::whereDate('created_at', today())
             ->where('type', 'credit')
+            ->whereNull('return_id')
             ->when(!$isAdmin, fn($q) => $q->where('user_id', $user->id))
             ->latest()
             ->with(['customer', 'user'])
