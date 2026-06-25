@@ -101,6 +101,7 @@ class VendorController extends Controller
             'notes'   => 'nullable|string|max:1000',
         ]);
 
+        $data['khata_enabled'] = $request->boolean('khata_enabled');
         $vendor->update($data);
         return redirect()->route('admin.vendors.show', $vendor)->with('success', 'Vendor updated.');
     }

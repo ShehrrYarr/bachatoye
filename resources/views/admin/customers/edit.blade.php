@@ -74,6 +74,16 @@
                     <input type="text" name="city" value="{{ old('city', $customer->city) }}" class="form-input">
                 </div>
             </div>
+            <div class="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <input type="hidden" name="khata_enabled" value="0">
+                <input type="checkbox" name="khata_enabled" id="khata_enabled" value="1"
+                       {{ old('khata_enabled', $customer->khata_enabled) ? 'checked' : '' }}
+                       class="mt-0.5 w-4 h-4 text-amber-600 rounded border-amber-300 focus:ring-amber-500">
+                <div>
+                    <label for="khata_enabled" class="text-sm font-semibold text-gray-800 cursor-pointer">Enable Khata / Ledger</label>
+                    <p class="text-xs text-gray-500 mt-0.5">Allow khata and partial payment and ledger entries for this customer.</p>
+                </div>
+            </div>
             <div class="flex items-center gap-2">
                 <input type="hidden" name="is_active" value="0">
                 <input type="checkbox" name="is_active" id="is_active" value="1" {{ old('is_active', $customer->is_active) ? 'checked' : '' }} class="w-4 h-4 text-primary-600 rounded">

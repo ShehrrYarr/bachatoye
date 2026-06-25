@@ -120,7 +120,8 @@ class CustomerController extends Controller
             $data['photo'] = null;
         }
 
-        $data['is_active'] = $request->boolean('is_active');
+        $data['is_active']    = $request->boolean('is_active');
+        $data['khata_enabled'] = $request->boolean('khata_enabled');
         $customer->update($data);
         return redirect()->route(Auth::user()->hasRole('admin') ? 'admin.customers.index' : 'salesman.customers.index')->with('success', 'Customer updated.');
     }
