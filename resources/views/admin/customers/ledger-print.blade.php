@@ -293,7 +293,7 @@
                     @endif
                 </td>
                 <td class="right {{ $entry->type === 'debit' ? 'debit' : 'credit' }}">
-                    {{ $entry->type === 'debit' ? '↓' : '↑' }} Rs. {{ number_format($entry->amount) }}
+                    Rs. {{ number_format($entry->amount) }}
                 </td>
                 <td class="right {{ $entry->balance_after < 0 ? 'bal-neg' : 'bal-pos' }}">
                     Rs. {{ number_format($entry->balance_after) }}

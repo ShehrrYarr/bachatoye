@@ -82,7 +82,6 @@
                             @endif
                         </td>
                         <td class="text-right text-sm font-semibold {{ $entry->type === 'debit' ? 'text-red-600' : 'text-green-600' }}">
-                            <i class="fas {{ $entry->type === 'debit' ? 'fa-arrow-down' : 'fa-arrow-up' }} mr-1"></i>
                             Rs. {{ number_format($entry->amount) }}
                         </td>
                         <td class="text-right text-sm font-bold {{ $entry->balance_after < 0 ? 'text-red-600' : 'text-gray-800' }}">
