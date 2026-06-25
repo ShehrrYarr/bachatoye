@@ -659,10 +659,44 @@
             </div>
 
             {{-- Partial payment --}}
-            <div x-show="paymentMethod === 'partial'" class="space-y-1 bg-orange-50 border border-orange-200 rounded-xl p-2">
+            <div x-show="paymentMethod === 'partial'" class="space-y-1.5 bg-orange-50 border border-orange-200 rounded-xl p-2">
                 <div class="text-xs font-semibold text-orange-700 mb-1">
-                    <i class="fas fa-code-branch mr-1"></i> Partial Payment (Cash + Khata)
+                    <i class="fas fa-code-branch mr-1"></i> Partial Payment
+                    (<span x-text="partialPayVia === 'bank' ? 'Bank' : 'Cash'"></span> + Khata)
                 </div>
+
+                {{-- Cash / Bank toggle --}}
+                <div class="flex gap-1.5">
+                    <button @click="partialPayVia = 'cash'; partialBankId = ''"
+                            :class="partialPayVia === 'cash' ? 'bg-green-500 text-white border-green-500' : 'bg-white text-gray-600 border-gray-300 hover:border-green-300'"
+                            class="flex-1 text-xs font-semibold border rounded-lg py-1 transition-colors">
+                        <i class="fas fa-money-bill-wave mr-1"></i> Cash
+                    </button>
+                    <button @click="partialPayVia = 'bank'"
+                            :class="partialPayVia === 'bank' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-300'"
+                            class="flex-1 text-xs font-semibold border rounded-lg py-1 transition-colors">
+                        <i class="fas fa-university mr-1"></i> Bank
+                    </button>
+                </div>
+
+                {{-- Bank account selector --}}
+                @if($bankAccounts->count())
+                <div x-show="partialPayVia === 'bank'" x-transition>
+                    <select x-model="partialBankId"
+                            class="w-full text-sm border border-blue-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white font-medium">
+                        <option value="">— Choose bank account —</option>
+                        @foreach($bankAccounts as $bank)
+                        <option value="{{ $bank->id }}">
+                            {{ $bank->label }} — {{ $bank->bank_name }}{{ $bank->account_number ? ' · '.$bank->account_number : '' }}
+                        </option>
+                        @endforeach
+                    </select>
+                    <p x-show="!partialBankId && partialPayVia === 'bank'" class="text-xs text-orange-500 font-medium mt-0.5">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>Please select a bank account.
+                    </p>
+                </div>
+                @endif
+
                 <div class="flex items-center gap-2">
                     <label class="text-xs text-gray-600 shrink-0 w-20">Paid Now:</label>
                     <input type="number" x-model.number="partialAmountPaid" @input="calcPartialKhata()"
@@ -678,7 +712,7 @@
                 </div>
                 <div class="border-t border-orange-200 pt-1 space-y-0.5 text-xs">
                     <div class="flex justify-between text-gray-600">
-                        <span>Cash Received:</span>
+                        <span x-text="partialPayVia === 'bank' ? 'Bank Received:' : 'Cash Received:'"></span>
                         <span class="font-semibold text-green-700" x-text="`Rs. ${partialAmountPaid.toLocaleString()}`"></span>
                     </div>
                     <div class="flex justify-between text-gray-600">
@@ -1886,6 +1920,8 @@ function posApp() {
         paymentMethod: 'cash',
         cashReceived: 0,
         partialAmountPaid: 0,
+        partialPayVia: 'cash',
+        partialBankId: '',
         promiseDate: '',
         splitCash: 0,
         splitBank: 0,
@@ -2600,6 +2636,8 @@ function posApp() {
                 this.promiseDate = '';
             } else if (method === 'partial') {
                 this.partialAmountPaid = 0;
+                this.partialPayVia = 'cash';
+                this.partialBankId = '';
             } else if (method === 'split') {
                 this.splitCash = Math.ceil(this.total / 100) * 100;
                 this.splitBank = 0;
@@ -2678,6 +2716,8 @@ function posApp() {
                 discount: this.discountAmount,
                 payment_method: this.paymentMethod,
                 amount_paid: this.paymentMethod === 'partial' ? this.partialAmountPaid : null,
+                partial_pay_via: this.paymentMethod === 'partial' ? this.partialPayVia : null,
+                partial_bank_account_id: (this.paymentMethod === 'partial' && this.partialPayVia === 'bank') ? this.partialBankId : null,
                 cash_amount: this.paymentMethod === 'split' ? this.splitCash : null,
                 bank_amount: this.paymentMethod === 'split' ? this.splitBank : null,
                 bank_account_id: ['bank_transfer', 'split'].includes(this.paymentMethod) ? this.bankAccountId : null,

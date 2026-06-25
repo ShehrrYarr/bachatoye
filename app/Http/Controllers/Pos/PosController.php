@@ -663,11 +663,13 @@ class PosController extends Controller
             'items.*.unit_price'    => 'required|numeric|min:0',
             'items.*.color_id'      => 'nullable|exists:product_colors,id',
             'items.*.serial_number' => 'nullable|string|max:100',
-            'payment_method'        => 'required|in:cash,bank_transfer,khata,partial,split',
-            'amount_paid'         => 'nullable|numeric|min:0',
-            'cash_amount'         => 'nullable|numeric|min:0',
-            'bank_amount'         => 'nullable|numeric|min:0',
-            'bank_account_id'     => 'nullable|exists:bank_accounts,id',
+            'payment_method'           => 'required|in:cash,bank_transfer,khata,partial,split',
+            'amount_paid'              => 'nullable|numeric|min:0',
+            'partial_pay_via'          => 'nullable|in:cash,bank',
+            'partial_bank_account_id'  => 'nullable|exists:bank_accounts,id',
+            'cash_amount'              => 'nullable|numeric|min:0',
+            'bank_amount'              => 'nullable|numeric|min:0',
+            'bank_account_id'          => 'nullable|exists:bank_accounts,id',
             'customer_id'         => 'nullable|exists:customers,id',
             'vendor_id'           => 'nullable|exists:vendors,id',
             'discount'            => 'nullable|numeric|min:0',
@@ -817,7 +819,9 @@ class PosController extends Controller
                 'payment_status'   => $payStatus,
                 'bank_account_id'  => in_array($payMethod, ['bank_transfer', 'split'])
                                         ? $request->bank_account_id
-                                        : null,
+                                        : ($payMethod === 'partial' && $request->partial_pay_via === 'bank'
+                                            ? $request->partial_bank_account_id
+                                            : null),
                 'notes'              => $request->notes,
                 'exchange_item_name' => $request->exchange_item_name ?: null,
                 'exchange_value'     => $exchangeValue > 0 ? $exchangeValue : null,
@@ -892,8 +896,9 @@ class PosController extends Controller
                 // Vendor buying on credit: reduces our payable to them (debit entry)
                 // If vendor.balance goes negative, it means vendor owes us money
                 $newBal = $vendor->balance - $khataDue;
+                $partialVia = $request->partial_pay_via === 'bank' ? 'Bank' : 'Cash';
                 $description = $payMethod === 'partial'
-                    ? "Partial Sale — {$order->order_number} | Total: Rs.{$total} | Paid: Rs.{$amountPaid}, Pending: Rs.{$khataDue} | Items: {$itemsList}"
+                    ? "Partial Sale — {$order->order_number} | Total: Rs.{$total} | Paid via {$partialVia}: Rs.{$amountPaid}, Pending: Rs.{$khataDue} | Items: {$itemsList}"
                     : "POS Sale — {$order->order_number} | Total: Rs.{$total} | Items: {$itemsList}";
                 VendorLedger::create([
                     'vendor_id'    => $vendor->id,
@@ -908,8 +913,9 @@ class PosController extends Controller
                 $vendor->update(['balance' => $newBal]);
             } elseif ($khataDue > 0 && $customer) {
                 $newBal = $customer->credit_balance - $khataDue;
+                $partialVia = $request->partial_pay_via === 'bank' ? 'Bank' : 'Cash';
                 $description = $payMethod === 'partial'
-                    ? "Partial Payment — {$order->order_number} | Total: Rs.{$total} | Paid: Rs.{$amountPaid}, Khata: Rs.{$khataDue} | Items: {$itemsList}"
+                    ? "Partial Payment — {$order->order_number} | Total: Rs.{$total} | Paid via {$partialVia}: Rs.{$amountPaid}, Khata: Rs.{$khataDue} | Items: {$itemsList}"
                     : "POS Sale — {$order->order_number} | Total: Rs.{$total} | Items: {$itemsList}";
                 AccountLedger::create([
                     'customer_id'   => $customer->id,
@@ -1140,15 +1146,17 @@ class PosController extends Controller
             'items.*.quantity'    => 'required|integer|min:1',
             'items.*.unit_price'  => 'required|numeric|min:0',
             'items.*.color_id'    => 'nullable|exists:product_colors,id',
-            'payment_method'      => 'required|in:cash,bank_transfer,khata,partial,split',
-            'amount_paid'         => 'nullable|numeric|min:0',
-            'cash_amount'         => 'nullable|numeric|min:0',
-            'bank_amount'         => 'nullable|numeric|min:0',
-            'bank_account_id'     => 'nullable|exists:bank_accounts,id',
-            'customer_id'         => 'nullable|exists:customers,id',
-            'vendor_id'           => 'nullable|exists:vendors,id',
-            'discount'            => 'nullable|numeric|min:0',
-            'notes'               => 'nullable|string|max:500',
+            'payment_method'           => 'required|in:cash,bank_transfer,khata,partial,split',
+            'amount_paid'              => 'nullable|numeric|min:0',
+            'partial_pay_via'          => 'nullable|in:cash,bank',
+            'partial_bank_account_id'  => 'nullable|exists:bank_accounts,id',
+            'cash_amount'              => 'nullable|numeric|min:0',
+            'bank_amount'              => 'nullable|numeric|min:0',
+            'bank_account_id'          => 'nullable|exists:bank_accounts,id',
+            'customer_id'              => 'nullable|exists:customers,id',
+            'vendor_id'                => 'nullable|exists:vendors,id',
+            'discount'                 => 'nullable|numeric|min:0',
+            'notes'                    => 'nullable|string|max:500',
             'promise_date'        => 'nullable|date',
         ]);
 
@@ -1421,7 +1429,10 @@ class PosController extends Controller
                 'payment_method'  => $payMethod,
                 'payment_status'  => $payStatus,
                 'bank_account_id' => in_array($payMethod, ['bank_transfer', 'split'])
-                                        ? $request->bank_account_id : null,
+                                        ? $request->bank_account_id
+                                        : ($payMethod === 'partial' && $request->partial_pay_via === 'bank'
+                                            ? $request->partial_bank_account_id
+                                            : null),
                 'notes'           => $request->notes,
             ]);
 
