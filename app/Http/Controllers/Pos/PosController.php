@@ -15,6 +15,8 @@ use App\Models\SerialNumber;
 use App\Models\Setting;
 use App\Models\StockMovement;
 use App\Models\Vendor;
+use App\Models\Category;
+use App\Models\HeldOrder;
 use App\Models\VendorLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -1458,5 +1460,116 @@ class PosController extends Controller
             DB::rollBack();
             return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
         }
+    }
+
+    // ── Held Orders ──────────────────────────────────────────────────────────
+
+    public function getHolds(): \Illuminate\Http\JsonResponse
+    {
+        $user    = Auth::user();
+        $isAdmin = $user->hasRole('admin');
+
+        $query = HeldOrder::with('creator:id,name')->latest();
+
+        if (!$isAdmin) {
+            $sectionIds = $user->sections->pluck('id')->toArray();
+            $query->where(function ($q) use ($user, $sectionIds) {
+                $q->where('created_by', $user->id);
+                foreach ($sectionIds as $sid) {
+                    $q->orWhereJsonContains('section_ids', $sid);
+                }
+            });
+        }
+
+        $holds = $query->get()->map(fn($h) => [
+            'id'           => $h->id,
+            'label'        => $h->label,
+            'cart'         => $h->cart_data,
+            'customer'     => $h->customer_data,
+            'discountType' => $h->discount_type,
+            'discountValue'=> (float) $h->discount_value,
+            'paymentMethod'=> $h->payment_method,
+            'orderNotes'   => $h->order_notes,
+            'total'        => (float) $h->total,
+            'itemCount'    => collect($h->cart_data)->sum('quantity'),
+            'heldAt'       => $h->created_at->format('h:i A'),
+            'createdBy'    => $h->creator->name,
+            'isOwn'        => $h->created_by === $user->id,
+        ]);
+
+        return response()->json($holds);
+    }
+
+    public function storeHold(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $request->validate([
+            'label'         => 'required|string|max:100',
+            'cart'          => 'required|array|min:1',
+            'total'         => 'required|numeric|min:0',
+            'discount_type' => 'nullable|string',
+            'discount_value'=> 'nullable|numeric|min:0',
+            'payment_method'=> 'nullable|string',
+            'order_notes'   => 'nullable|string|max:500',
+            'customer'      => 'nullable|array',
+        ]);
+
+        $productIds = collect($request->cart)->pluck('product_id')->filter()->unique();
+        $categoryIds = Product::whereIn('id', $productIds)->pluck('category_id')->filter()->unique();
+        $sectionIds  = Category::whereIn('id', $categoryIds)
+            ->whereNotNull('section_id')
+            ->pluck('section_id')
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $hold = HeldOrder::create([
+            'label'          => $request->label,
+            'created_by'     => Auth::id(),
+            'cart_data'      => $request->cart,
+            'customer_data'  => $request->customer,
+            'discount_type'  => $request->discount_type  ?? 'flat',
+            'discount_value' => $request->discount_value ?? 0,
+            'payment_method' => $request->payment_method ?? 'cash',
+            'order_notes'    => $request->order_notes,
+            'total'          => $request->total,
+            'section_ids'    => $sectionIds,
+        ]);
+
+        $hold->load('creator:id,name');
+
+        return response()->json([
+            'id'           => $hold->id,
+            'label'        => $hold->label,
+            'cart'         => $hold->cart_data,
+            'customer'     => $hold->customer_data,
+            'discountType' => $hold->discount_type,
+            'discountValue'=> (float) $hold->discount_value,
+            'paymentMethod'=> $hold->payment_method,
+            'orderNotes'   => $hold->order_notes,
+            'total'        => (float) $hold->total,
+            'itemCount'    => collect($hold->cart_data)->sum('quantity'),
+            'heldAt'       => $hold->created_at->format('h:i A'),
+            'createdBy'    => $hold->creator->name,
+            'isOwn'        => true,
+        ]);
+    }
+
+    public function deleteHold(HeldOrder $hold): \Illuminate\Http\JsonResponse
+    {
+        $user    = Auth::user();
+        $isAdmin = $user->hasRole('admin');
+
+        if (!$isAdmin) {
+            $canDelete = $hold->created_by === $user->id;
+            if (!$canDelete) {
+                $sectionIds  = $user->sections->pluck('id')->toArray();
+                $holdSections = $hold->section_ids ?? [];
+                $canDelete   = !empty(array_intersect($sectionIds, $holdSections));
+            }
+            abort_unless($canDelete, 403, 'You do not have permission to delete this held order.');
+        }
+
+        $hold->delete();
+        return response()->json(['success' => true]);
     }
 }

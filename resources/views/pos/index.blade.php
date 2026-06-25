@@ -1184,16 +1184,22 @@
                 {{-- Scrollable body --}}
                 <div style="flex:1 1 0%; overflow-y:auto; padding:12px 16px;">
 
+                    {{-- Loading spinner --}}
+                    <div x-show="holdsLoading" class="text-center py-8 text-gray-400">
+                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                        <p class="text-xs">Loading held orders...</p>
+                    </div>
+
                     {{-- Empty state --}}
-                    <div x-show="heldOrders.length === 0" class="text-center py-12 text-gray-400">
+                    <div x-show="!holdsLoading && heldOrders.length === 0" class="text-center py-12 text-gray-400">
                         <i class="fas fa-inbox text-4xl mb-3"></i>
                         <p class="text-sm font-medium">No held orders</p>
                         <p class="text-xs mt-1" style="color:#d1d5db;">Press <strong style="color:#9ca3af;">Hold</strong> in the cart to park an order</p>
                     </div>
 
                     {{-- Held order cards --}}
-                    <div style="display:flex; flex-direction:column; gap:12px;">
-                        <template x-for="(held, idx) in heldOrders" :key="held.id">
+                    <div x-show="!holdsLoading" style="display:flex; flex-direction:column; gap:12px;">
+                        <template x-for="held in heldOrders" :key="held.id">
                             <div style="border:1px solid #fde68a; background:#fffbeb; border-radius:12px; padding:14px;">
 
                                 {{-- Top row: label + total --}}
@@ -1210,6 +1216,13 @@
                                                     <span style="color:#d1d5db;">·</span>
                                                     <i class="fas fa-user" style="font-size:9px;"></i>
                                                     <span x-text="held.customer.name"></span>
+                                                </span>
+                                            </template>
+                                            <template x-if="!held.isOwn">
+                                                <span style="display:flex; align-items:center; gap:3px; color:#7c3aed;">
+                                                    <span style="color:#d1d5db;">·</span>
+                                                    <i class="fas fa-user-tag" style="font-size:9px;"></i>
+                                                    <span x-text="held.createdBy"></span>
                                                 </span>
                                             </template>
                                         </div>
@@ -1236,12 +1249,12 @@
 
                                 {{-- Actions --}}
                                 <div style="display:flex; gap:8px;">
-                                    <button @click="resumeHeldOrder(idx)"
+                                    <button @click="resumeHeldOrder(held.id)"
                                             style="flex:1; background:#f59e0b; color:white; font-size:12px; font-weight:600; padding:8px 0; border-radius:10px; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:background 0.15s;"
                                             onmouseover="this.style.background='#d97706'" onmouseout="this.style.background='#f59e0b'">
                                         <i class="fas fa-play" style="font-size:10px;"></i> Resume
                                     </button>
-                                    <button @click="deleteHeldOrder(idx)"
+                                    <button @click="deleteHeldOrder(held.id)"
                                             style="padding:8px 14px; color:#f87171; border:1px solid #fecaca; border-radius:10px; background:white; cursor:pointer; font-size:12px; transition:all 0.15s;"
                                             onmouseover="this.style.color='#dc2626';this.style.borderColor='#f87171';this.style.background='#fff1f2';"
                                             onmouseout="this.style.color='#f87171';this.style.borderColor='#fecaca';this.style.background='white';">
@@ -1962,9 +1975,10 @@ function posApp() {
         posView: null,
         showViewModal: true,
 
-        // Held orders (parked carts)
+        // Held orders (parked carts — stored in DB)
         heldOrders: [],
         showHeldOrders: false,
+        holdsLoading: false,
 
         // Offline mode + sync queue
         isOnline: navigator.onLine,   // live connectivity (heartbeat)
@@ -1985,8 +1999,9 @@ function posApp() {
 
         async init() {
             this.focusBarcode();
-            // Load held orders from localStorage
-            try { this.heldOrders = JSON.parse(localStorage.getItem('pos_held_orders') || '[]'); } catch(e) { this.heldOrders = []; }
+            // Load held orders from server (background — badge updates when done)
+            this._fetchHolds();
+            this.$watch('showHeldOrders', v => { if (v) this._fetchHolds(); });
             // Load any offline orders pending sync
             try { this.offlineOrders = JSON.parse(localStorage.getItem('pos_offline_orders') || '[]'); } catch(e) { this.offlineOrders = []; }
             // Load the cached product catalog + customers (for offline browsing)
@@ -2919,50 +2934,62 @@ function posApp() {
         },
 
         // ── Hold Order ──────────────────────────────────────────────────────
-        holdOrder() {
+        async holdOrder() {
             if (this.cart.length === 0) return;
             const label = this.selectedCustomer?.name
                 || (this.orderNotes?.trim() ? this.orderNotes.substring(0, 24) : null)
                 || `Hold ${this.heldOrders.length + 1}`;
-            this.heldOrders.push({
-                id:           Date.now(),
-                label:        label,
-                cart:         JSON.parse(JSON.stringify(this.cart)),
-                customer:     this.selectedCustomer ? { ...this.selectedCustomer } : null,
-                discountType: this.discountType,
-                discountValue: this.discountValue,
-                paymentMethod: this.paymentMethod,
-                orderNotes:   this.orderNotes,
-                total:        this.total,
-                subtotal:     this.subtotal,
-                itemCount:    this.cart.reduce((s, i) => s + i.quantity, 0),
-                heldAt:       new Date().toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' }),
-            });
-            this._saveHeldOrders();
-            // Clear POS for the new customer
-            this.cart              = [];
-            this.selectedCustomer  = null;
-            this.discountType      = 'flat';
-            this.discountValue     = 0;
-            this.orderNotes        = '';
-            this.paymentMethod     = 'cash';
-            this.showMobileCart    = false;
+            const payload = {
+                label:          label,
+                cart:           JSON.parse(JSON.stringify(this.cart)),
+                customer:       this.selectedCustomer ? { ...this.selectedCustomer } : null,
+                discount_type:  this.discountType,
+                discount_value: this.discountValue,
+                payment_method: this.paymentMethod,
+                order_notes:    this.orderNotes,
+                total:          this.total,
+            };
+            // Clear POS immediately for responsiveness
+            this.cart             = [];
+            this.selectedCustomer = null;
+            this.discountType     = 'flat';
+            this.discountValue    = 0;
+            this.orderNotes       = '';
+            this.paymentMethod    = 'cash';
+            this.showMobileCart   = false;
             this.recalculate();
             this.focusBarcode();
+            // Persist to server
+            try {
+                const r = await fetch('{{ route('pos.holds.store') }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                if (r.ok) this.heldOrders.unshift(await r.json());
+            } catch(e) {}
         },
 
-        resumeHeldOrder(idx) {
+        async resumeHeldOrder(id) {
+            const idx = this.heldOrders.findIndex(h => h.id === id);
+            if (idx === -1) return;
             // If something is already in the cart, auto-hold it first
-            if (this.cart.length > 0) this.holdOrder();
-            const held           = this.heldOrders[idx];
-            this.cart            = held.cart;
+            if (this.cart.length > 0) await this.holdOrder();
+            const held            = this.heldOrders[idx];
+            this.cart             = held.cart;
             this.selectedCustomer = held.customer;
-            this.discountType    = held.discountType  || 'flat';
-            this.discountValue   = held.discountValue || 0;
-            this.paymentMethod   = held.paymentMethod || 'cash';
-            this.orderNotes      = held.orderNotes    || '';
-            this.heldOrders.splice(idx, 1);
-            this._saveHeldOrders();
+            this.discountType     = held.discountType  || 'flat';
+            this.discountValue    = held.discountValue || 0;
+            this.paymentMethod    = held.paymentMethod || 'cash';
+            this.orderNotes       = held.orderNotes    || '';
+            // Delete from server then remove from local list
+            try {
+                await fetch(`/pos/holds/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+                });
+            } catch(e) {}
+            this.heldOrders.splice(this.heldOrders.findIndex(h => h.id === id), 1);
             this.showHeldOrders = false;
             // On mobile, open the cart so the resumed order is visible
             if (window.innerWidth < 1024) this.showMobileCart = true;
@@ -2970,14 +2997,27 @@ function posApp() {
             this.focusBarcode();
         },
 
-        deleteHeldOrder(idx) {
+        async deleteHeldOrder(id) {
             if (!confirm('Remove this held order? It cannot be recovered.')) return;
-            this.heldOrders.splice(idx, 1);
-            this._saveHeldOrders();
+            try {
+                const r = await fetch(`/pos/holds/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+                });
+                if (r.ok) {
+                    const idx = this.heldOrders.findIndex(h => h.id === id);
+                    if (idx !== -1) this.heldOrders.splice(idx, 1);
+                }
+            } catch(e) {}
         },
 
-        _saveHeldOrders() {
-            try { localStorage.setItem('pos_held_orders', JSON.stringify(this.heldOrders)); } catch(e) {}
+        async _fetchHolds() {
+            this.holdsLoading = true;
+            try {
+                const r = await fetch('{{ route('pos.holds.index') }}', { headers: { 'Accept': 'application/json' } });
+                if (r.ok) this.heldOrders = await r.json();
+            } catch(e) {}
+            this.holdsLoading = false;
         },
     };
 }

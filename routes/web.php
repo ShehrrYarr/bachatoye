@@ -461,6 +461,10 @@ Route::prefix('pos')->name('pos.')->middleware(['auth', 'permission:pos.access']
     Route::get('/return/{return}/receipt', [Pos\PosReturnController::class, 'receipt'])
         ->middleware('permission:pos.process_returns')->name('return.receipt');
 
+    Route::get('/holds',           [Pos\PosController::class, 'getHolds'])->name('holds.index');
+    Route::post('/holds',          [Pos\PosController::class, 'storeHold'])->name('holds.store');
+    Route::delete('/holds/{hold}', [Pos\PosController::class, 'deleteHold'])->name('holds.delete');
+
     // Exchanges
     Route::get('/exchange', [Pos\PosExchangeController::class, 'index'])->name('exchange.index');
     Route::get('/exchange/order/{orderNumber}', [Pos\PosExchangeController::class, 'findOrder'])->name('exchange.find');
