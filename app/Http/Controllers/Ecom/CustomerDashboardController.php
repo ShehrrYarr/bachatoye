@@ -62,7 +62,7 @@ class CustomerDashboardController extends Controller
         $account  = $this->account();
         $customer = $account->customer;
 
-        if ($order->customer_id !== $customer->id) abort(403);
+        if ((int) $order->customer_id !== (int) $customer->id) abort(403);
 
         $expectedSource = $customer->source === 'pos' ? 'pos' : 'ecommerce';
         if ($order->source !== $expectedSource) abort(403);
