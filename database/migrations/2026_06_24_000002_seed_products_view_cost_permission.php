@@ -12,7 +12,7 @@ return new class extends Migration
 
         $perm = Permission::firstOrCreate(['name' => 'products.view_cost', 'guard_name' => 'web']);
 
-        Role::findByName('admin')->givePermissionTo($perm);
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web'])->givePermissionTo($perm);
     }
 
     public function down(): void

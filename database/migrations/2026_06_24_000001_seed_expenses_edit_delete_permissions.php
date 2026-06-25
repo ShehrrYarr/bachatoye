@@ -13,7 +13,7 @@ return new class extends Migration
         $edit   = Permission::firstOrCreate(['name' => 'expenses.edit',   'guard_name' => 'web']);
         $delete = Permission::firstOrCreate(['name' => 'expenses.delete', 'guard_name' => 'web']);
 
-        $admin = Role::findByName('admin');
+        $admin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         $admin->givePermissionTo([$edit, $delete]);
     }
 
