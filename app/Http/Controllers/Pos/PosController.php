@@ -98,7 +98,7 @@ class PosController extends Controller
             return match ($o->payment_method) {
                 'cash'    => $o->total,
                 'split'   => $o->cash_amount ?? 0,
-                'partial' => $o->amount_paid ?? 0,
+                'partial' => $o->bank_account_id ? 0 : ($o->amount_paid ?? 0),
                 default   => 0,
             };
         });
@@ -106,6 +106,7 @@ class PosController extends Controller
             return match ($o->payment_method) {
                 'bank_transfer' => $o->total,
                 'split'         => $o->bank_amount ?? 0,
+                'partial'       => $o->bank_account_id ? ($o->amount_paid ?? 0) : 0,
                 default         => 0,
             };
         });
@@ -151,13 +152,13 @@ class PosController extends Controller
             ->whereDate('created_at', today())
             ->where('status', 'delivered')
             ->when(!$isAdmin, fn($q) => $q->where('served_by', $user->id))
-            ->get(['payment_method', 'total', 'cash_amount', 'bank_amount', 'amount_paid']);
+            ->get(['payment_method', 'total', 'cash_amount', 'bank_amount', 'amount_paid', 'bank_account_id']);
 
         $cashTotal = $todaySalesOrders->sum(function ($o) {
             return match ($o->payment_method) {
                 'cash'    => $o->total,
                 'split'   => $o->cash_amount ?? 0,
-                'partial' => $o->amount_paid ?? 0,
+                'partial' => $o->bank_account_id ? 0 : ($o->amount_paid ?? 0),
                 default   => 0,
             };
         });
@@ -165,6 +166,7 @@ class PosController extends Controller
             return match ($o->payment_method) {
                 'bank_transfer' => $o->total,
                 'split'         => $o->bank_amount ?? 0,
+                'partial'       => $o->bank_account_id ? ($o->amount_paid ?? 0) : 0,
                 default         => 0,
             };
         });
