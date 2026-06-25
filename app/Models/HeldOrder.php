@@ -20,6 +20,7 @@ class HeldOrder extends Model
             'section_ids'   => 'array',
             'total'         => 'decimal:2',
             'discount_value'=> 'decimal:2',
+            'created_by'    => 'integer',
         ];
     }
 

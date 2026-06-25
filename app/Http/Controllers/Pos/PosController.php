@@ -1560,7 +1560,7 @@ class PosController extends Controller
         $isAdmin = $user->hasRole('admin');
 
         if (!$isAdmin) {
-            $canDelete = $hold->created_by === $user->id;
+            $canDelete = (int) $hold->created_by === (int) $user->id;
             if (!$canDelete) {
                 $sectionIds  = $user->sections->pluck('id')->toArray();
                 $holdSections = $hold->section_ids ?? [];
