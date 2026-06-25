@@ -414,7 +414,7 @@
             <div x-show="!selectedCustomer">
                 <div class="relative">
                     <input type="text" x-model="customerSearch" @input.debounce.300ms="searchCustomers()"
-                           placeholder="Search customer (optional)..."
+                           placeholder="Search by name or phone number..."
                            class="w-full text-xs px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500">
                     <div x-show="customerSearch.length >= 2"
                          class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 overflow-hidden">
