@@ -18,19 +18,23 @@ class CustomerAuthController extends Controller
 
     public function login(Request $request)
     {
-        $credentials = $request->validate([
-            'email'    => 'required|email',
-            'password' => 'required|string',
+        $request->validate([
+            'identifier' => 'required|string',
+            'password'   => 'required|string',
         ]);
 
-        $account = CustomerAccount::where('email', $credentials['email'])->first();
+        $identifier = $request->input('identifier');
 
-        if (!$account || !Hash::check($credentials['password'], $account->password)) {
-            return back()->withErrors(['email' => 'These credentials do not match our records.'])->withInput();
+        // Try by email first, then by phone
+        $account = CustomerAccount::where('email', $identifier)->first()
+            ?? CustomerAccount::where('phone', $identifier)->first();
+
+        if (!$account || !Hash::check($request->input('password'), $account->password)) {
+            return back()->withErrors(['identifier' => 'These credentials do not match our records.'])->withInput();
         }
 
         if (!$account->is_active) {
-            return back()->withErrors(['email' => 'Your account has been disabled. Please contact support.'])->withInput();
+            return back()->withErrors(['identifier' => 'Your account has been disabled. Please contact support.'])->withInput();
         }
 
         Auth::guard('customer')->login($account, $request->boolean('remember'));

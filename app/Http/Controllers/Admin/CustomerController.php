@@ -6,10 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\AccountLedger;
 use App\Models\BankAccount;
 use App\Models\Customer;
+use App\Models\CustomerAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class CustomerController extends Controller
 {
@@ -75,7 +78,18 @@ class CustomerController extends Controller
         $data['created_by']   = Auth::id();
         $data['source']        = 'pos';
         $data['khata_enabled'] = $request->boolean('khata_enabled');
-        Customer::create($data);
+        $customer = Customer::create($data);
+
+        // Auto-create portal login account
+        $plainPassword = Str::random(10);
+        CustomerAccount::create([
+            'customer_id'    => $customer->id,
+            'email'          => $customer->email ?: null,
+            'phone'          => $customer->phone,
+            'password'       => Hash::make($plainPassword),
+            'plain_password' => $plainPassword,
+            'is_active'      => true,
+        ]);
 
         return redirect()->route(Auth::user()->hasRole('admin') ? 'admin.customers.index' : 'salesman.customers.index')->with('success', 'Customer added.');
     }

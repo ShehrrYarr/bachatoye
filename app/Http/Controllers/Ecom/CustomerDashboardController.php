@@ -20,6 +20,19 @@ class CustomerDashboardController extends Controller
         $account  = $this->account();
         $customer = $account->customer;
 
+        if ($customer->source === 'pos') {
+            $recentOrders  = Order::where('customer_id', $customer->id)
+                ->where('source', 'pos')
+                ->with('items')
+                ->orderByDesc('created_at')
+                ->limit(5)
+                ->get();
+            $totalOrders   = $customer->orders()->where('source', 'pos')->count();
+            $totalSpent    = $customer->orders()->where('source', 'pos')->where('status', 'delivered')->sum('total');
+            $balance       = $customer->credit_balance;
+            return view('account.dashboard-pos', compact('account', 'customer', 'recentOrders', 'totalOrders', 'totalSpent', 'balance'));
+        }
+
         $recentOrders = Order::where('customer_id', $customer->id)
             ->where('source', 'ecommerce')
             ->orderByDesc('created_at')
@@ -34,10 +47,12 @@ class CustomerDashboardController extends Controller
         $account  = $this->account();
         $customer = $account->customer;
 
+        $source = $customer->source === 'pos' ? 'pos' : 'ecommerce';
         $orders = Order::where('customer_id', $customer->id)
-            ->where('source', 'ecommerce')
+            ->where('source', $source)
+            ->with('items')
             ->orderByDesc('created_at')
-            ->paginate(10);
+            ->paginate(15);
 
         return view('account.orders', compact('account', 'customer', 'orders'));
     }
@@ -47,14 +62,45 @@ class CustomerDashboardController extends Controller
         $account  = $this->account();
         $customer = $account->customer;
 
-        // Ensure this order belongs to this customer and is an ecommerce order
-        if ($order->customer_id !== $customer->id || $order->source !== 'ecommerce') {
-            abort(403);
-        }
+        if ($order->customer_id !== $customer->id) abort(403);
+
+        $expectedSource = $customer->source === 'pos' ? 'pos' : 'ecommerce';
+        if ($order->source !== $expectedSource) abort(403);
 
         $order->load('items');
 
         return view('account.order-detail', compact('account', 'customer', 'order'));
+    }
+
+    public function returns()
+    {
+        $account  = $this->account();
+        $customer = $account->customer;
+
+        abort_unless($customer->source === 'pos', 403);
+
+        $returns = $customer->returns()
+            ->with('items', 'order')
+            ->orderByDesc('created_at')
+            ->paginate(15);
+
+        return view('account.returns', compact('account', 'customer', 'returns'));
+    }
+
+    public function ledger()
+    {
+        $account  = $this->account();
+        $customer = $account->customer;
+
+        abort_unless($customer->source === 'pos', 403);
+
+        $entries = $customer->ledgerEntries()
+            ->orderByDesc('created_at')
+            ->paginate(20);
+
+        $balance = $customer->credit_balance;
+
+        return view('account.ledger', compact('account', 'customer', 'entries', 'balance'));
     }
 
     public function editProfile()
@@ -78,7 +124,6 @@ class CustomerDashboardController extends Controller
             'new_password'     => 'nullable|string|min:6|confirmed',
         ]);
 
-        // If changing password, verify current one first
         if ($request->filled('new_password')) {
             if (!$request->filled('current_password') || !Hash::check($request->current_password, $account->password)) {
                 return back()->withErrors(['current_password' => 'Current password is incorrect.'])->withInput();

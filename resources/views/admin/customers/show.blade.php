@@ -232,6 +232,42 @@
         </div>
         @endif
 
+        {{-- Portal Login Credentials (POS customers only, admin only) --}}
+        @if($isAdmin && $customer->source === 'pos' && $customer->account)
+        <div x-data="{ show: false }" class="card p-5 border-amber-200 bg-amber-50">
+            <h2 class="font-semibold text-gray-800 mb-3"><i class="fas fa-key text-amber-500 mr-1.5"></i>Portal Access</h2>
+            <dl class="space-y-2 text-sm">
+                <div>
+                    <dt class="text-gray-500 text-xs">Login with</dt>
+                    <dd class="font-mono font-medium text-gray-800">{{ $customer->account->email ?: $customer->account->phone }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500 text-xs">Password</dt>
+                    <dd class="flex items-center gap-2">
+                        <span x-show="!show" class="font-mono text-gray-400 tracking-widest">••••••••••</span>
+                        <span x-show="show" class="font-mono font-semibold text-gray-800">{{ $customer->account->plain_password }}</span>
+                        <button type="button" @click="show = !show"
+                                class="text-xs text-amber-600 hover:text-amber-800 font-medium">
+                            <span x-text="show ? 'Hide' : 'Show'"></span>
+                        </button>
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500 text-xs">Status</dt>
+                    <dd>
+                        <span class="text-xs px-2 py-0.5 rounded-full font-medium {{ $customer->account->is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600' }}">
+                            {{ $customer->account->is_active ? 'Active' : 'Disabled' }}
+                        </span>
+                    </dd>
+                </div>
+            </dl>
+            <a href="{{ route('account.login') }}" target="_blank"
+               class="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-medium text-amber-700 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-lg py-2 transition-colors">
+                <i class="fas fa-external-link-alt"></i> Open Customer Portal
+            </a>
+        </div>
+        @endif
+
         {{-- Stats --}}
         <div class="card p-5">
             <h2 class="font-semibold text-gray-800 mb-4">Stats</h2>

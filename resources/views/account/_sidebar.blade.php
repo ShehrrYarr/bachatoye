@@ -8,7 +8,7 @@
             </div>
             <div class="min-w-0">
                 <div class="font-bold text-white truncate">{{ $customer->name }}</div>
-                <div class="text-xs text-red-100 truncate">{{ $account->email }}</div>
+                <div class="text-xs text-red-100 truncate">{{ $account->email ?: $account->phone }}</div>
             </div>
         </div>
     </div>
@@ -26,6 +26,20 @@
             <i class="fas fa-box w-4 text-center {{ request()->routeIs('account.orders*') ? 'text-primary-600' : 'text-gray-400' }}"></i>
             My Orders
         </a>
+        @if($customer->source === 'pos')
+        <a href="{{ route('account.returns') }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
+                  {{ request()->routeIs('account.returns') ? 'bg-primary-50 text-primary-700' : 'text-gray-700 hover:bg-gray-50' }}">
+            <i class="fas fa-undo w-4 text-center {{ request()->routeIs('account.returns') ? 'text-primary-600' : 'text-gray-400' }}"></i>
+            Returns
+        </a>
+        <a href="{{ route('account.ledger') }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
+                  {{ request()->routeIs('account.ledger') ? 'bg-amber-50 text-amber-700' : 'text-gray-700 hover:bg-gray-50' }}">
+            <i class="fas fa-book w-4 text-center {{ request()->routeIs('account.ledger') ? 'text-amber-600' : 'text-gray-400' }}"></i>
+            Khata / Ledger
+        </a>
+        @endif
         <a href="{{ route('account.profile') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
                   {{ request()->routeIs('account.profile') ? 'bg-primary-50 text-primary-700' : 'text-gray-700 hover:bg-gray-50' }}">

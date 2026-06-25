@@ -66,6 +66,8 @@ Route::prefix('account')->name('account.')->group(function () {
         Route::get('/dashboard', [Ecom\CustomerDashboardController::class, 'index'])->name('dashboard');
         Route::get('/orders', [Ecom\CustomerDashboardController::class, 'orders'])->name('orders');
         Route::get('/orders/{order}', [Ecom\CustomerDashboardController::class, 'showOrder'])->name('orders.show');
+        Route::get('/returns', [Ecom\CustomerDashboardController::class, 'returns'])->name('returns');
+        Route::get('/ledger', [Ecom\CustomerDashboardController::class, 'ledger'])->name('ledger');
         Route::get('/profile', [Ecom\CustomerDashboardController::class, 'editProfile'])->name('profile');
         Route::post('/profile', [Ecom\CustomerDashboardController::class, 'updateProfile'])->name('profile.update');
         Route::post('/logout', [Ecom\CustomerAuthController::class, 'logout'])->name('logout');

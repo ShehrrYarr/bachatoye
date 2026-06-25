@@ -20,7 +20,9 @@ class CustomerAccount extends Authenticatable
     protected $fillable = [
         'customer_id',
         'email',
+        'phone',
         'password',
+        'plain_password',
         'security_question',
         'security_answer',
         'is_active',
