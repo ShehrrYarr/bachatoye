@@ -62,16 +62,18 @@ class DashboardController extends Controller
         $posOrders = Order::whereDate('created_at', today())
             ->where('source', 'pos')
             ->where('status', 'delivered')
-            ->get(['payment_method', 'total', 'cash_amount', 'bank_amount']);
+            ->get(['payment_method', 'total', 'cash_amount', 'bank_amount', 'amount_paid', 'bank_account_id']);
 
         $posCash = $posOrders->sum(fn($o) => match($o->payment_method) {
             'cash'    => $o->total,
             'split'   => (float) $o->cash_amount,
+            'partial' => $o->bank_account_id ? 0 : (float) $o->amount_paid,
             default   => 0,
         });
         $posBank = $posOrders->sum(fn($o) => match($o->payment_method) {
             'bank_transfer' => $o->total,
             'split'         => (float) $o->bank_amount,
+            'partial'       => $o->bank_account_id ? (float) $o->amount_paid : 0,
             default         => 0,
         });
 
@@ -182,13 +184,15 @@ class DashboardController extends Controller
     {
         $posOrders = Order::whereDate('created_at', today())
             ->where('source', 'pos')->where('status', 'delivered')
-            ->get(['payment_method', 'total', 'cash_amount', 'bank_amount']);
+            ->get(['payment_method', 'total', 'cash_amount', 'bank_amount', 'amount_paid', 'bank_account_id']);
 
         $posCash = $posOrders->sum(fn($o) => match($o->payment_method) {
-            'cash'  => $o->total, 'split' => (float)$o->cash_amount, default => 0,
+            'cash'    => $o->total, 'split' => (float)$o->cash_amount,
+            'partial' => $o->bank_account_id ? 0 : (float)$o->amount_paid, default => 0,
         });
         $posBank = $posOrders->sum(fn($o) => match($o->payment_method) {
-            'bank_transfer' => $o->total, 'split' => (float)$o->bank_amount, default => 0,
+            'bank_transfer' => $o->total, 'split' => (float)$o->bank_amount,
+            'partial'       => $o->bank_account_id ? (float)$o->amount_paid : 0, default => 0,
         });
 
         $khataEntries = AccountLedger::whereDate('created_at', today())->where('type', 'credit')
@@ -281,13 +285,15 @@ class DashboardController extends Controller
         $posOrders = Order::where('served_by', $user->id)
             ->whereDate('created_at', today())
             ->where('source', 'pos')->where('status', 'delivered')
-            ->get(['payment_method', 'total', 'cash_amount', 'bank_amount']);
+            ->get(['payment_method', 'total', 'cash_amount', 'bank_amount', 'amount_paid', 'bank_account_id']);
 
         $posCash = $posOrders->sum(fn($o) => match($o->payment_method) {
-            'cash'  => (float) $o->total, 'split' => (float) $o->cash_amount, default => 0,
+            'cash'    => (float) $o->total, 'split' => (float) $o->cash_amount,
+            'partial' => $o->bank_account_id ? 0 : (float) $o->amount_paid, default => 0,
         });
         $posBank = $posOrders->sum(fn($o) => match($o->payment_method) {
-            'bank_transfer' => (float) $o->total, 'split' => (float) $o->bank_amount, default => 0,
+            'bank_transfer' => (float) $o->total, 'split' => (float) $o->bank_amount,
+            'partial'       => $o->bank_account_id ? (float) $o->amount_paid : 0, default => 0,
         });
 
         $returnOrders = ReturnOrder::where('processed_by', $user->id)
@@ -362,13 +368,15 @@ class DashboardController extends Controller
         $posOrders = Order::where('source', 'pos')
             ->where('status', 'delivered')
             ->whereBetween('created_at', [$from->startOfDay()->copy(), $to->copy()->endOfDay()])
-            ->get(['payment_method', 'total', 'cash_amount', 'bank_amount']);
+            ->get(['payment_method', 'total', 'cash_amount', 'bank_amount', 'amount_paid', 'bank_account_id']);
 
         $posCash  = $posOrders->sum(fn($o) => match($o->payment_method) {
-            'cash'  => (float) $o->total, 'split' => (float) $o->cash_amount, default => 0,
+            'cash'    => (float) $o->total, 'split' => (float) $o->cash_amount,
+            'partial' => $o->bank_account_id ? 0 : (float) $o->amount_paid, default => 0,
         });
         $posBank  = $posOrders->sum(fn($o) => match($o->payment_method) {
-            'bank_transfer' => (float) $o->total, 'split' => (float) $o->bank_amount, default => 0,
+            'bank_transfer' => (float) $o->total, 'split' => (float) $o->bank_amount,
+            'partial'       => $o->bank_account_id ? (float) $o->amount_paid : 0, default => 0,
         });
         $posTotal = (float) $posOrders->sum('total');
 
@@ -495,16 +503,18 @@ class DashboardController extends Controller
             ->whereDate('created_at', today())
             ->where('source', 'pos')
             ->where('status', 'delivered')
-            ->get(['payment_method', 'total', 'cash_amount', 'bank_amount']);
+            ->get(['payment_method', 'total', 'cash_amount', 'bank_amount', 'amount_paid', 'bank_account_id']);
 
         $posCash = $posOrders->sum(fn($o) => match($o->payment_method) {
-            'cash'  => (float) $o->total,
-            'split' => (float) $o->cash_amount,
-            default => 0,
+            'cash'    => (float) $o->total,
+            'split'   => (float) $o->cash_amount,
+            'partial' => $o->bank_account_id ? 0 : (float) $o->amount_paid,
+            default   => 0,
         });
         $posBank = $posOrders->sum(fn($o) => match($o->payment_method) {
             'bank_transfer' => (float) $o->total,
             'split'         => (float) $o->bank_amount,
+            'partial'       => $o->bank_account_id ? (float) $o->amount_paid : 0,
             default         => 0,
         });
 
