@@ -1472,7 +1472,7 @@ class PosController extends Controller
         $query = HeldOrder::with('creator:id,name')->latest();
 
         if (!$isAdmin) {
-            $sectionIds = $user->sections->pluck('id')->toArray();
+            $sectionIds = $user->sections->pluck('id')->map(fn($id) => (int) $id)->toArray();
             $query->where(function ($q) use ($user, $sectionIds) {
                 $q->where('created_by', $user->id);
                 foreach ($sectionIds as $sid) {
@@ -1513,13 +1513,14 @@ class PosController extends Controller
             'customer'      => 'nullable|array',
         ]);
 
-        $productIds = collect($request->cart)->pluck('product_id')->filter()->unique();
+        $productIds  = collect($request->cart)->pluck('product_id')->filter()->unique();
         $categoryIds = Product::whereIn('id', $productIds)->pluck('category_id')->filter()->unique();
         $sectionIds  = Category::whereIn('id', $categoryIds)
             ->whereNotNull('section_id')
             ->pluck('section_id')
             ->unique()
             ->values()
+            ->map(fn($id) => (int) $id)
             ->toArray();
 
         $hold = HeldOrder::create([
