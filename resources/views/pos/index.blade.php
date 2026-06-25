@@ -2029,6 +2029,9 @@ function posApp() {
             this.checkConnection();
             setInterval(() => this.checkConnection(), 20000);
 
+            // Poll held orders every 10 s so section-mates' holds appear without a refresh
+            setInterval(() => this._pollHolds(), 10000);
+
             // Keep the offline cache fresh on every load. These fail gracefully
             // when genuinely offline (the existing cache is kept), and crucially
             // they are NOT gated by the heartbeat, so a missing /pos/ping route
@@ -3018,6 +3021,13 @@ function posApp() {
                 if (r.ok) this.heldOrders = await r.json();
             } catch(e) {}
             this.holdsLoading = false;
+        },
+
+        async _pollHolds() {
+            try {
+                const r = await fetch('{{ route('pos.holds.index') }}', { headers: { 'Accept': 'application/json' } });
+                if (r.ok) this.heldOrders = await r.json();
+            } catch(e) {}
         },
     };
 }
