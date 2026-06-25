@@ -43,8 +43,8 @@
         <a href="{{ route('account.profile') }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
                   {{ request()->routeIs('account.profile') ? 'bg-primary-50 text-primary-700' : 'text-gray-700 hover:bg-gray-50' }}">
-            <i class="fas fa-user-edit w-4 text-center {{ request()->routeIs('account.profile') ? 'text-primary-600' : 'text-gray-400' }}"></i>
-            Edit Profile
+            <i class="fas fa-{{ $customer->source === 'pos' ? 'user' : 'user-edit' }} w-4 text-center {{ request()->routeIs('account.profile') ? 'text-primary-600' : 'text-gray-400' }}"></i>
+            {{ $customer->source === 'pos' ? 'View Profile' : 'Edit Profile' }}
         </a>
         <div class="pt-2 mt-2 border-t border-gray-100">
             <form method="POST" action="{{ route('account.logout') }}">

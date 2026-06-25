@@ -1,5 +1,5 @@
 @extends('layouts.ecom')
-@section('title', 'Edit Profile')
+@section('title', $customer->source === 'pos' ? 'My Profile' : 'Edit Profile')
 
 @section('content')
 <div class="max-w-7xl mx-auto px-4 py-10">
@@ -18,6 +18,43 @@
             </div>
             @endif
 
+            @if($customer->source === 'pos')
+            {{-- POS customers: read-only --}}
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm">
+                <div class="px-6 py-4 border-b border-gray-100">
+                    <h2 class="font-semibold text-gray-900">Personal Information</h2>
+                </div>
+                <div class="p-6 space-y-5">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Full Name</label>
+                            <div class="px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-xl text-sm text-gray-700">{{ $customer->name }}</div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Phone Number</label>
+                            <div class="px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-xl text-sm text-gray-700">{{ $customer->phone ?: '—' }}</div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Email Address</label>
+                        <div class="px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-xl text-sm text-gray-700">{{ $customer->email ?: '—' }}</div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Address</label>
+                            <div class="px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-xl text-sm text-gray-700">{{ $customer->address ?: '—' }}</div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">City</label>
+                            <div class="px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-xl text-sm text-gray-700">{{ $customer->city ?: '—' }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <p class="text-xs text-gray-400 text-center">To update your profile, please contact the store.</p>
+
+            @else
+            {{-- Online customers: editable form --}}
             <form method="POST" action="{{ route('account.profile.update') }}" class="space-y-5">
                 @csrf
 
@@ -109,6 +146,8 @@
                 </div>
 
             </form>
+            @endif
+
         </main>
     </div>
 </div>
