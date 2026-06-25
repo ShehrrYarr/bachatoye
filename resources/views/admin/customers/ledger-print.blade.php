@@ -269,8 +269,7 @@
                 <th>Description</th>
                 <th>Reference</th>
                 <th>Method / Bank</th>
-                <th class="right">Debit (Owed)</th>
-                <th class="right">Credit (Paid)</th>
+                <th class="right">Amount</th>
                 <th class="right">Balance</th>
             </tr>
         </thead>
@@ -293,11 +292,8 @@
                         <span style="color:#ccc;">—</span>
                     @endif
                 </td>
-                <td class="right {{ $entry->type === 'debit' ? 'debit' : 'muted' }}">
-                    {{ $entry->type === 'debit' ? 'Rs. '.number_format($entry->amount) : '—' }}
-                </td>
-                <td class="right {{ $entry->type === 'credit' ? 'credit' : 'muted' }}">
-                    {{ $entry->type === 'credit' ? 'Rs. '.number_format($entry->amount) : '—' }}
+                <td class="right {{ $entry->type === 'debit' ? 'debit' : 'credit' }}">
+                    {{ $entry->type === 'debit' ? '↓' : '↑' }} Rs. {{ number_format($entry->amount) }}
                 </td>
                 <td class="right {{ $entry->balance_after < 0 ? 'bal-neg' : 'bal-pos' }}">
                     Rs. {{ number_format($entry->balance_after) }}

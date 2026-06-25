@@ -52,8 +52,7 @@
                         <th>Description</th>
                         <th>Reference</th>
                         <th>Method / Bank</th>
-                        <th class="text-right">Debit (Owed)</th>
-                        <th class="text-right">Credit (Paid)</th>
+                        <th class="text-right">Amount</th>
                         <th class="text-right">Balance</th>
                     </tr>
                 </thead>
@@ -82,18 +81,16 @@
                                 <span class="text-gray-300">—</span>
                             @endif
                         </td>
-                        <td class="text-right text-sm {{ $entry->type === 'debit' ? 'text-red-600 font-semibold' : 'text-gray-300' }}">
-                            {{ $entry->type === 'debit' ? 'Rs. '.number_format($entry->amount) : '—' }}
-                        </td>
-                        <td class="text-right text-sm {{ $entry->type === 'credit' ? 'text-green-600 font-semibold' : 'text-gray-300' }}">
-                            {{ $entry->type === 'credit' ? 'Rs. '.number_format($entry->amount) : '—' }}
+                        <td class="text-right text-sm font-semibold {{ $entry->type === 'debit' ? 'text-red-600' : 'text-green-600' }}">
+                            <i class="fas {{ $entry->type === 'debit' ? 'fa-arrow-down' : 'fa-arrow-up' }} mr-1"></i>
+                            Rs. {{ number_format($entry->amount) }}
                         </td>
                         <td class="text-right text-sm font-bold {{ $entry->balance_after < 0 ? 'text-red-600' : 'text-gray-800' }}">
                             Rs. {{ number_format($entry->balance_after) }}
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="7" class="text-center py-12 text-gray-400">No ledger entries yet.</td></tr>
+                    <tr><td colspan="6" class="text-center py-12 text-gray-400">No ledger entries yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>
