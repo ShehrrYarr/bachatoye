@@ -72,6 +72,12 @@ class BankAccountController extends Controller
                 ->whereNull('deleted_at')
                 ->sum('bank_amount');
 
+            $bankInPartial = (float) Order::where('status', 'delivered')
+                ->where('bank_account_id', $bank->id)
+                ->where('payment_method', 'partial')
+                ->whereNull('deleted_at')
+                ->sum('amount_paid');
+
             $bankInKhata = (float) AccountLedger::where('type', 'credit')
                 ->whereNull('return_id')
                 ->where('payment_method', 'bank_transfer')
@@ -91,7 +97,7 @@ class BankAccountController extends Controller
                 ->where('bank_account_id', $bank->id)
                 ->sum('amount');
 
-            $bank->computed_in          = $bankInSales + $bankInSplit + $bankInKhata;
+            $bank->computed_in          = $bankInSales + $bankInSplit + $bankInPartial + $bankInKhata;
             $bank->computed_out         = $bankOutPurchases + $bankOutReturns + $bankOutExpenses;
             $bank->computed_out_expenses = $bankOutExpenses;
             $bank->computed_balance     = (float) $bank->opening_balance + $bank->computed_in - $bank->computed_out;
