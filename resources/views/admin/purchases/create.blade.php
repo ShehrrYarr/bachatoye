@@ -488,8 +488,10 @@
                     </button>
                 </div>
                 <input type="hidden" name="payment_method" :value="payMethod">
+                <input type="hidden" name="partial_pay_via" :value="partialPayVia">
+                <input type="hidden" name="partial_bank_account_id" :value="partialBankId">
 
-                {{-- Bank account selector --}}
+                {{-- Bank account selector (bank_transfer full payment) --}}
                 @if($bankAccounts->count())
                 <div x-show="payMethod === 'bank_transfer'" class="mt-2 space-y-1">
                     <label class="form-label text-sm"><i class="fas fa-university mr-1 text-blue-500"></i>Select Bank Account *</label>
@@ -505,6 +507,37 @@
                 @endif
 
                 <div x-show="payMethod === 'partial'" class="space-y-2 mt-2">
+                    {{-- Cash / Bank toggle --}}
+                    <div class="flex gap-2">
+                        <button type="button" @click="partialPayVia = 'cash'; partialBankId = ''"
+                                :class="partialPayVia === 'cash' ? 'ring-2 ring-green-500 bg-green-50' : 'bg-gray-50'"
+                                class="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold transition-all">
+                            <i class="fas fa-money-bill-wave text-green-500"></i> Cash
+                        </button>
+                        <button type="button" @click="partialPayVia = 'bank'"
+                                :class="partialPayVia === 'bank' ? 'ring-2 ring-blue-500 bg-blue-50' : 'bg-gray-50'"
+                                class="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold transition-all">
+                            <i class="fas fa-university text-blue-500"></i> Bank
+                        </button>
+                    </div>
+
+                    {{-- Bank account selector for partial --}}
+                    @if($bankAccounts->count())
+                    <div x-show="partialPayVia === 'bank'" x-transition>
+                        <select x-model="partialBankId" class="form-select text-sm">
+                            <option value="">— Choose bank account —</option>
+                            @foreach($bankAccounts as $bank)
+                            <option value="{{ $bank->id }}">
+                                {{ $bank->label }} — {{ $bank->bank_name }}{{ $bank->account_number ? ' · '.$bank->account_number : '' }}
+                            </option>
+                            @endforeach
+                        </select>
+                        <p x-show="!partialBankId" class="text-xs text-orange-500 mt-0.5">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>Please select a bank account.
+                        </p>
+                    </div>
+                    @endif
+
                     <label class="form-label text-sm">Amount Paid Now (Rs.)</label>
                     <input type="number" name="amount_paid" x-model.number="amountPaid"
                            @input="recalc()" min="0" step="0.01" :max="total"
@@ -641,6 +674,8 @@ function purchaseForm() {
         showDropdown: false,
         payMethod: 'cash',
         amountPaid: 0,
+        partialPayVia: 'cash',
+        partialBankId: '',
         total: 0,
         vendorId: '{{ request('vendor_id', '') }}',
         vendorBalance: null,

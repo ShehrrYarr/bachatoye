@@ -163,12 +163,14 @@ class PurchaseController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'purchase_date'       => 'required|date',
-            'vendor_id'           => 'required|exists:vendors,id',
-            'reference'           => 'nullable|string|max:100',
-            'payment_method'      => 'required|in:cash,bank_transfer,credit,partial',
-            'bank_account_id'     => 'nullable|exists:bank_accounts,id',
-            'amount_paid'         => 'nullable|numeric|min:0',
+            'purchase_date'           => 'required|date',
+            'vendor_id'               => 'required|exists:vendors,id',
+            'reference'               => 'nullable|string|max:100',
+            'payment_method'          => 'required|in:cash,bank_transfer,credit,partial',
+            'bank_account_id'         => 'nullable|exists:bank_accounts,id',
+            'partial_pay_via'         => 'nullable|in:cash,bank',
+            'partial_bank_account_id' => 'nullable|exists:bank_accounts,id',
+            'amount_paid'             => 'nullable|numeric|min:0',
             'notes'               => 'nullable|string|max:1000',
             'items'               => 'required|array|min:1',
             'items.*.product_id'  => 'required|exists:products,id',
@@ -244,7 +246,11 @@ class PurchaseController extends Controller
             $total    = $subtotal;
 
             $payMethod    = $request->payment_method;
-            $bankAccountId = in_array($payMethod, ['bank_transfer']) ? ($request->bank_account_id ?: null) : null;
+            $bankAccountId = $payMethod === 'bank_transfer'
+                ? ($request->bank_account_id ?: null)
+                : ($payMethod === 'partial' && $request->partial_pay_via === 'bank'
+                    ? ($request->partial_bank_account_id ?: null)
+                    : null);
             $amountPaid = match ($payMethod) {
                 'cash'          => $total,
                 'bank_transfer' => $total,
@@ -431,12 +437,14 @@ class PurchaseController extends Controller
     public function update(Request $request, Purchase $purchase)
     {
         $request->validate([
-            'purchase_date'       => 'required|date',
-            'vendor_id'           => 'required|exists:vendors,id',
-            'reference'           => 'nullable|string|max:100',
-            'payment_method'      => 'required|in:cash,bank_transfer,credit,partial',
-            'bank_account_id'     => 'nullable|exists:bank_accounts,id',
-            'amount_paid'         => 'nullable|numeric|min:0',
+            'purchase_date'           => 'required|date',
+            'vendor_id'               => 'required|exists:vendors,id',
+            'reference'               => 'nullable|string|max:100',
+            'payment_method'          => 'required|in:cash,bank_transfer,credit,partial',
+            'bank_account_id'         => 'nullable|exists:bank_accounts,id',
+            'partial_pay_via'         => 'nullable|in:cash,bank',
+            'partial_bank_account_id' => 'nullable|exists:bank_accounts,id',
+            'amount_paid'             => 'nullable|numeric|min:0',
             'notes'               => 'nullable|string|max:1000',
             'items'               => 'required|array|min:1',
             'items.*.product_id'  => 'required|exists:products,id',
@@ -509,7 +517,11 @@ class PurchaseController extends Controller
                 $subtotal   = collect($newItems)->sum(fn($i) => $i['quantity'] * $i['unit_cost']);
                 $total      = $subtotal;
                 $payMethod  = $request->payment_method;
-                $bankAccId  = $payMethod === 'bank_transfer' ? ($request->bank_account_id ?: null) : null;
+                $bankAccId  = $payMethod === 'bank_transfer'
+                    ? ($request->bank_account_id ?: null)
+                    : ($payMethod === 'partial' && $request->partial_pay_via === 'bank'
+                        ? ($request->partial_bank_account_id ?: null)
+                        : null);
                 $amountPaid = match ($payMethod) {
                     'cash', 'bank_transfer' => $total,
                     'credit'                => 0.0,
