@@ -609,6 +609,13 @@
                 </button>
             </div>
 
+            {{-- Khata-not-enabled warning --}}
+            <div x-show="khataBlockMsg" x-transition
+                 class="flex items-center gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                <i class="fas fa-lock text-amber-500 shrink-0"></i>
+                <span x-text="khataBlockMsg"></span>
+            </div>
+
             {{-- Bank account selector (shown for bank_transfer only; split has its own inline selector below) --}}
             @if($bankAccounts->count())
             <div x-show="paymentMethod === 'bank_transfer'" class="space-y-1">
@@ -1355,10 +1362,18 @@
                     <label class="form-label text-sm">Address</label>
                     <input type="text" x-model="newCustomer.address" class="form-input" placeholder="Optional">
                 </div>
+                <div class="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <input type="checkbox" id="pos_khata_enabled" x-model="newCustomer.khata_enabled"
+                           class="mt-0.5 w-4 h-4 text-amber-600 rounded border-amber-300 focus:ring-amber-500">
+                    <div>
+                        <label for="pos_khata_enabled" class="text-sm font-semibold text-gray-800 cursor-pointer">Enable Khata / Ledger</label>
+                        <p class="text-xs text-gray-500 mt-0.5">Allow khata and partial payment for this customer.</p>
+                    </div>
+                </div>
             </div>
             <div class="flex gap-3 mt-4">
                 <button @click="createCustomer()" class="btn-primary flex-1 justify-center">Save Customer</button>
-                <button @click="showNewCustomer = false" class="btn-outline flex-1 justify-center">Cancel</button>
+                <button @click="showNewCustomer = false; newCustomer = { name: '', phone: '', address: '', khata_enabled: false }" class="btn-outline flex-1 justify-center">Cancel</button>
             </div>
         </div>
     </div>
@@ -1966,7 +1981,8 @@ function posApp() {
         customerResults: [],
         selectedCustomer: null,
         showNewCustomer: false,
-        newCustomer: { name: '', phone: '', address: '' },
+        newCustomer: { name: '', phone: '', address: '', khata_enabled: false },
+        khataBlockMsg: '',
 
         // Boot loader — masks the Alpine init flash until the page is ready
         loading: true,
@@ -2648,6 +2664,12 @@ function posApp() {
         calcChange() {},
 
         setPayment(method) {
+            if (['khata', 'partial'].includes(method) && this.selectedCustomer && !this.selectedCustomer.khata_enabled) {
+                this.khataBlockMsg = 'Khata is not enabled for this customer. Enable it from their profile first.';
+                setTimeout(() => { this.khataBlockMsg = ''; }, 4000);
+                return;
+            }
+            this.khataBlockMsg = '';
             this.paymentMethod = method;
             if (method === 'cash') {
                 this.cashReceived = Math.ceil(this.total / 100) * 100;
@@ -2722,7 +2744,7 @@ function posApp() {
                 if (data.id) {
                     this.selectCustomer(data);
                     this.showNewCustomer = false;
-                    this.newCustomer = { name: '', phone: '', address: '' };
+                    this.newCustomer = { name: '', phone: '', address: '', khata_enabled: false };
                 }
             } catch(e) {}
         },

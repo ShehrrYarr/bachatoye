@@ -74,7 +74,7 @@ class CustomerController extends Controller
 
         $data['created_by']   = Auth::id();
         $data['source']        = 'pos';
-        $data['khata_enabled'] = true;
+        $data['khata_enabled'] = $request->boolean('khata_enabled');
         Customer::create($data);
 
         return redirect()->route(Auth::user()->hasRole('admin') ? 'admin.customers.index' : 'salesman.customers.index')->with('success', 'Customer added.');

@@ -618,25 +618,27 @@ class PosController extends Controller
             ->where(fn($q2) => $q2->where('name', 'like', "%{$q}%")
                                   ->orWhere('phone', 'like', "%{$q}%"))
             ->limit(8)
-            ->get(['id', 'name', 'phone', 'credit_balance'])
+            ->get(['id', 'name', 'phone', 'credit_balance', 'khata_enabled'])
             ->map(fn($c) => [
                 'id'             => $c->id,
                 'name'           => $c->name,
                 'phone'          => $c->phone,
                 'credit_balance' => (float) $c->credit_balance,
+                'khata_enabled'  => (bool) $c->khata_enabled,
                 'type'           => 'customer',
             ]);
 
-        $vendors = Vendor::where('name', 'like', "%{$q}%")
-            ->orWhere('phone', 'like', "%{$q}%")
+        $vendors = Vendor::where(fn($q2) => $q2->where('name', 'like', "%{$q}%")
+                                               ->orWhere('phone', 'like', "%{$q}%"))
             ->limit(5)
-            ->get(['id', 'name', 'phone', 'balance'])
+            ->get(['id', 'name', 'phone', 'balance', 'khata_enabled'])
             ->map(fn($v) => [
                 'id'             => $v->id,
                 'name'           => $v->name,
                 'phone'          => $v->phone ?? '',
                 // Negative vendor balance = vendor owes us; matches customer credit_balance semantics
                 'credit_balance' => (float) ($v->balance * -1),
+                'khata_enabled'  => (bool) $v->khata_enabled,
                 'type'           => 'vendor',
             ]);
 
@@ -650,12 +652,21 @@ class PosController extends Controller
             'phone' => 'required|string|max:20|unique:customers',
         ]);
 
+        $khataEnabled = $request->boolean('khata_enabled');
         $customer = Customer::create(array_merge($data, [
             'source'        => 'pos',
-            'khata_enabled' => true,
+            'khata_enabled' => $khataEnabled,
             'created_by'    => Auth::id(),
         ]));
-        return response()->json($customer);
+
+        return response()->json([
+            'id'            => $customer->id,
+            'name'          => $customer->name,
+            'phone'         => $customer->phone,
+            'credit_balance'=> 0,
+            'khata_enabled' => $khataEnabled,
+            'type'          => 'customer',
+        ]);
     }
 
     public function createOrder(Request $request)
