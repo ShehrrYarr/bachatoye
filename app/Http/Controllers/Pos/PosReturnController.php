@@ -34,17 +34,19 @@ class PosReturnController extends Controller
 
         $orders = Order::whereHas('items', function ($query) use ($q) {
                 $query->where('product_barcode', $q)
+                      ->orWhere('product_name', 'like', "%{$q}%")
                       ->orWhereHas('product', fn($pq) => $pq->where('sku', $q)->orWhere('barcode', $q));
             })
             ->with(['items' => function ($query) use ($q) {
                 $query->where('product_barcode', $q)
+                      ->orWhere('product_name', 'like', "%{$q}%")
                       ->orWhereHas('product', fn($pq) => $pq->where('sku', $q)->orWhere('barcode', $q));
             }])
             ->latest()
             ->get();
 
         if ($orders->isEmpty()) {
-            return response()->json(['error' => 'No orders found with that SKU or barcode.'], 404);
+            return response()->json(['error' => 'No orders found with that SKU, barcode, or item name.'], 404);
         }
 
         $result = $orders->map(function ($order) {

@@ -21,10 +21,10 @@
         {{-- Order Lookup --}}
         <div class="card p-5 mb-6">
             <h2 class="font-semibold text-gray-800 mb-1">Find Order</h2>
-            <p class="text-xs text-gray-400 mb-4">Enter an order number <span class="font-mono">ORD-…</span> or a product SKU / barcode</p>
+            <p class="text-xs text-gray-400 mb-4">Enter an order number <span class="font-mono">ORD-…</span>, a product SKU / barcode, or an item name</p>
             <div class="flex gap-3">
                 <input type="text" x-model="orderSearch" @keydown.enter="findOrder()"
-                       placeholder="Order number or SKU / barcode..."
+                       placeholder="Order number, SKU / barcode, or item name..."
                        class="form-input flex-1">
                 <button @click="findOrder()" :disabled="searching"
                         class="btn-primary px-5">
