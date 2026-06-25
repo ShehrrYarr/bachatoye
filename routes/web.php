@@ -174,6 +174,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::patch('customer-accounts/{account}/toggle', [Admin\CustomerAccountController::class, 'toggle'])->name('customer-accounts.toggle');
     Route::get('customers/{customer}/ledger/print', [Admin\CustomerController::class, 'ledgerPrint'])->name('customers.ledger.print');
     Route::post('customers/{customer}/ledger', [Admin\CustomerController::class, 'addLedgerEntry'])->name('customers.ledger.add');
+    Route::patch('ledger/{entry}/dismiss-promise', [Admin\CustomerController::class, 'dismissPromise'])->name('ledger.dismiss_promise');
 
     // Delivery Platforms
     Route::resource('delivery-platforms', Admin\DeliveryPlatformController::class)->except(['create','show','edit']);
@@ -319,6 +320,8 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
         ->middleware('permission:accounts.view')->name('customers.ledger.print');
     Route::post('customers/{customer}/ledger', [Admin\CustomerController::class, 'addLedgerEntry'])
         ->middleware('permission:accounts.manage')->name('customers.ledger.add');
+    Route::patch('ledger/{entry}/dismiss-promise', [Admin\CustomerController::class, 'dismissPromise'])
+        ->middleware('permission:accounts.manage')->name('ledger.dismiss_promise');
 
     Route::get('inventory', [Admin\InventoryController::class, 'index'])
         ->middleware('permission:inventory.view')->name('inventory.index');

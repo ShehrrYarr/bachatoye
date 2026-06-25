@@ -195,4 +195,10 @@ class CustomerController extends Controller
 
         return back()->with('success', 'Ledger entry added.');
     }
+
+    public function dismissPromise(AccountLedger $entry)
+    {
+        $entry->update(['promise_date' => null]);
+        return response()->json(['success' => true]);
+    }
 }
