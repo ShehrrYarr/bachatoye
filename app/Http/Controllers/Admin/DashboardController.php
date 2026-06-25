@@ -100,12 +100,12 @@ class DashboardController extends Controller
         $returnBank  = $returnOrders->where('refund_method', 'bank_transfer')->sum('refund_amount');
         $returnTotal = $returnOrders->sum('refund_amount');
 
-        $todayPurchases     = Purchase::whereDate('purchase_date', today())->get(['payment_method', 'total', 'amount_paid']);
+        $todayPurchases     = Purchase::whereDate('purchase_date', today())->get(['payment_method', 'total', 'amount_paid', 'bank_account_id']);
         $purchasesTotal     = (float) $todayPurchases->sum('total');
         $purchasesPaid      = (float) $todayPurchases->sum('amount_paid');
         $purchasesDue       = $purchasesTotal - $purchasesPaid;
-        $purchasesCashPaid  = (float) $todayPurchases->whereIn('payment_method', ['cash', 'partial'])->sum('amount_paid');
-        $purchasesBankPaid  = (float) $todayPurchases->where('payment_method', 'bank_transfer')->sum('amount_paid');
+        $purchasesCashPaid  = (float) $todayPurchases->filter(fn($p) => $p->payment_method === 'cash' || ($p->payment_method === 'partial' && !$p->bank_account_id))->sum('amount_paid');
+        $purchasesBankPaid  = (float) $todayPurchases->filter(fn($p) => $p->payment_method === 'bank_transfer' || ($p->payment_method === 'partial' && $p->bank_account_id))->sum('amount_paid');
 
         // Manual vendor payments (cash/bank) recorded via vendor ledger page (not tied to a purchase)
         $vendorPayData  = VendorLedger::whereDate('created_at', today())
@@ -208,11 +208,11 @@ class DashboardController extends Controller
         $returnBank  = $returnOrders->where('refund_method', 'bank_transfer')->sum('refund_amount');
         $returnTotal = $returnOrders->sum('refund_amount');
 
-        $purchasesForPrint   = Purchase::whereDate('purchase_date', today())->get(['payment_method', 'total', 'amount_paid', 'payment_status']);
+        $purchasesForPrint   = Purchase::whereDate('purchase_date', today())->get(['payment_method', 'total', 'amount_paid', 'payment_status', 'bank_account_id']);
         $purchasesTotalPrint = (float) $purchasesForPrint->sum('total');
         $purchasesPaidPrint  = (float) $purchasesForPrint->sum('amount_paid');
-        $purchasesCashPrint  = (float) $purchasesForPrint->whereIn('payment_method', ['cash', 'partial'])->sum('amount_paid');
-        $purchasesBankPrint  = (float) $purchasesForPrint->where('payment_method', 'bank_transfer')->sum('amount_paid');
+        $purchasesCashPrint  = (float) $purchasesForPrint->filter(fn($p) => $p->payment_method === 'cash' || ($p->payment_method === 'partial' && !$p->bank_account_id))->sum('amount_paid');
+        $purchasesBankPrint  = (float) $purchasesForPrint->filter(fn($p) => $p->payment_method === 'bank_transfer' || ($p->payment_method === 'partial' && $p->bank_account_id))->sum('amount_paid');
 
         $khataCash  = $khataEntries->where('payment_method', 'cash')->sum('amount');
         $khataBank  = $khataEntries->where('payment_method', 'bank_transfer')->sum('amount');
@@ -344,12 +344,12 @@ class DashboardController extends Controller
         ];
 
         if ($user->can('purchases.view')) {
-            $printPurchases = Purchase::whereDate('purchase_date', today())->get(['payment_method', 'total', 'amount_paid']);
+            $printPurchases = Purchase::whereDate('purchase_date', today())->get(['payment_method', 'total', 'amount_paid', 'bank_account_id']);
             $todayReport['purchases_total'] = (float) $printPurchases->sum('total');
             $todayReport['purchases_paid']  = (float) $printPurchases->sum('amount_paid');
             $todayReport['purchases_due']   = $todayReport['purchases_total'] - $todayReport['purchases_paid'];
-            $todayReport['purchases_cash']  = (float) $printPurchases->whereIn('payment_method', ['cash', 'partial'])->sum('amount_paid');
-            $todayReport['purchases_bank']  = (float) $printPurchases->where('payment_method', 'bank_transfer')->sum('amount_paid');
+            $todayReport['purchases_cash']  = (float) $printPurchases->filter(fn($p) => $p->payment_method === 'cash' || ($p->payment_method === 'partial' && !$p->bank_account_id))->sum('amount_paid');
+            $todayReport['purchases_bank']  = (float) $printPurchases->filter(fn($p) => $p->payment_method === 'bank_transfer' || ($p->payment_method === 'partial' && $p->bank_account_id))->sum('amount_paid');
             $todayReport['total_cash']     -= $todayReport['purchases_cash'];
             $todayReport['total_bank']     -= $todayReport['purchases_bank'];
             $todayReport['grand_total']    -= $todayReport['purchases_paid'];
@@ -408,11 +408,11 @@ class DashboardController extends Controller
 
         // ── Purchases ────────────────────────────────────────────────────────
         $purchasesData    = Purchase::whereBetween('purchase_date', [$from->copy(), $to->copy()])
-            ->get(['payment_method', 'total', 'amount_paid']);
+            ->get(['payment_method', 'total', 'amount_paid', 'bank_account_id']);
         $purchasesTotal   = (float) $purchasesData->sum('total');
         $purchasesPaid    = (float) $purchasesData->sum('amount_paid');
-        $purchasesCash    = (float) $purchasesData->whereIn('payment_method', ['cash', 'partial'])->sum('amount_paid');
-        $purchasesBank    = (float) $purchasesData->where('payment_method', 'bank_transfer')->sum('amount_paid');
+        $purchasesCash    = (float) $purchasesData->filter(fn($p) => $p->payment_method === 'cash' || ($p->payment_method === 'partial' && !$p->bank_account_id))->sum('amount_paid');
+        $purchasesBank    = (float) $purchasesData->filter(fn($p) => $p->payment_method === 'bank_transfer' || ($p->payment_method === 'partial' && $p->bank_account_id))->sum('amount_paid');
         $purchasesDue     = $purchasesTotal - $purchasesPaid;
 
         // ── Manual vendor payments ────────────────────────────────────────────
@@ -564,12 +564,12 @@ class DashboardController extends Controller
 
         // Purchases (only if permission granted)
         if ($user->can('purchases.view')) {
-            $salePurchases = Purchase::whereDate('purchase_date', today())->get(['payment_method', 'total', 'amount_paid']);
+            $salePurchases = Purchase::whereDate('purchase_date', today())->get(['payment_method', 'total', 'amount_paid', 'bank_account_id']);
             $todayReport['purchases_total'] = (float) $salePurchases->sum('total');
             $todayReport['purchases_paid']  = (float) $salePurchases->sum('amount_paid');
             $todayReport['purchases_due']   = $todayReport['purchases_total'] - $todayReport['purchases_paid'];
-            $todayReport['purchases_cash']  = (float) $salePurchases->whereIn('payment_method', ['cash', 'partial'])->sum('amount_paid');
-            $todayReport['purchases_bank']  = (float) $salePurchases->where('payment_method', 'bank_transfer')->sum('amount_paid');
+            $todayReport['purchases_cash']  = (float) $salePurchases->filter(fn($p) => $p->payment_method === 'cash' || ($p->payment_method === 'partial' && !$p->bank_account_id))->sum('amount_paid');
+            $todayReport['purchases_bank']  = (float) $salePurchases->filter(fn($p) => $p->payment_method === 'bank_transfer' || ($p->payment_method === 'partial' && $p->bank_account_id))->sum('amount_paid');
             // Adjust totals to account for purchases outflow
             $todayReport['total_cash']  -= $todayReport['purchases_cash'];
             $todayReport['total_bank']  -= $todayReport['purchases_bank'];
