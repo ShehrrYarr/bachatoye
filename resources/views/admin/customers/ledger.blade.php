@@ -109,8 +109,8 @@
                     <div>
                         <label class="form-label">Entry Type *</label>
                         <select name="type" x-model="entryType" class="form-select" required>
-                            <option value="credit">↑ Payment In (Customer paid / refund)</option>
-                            <option value="debit">↓ Payment Out (Customer owes more)</option>
+                            <option value="credit">Payment In (Customer paid / refund)</option>
+                            <option value="debit">Payment Out (Customer owes more)</option>
                         </select>
                     </div>
 
