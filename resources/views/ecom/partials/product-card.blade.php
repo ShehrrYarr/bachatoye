@@ -20,6 +20,10 @@
         ? $product->colors->where('stock_quantity', '>', 0)->values()
         : collect();
     $hasColors = $productColors->isNotEmpty();
+    $waNumber  = \App\Models\Setting::get('whatsapp_number');
+    $waBookUrl = $waNumber
+        ? 'https://wa.me/' . $waNumber . '?text=' . urlencode("Hi! I want to pre-book: {$product->name}. Please let me know when it's available.")
+        : null;
 @endphp
 <div class="ecom-product-card" x-data="{ hovered: false }" @mouseenter="hovered = true" @mouseleave="hovered = false">
     {{-- Image --}}
@@ -86,6 +90,22 @@
                     </button>
                 </form>
             @endif
+        </div>
+        @elseif($waBookUrl)
+        {{-- Out of stock: WhatsApp pre-book button on hover --}}
+        <div x-show="hovered"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 translate-y-3"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100 translate-y-0"
+             x-transition:leave-end="opacity-0 translate-y-2"
+             class="absolute bottom-0 left-0 right-0"
+             style="display:none;">
+            <a href="{{ $waBookUrl }}" target="_blank" rel="noopener"
+               class="w-full bg-green-500 hover:bg-green-600 text-white text-sm font-semibold py-3 transition-colors flex items-center justify-center gap-1.5">
+                <i class="fab fa-whatsapp text-base"></i> Pre-book on WhatsApp
+            </a>
         </div>
         @endif
     </div>

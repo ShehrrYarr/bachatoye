@@ -19,7 +19,7 @@ class HomeController extends Controller
                             ->withCount('products')
                             ->with(['children' => fn($q) => $q->active()->withCount('products')])
                             ->orderBy('sort_order')->take(8)->get();
-        $featuredProducts = Product::active()->inStock()->ecomVisible()->featured()->with(['images', 'category', 'colors'])->take(8)->get();
+        $featuredProducts = Product::active()->ecomVisible()->featured()->with(['images', 'category', 'colors'])->take(8)->get();
         $activeDeals    = Deal::active()->take(4)->get();
 
         $dealProductChunks = Product::active()->inStock()->ecomVisible()
@@ -46,7 +46,7 @@ class HomeController extends Controller
             $catIds = $categoryIdsBySection->get($section->id, collect())->pluck('id');
             if ($catIds->isEmpty()) return null;
 
-            $products = Product::active()->inStock()->ecomVisible()
+            $products = Product::active()->ecomVisible()
                 ->whereIn('category_id', $catIds)
                 ->with(['images', 'category', 'colors'])
                 ->latest()

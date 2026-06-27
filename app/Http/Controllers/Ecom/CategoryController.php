@@ -13,7 +13,7 @@ class CategoryController extends Controller
     {
         $category = Category::active()->where('slug', $slug)->with('children')->firstOrFail();
 
-        $query = Product::active()->inStock()->ecomVisible()
+        $query = Product::active()->ecomVisible()
                          ->where(fn($q) => $q->where('category_id', $category->id)
                                              ->orWhere('subcategory_id', $category->id))
                          ->with(['images', 'brand', 'colors']);
@@ -39,7 +39,7 @@ class CategoryController extends Controller
         $products = $query->paginate(20)->withQueryString();
 
         $brands = Brand::whereHas('products', fn($q) =>
-            $q->active()->inStock()->ecomVisible()
+            $q->active()->ecomVisible()
               ->where(fn($q2) => $q2->where('category_id', $category->id)
                                     ->orWhere('subcategory_id', $category->id))
         )->orderBy('name')->get();

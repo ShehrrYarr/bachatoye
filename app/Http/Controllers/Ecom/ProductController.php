@@ -16,7 +16,7 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Product::active()->inStock()->ecomVisible()->with(['images', 'category', 'brand', 'colors']);
+        $query = Product::active()->ecomVisible()->with(['images', 'category', 'brand', 'colors']);
 
         if ($request->filled('q')) {
             $q = $request->q;
@@ -63,7 +63,7 @@ class ProductController extends Controller
 
     public function show(string $slug)
     {
-        $product = Product::active()->inStock()->ecomVisible()->with([
+        $product = Product::active()->ecomVisible()->with([
             'images', 'videos', 'socialLinks', 'category', 'brand', 'primarySerialAttribute',
         ])->where('slug', $slug)->firstOrFail();
 
@@ -140,7 +140,7 @@ class ProductController extends Controller
         $q = $request->input('q', '');
         if (strlen($q) < 2) return response()->json([]);
 
-        $products = Product::active()->inStock()->ecomVisible()
+        $products = Product::active()->ecomVisible()
                             ->where('name', 'like', "%{$q}%")
                             ->with('images')
                             ->limit(6)

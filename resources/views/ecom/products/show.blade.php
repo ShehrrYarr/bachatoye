@@ -389,9 +389,23 @@
                 </div>
             </form>
             @else
+            @php
+                $waNum  = \App\Models\Setting::get('whatsapp_number');
+                $waText = urlencode("Hi! I want to pre-book: *{$product->name}*. Please let me know when it becomes available.");
+                $waUrl  = $waNum ? "https://wa.me/{$waNum}?text={$waText}" : null;
+            @endphp
+            @if($waUrl)
+            <a href="{{ $waUrl }}" target="_blank" rel="noopener"
+               class="flex items-center justify-center gap-2.5 w-full py-3.5 px-5 rounded-xl font-semibold mb-3 text-white transition-colors text-sm"
+               style="background:#25d366;">
+                <i class="fab fa-whatsapp text-xl"></i> Pre-book via WhatsApp
+            </a>
+            <p class="text-xs text-center text-gray-400 mb-5">This item is out of stock — tap to chat and secure your order early</p>
+            @else
             <div class="flex items-center justify-center gap-2 w-full py-3 px-5 rounded-xl bg-gray-100 text-gray-400 font-semibold mb-5 cursor-not-allowed">
                 <i class="fas fa-times-circle"></i> Out of Stock
             </div>
+            @endif
             @endif
 
             {{-- Delivery info --}}
