@@ -2,13 +2,14 @@
 @section('title', 'Edit: ' . $product->name)
 
 @section('content')
+@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
 <div class="flex items-center gap-3 mb-6">
-    <a href="{{ route('admin.products.index') }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
+    <a href="{{ route("{$rPrefix}.products.index") }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
     <h1 class="text-xl font-bold text-gray-900">Edit Product</h1>
     <span class="text-gray-400 text-sm">{{ $product->name }}</span>
 </div>
 
-<form method="POST" action="{{ route('admin.products.update', $product) }}" enctype="multipart/form-data"
+<form method="POST" action="{{ route("{$rPrefix}.products.update", $product) }}" enctype="multipart/form-data"
       x-data="productEditForm()">
     @csrf @method('PUT')
 
@@ -207,14 +208,14 @@
                                     <div class="absolute top-1 left-1 bg-primary-600 text-white text-xs px-1.5 py-0.5 rounded">Primary</div>
                                 @else
                                     <button type="button"
-                                            onclick="editPageSetPrimary('{{ route('admin.products.images.primary', [$product, $img]) }}')"
+                                            onclick="editPageSetPrimary('{{ route("{$rPrefix}.products.images.primary", [$product, $img]) }}')"
                                             class="absolute top-1 left-1 w-6 h-6 bg-yellow-400 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity"
                                             title="Set as primary">
                                         <i class="fas fa-star"></i>
                                     </button>
                                 @endif
                                 <button type="button"
-                                        onclick="editPageDeleteImage('{{ route('admin.products.images.delete', $img) }}')"
+                                        onclick="editPageDeleteImage('{{ route("{$rPrefix}.products.images.delete", $img) }}')"
                                         class="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity">
                                     <i class="fas fa-times"></i>
                                 </button>
@@ -244,7 +245,7 @@
                                 {{ $video->type === 'embed' ? 'Embedded video' : 'Uploaded file' }}
                             </span>
                             <button type="button"
-                                    onclick="editPageDeleteVideo('{{ route('admin.products.videos.delete', $video) }}')"
+                                    onclick="editPageDeleteVideo('{{ route("{$rPrefix}.products.videos.delete", $video) }}')"
                                     class="btn-danger btn-sm">
                                 <i class="fas fa-trash"></i>
                             </button>
@@ -401,7 +402,7 @@
                     </button>
                 </div>
                 <div class="flex gap-2 mt-2">
-                    <a href="{{ route('admin.products.show', $product) }}" class="btn-outline flex-1 justify-center text-sm">View</a>
+                    <a href="{{ route("{$rPrefix}.products.show", $product) }}" class="btn-outline flex-1 justify-center text-sm">View</a>
                     <a href="{{ route('products.show', $product->slug) }}" target="_blank" class="btn-outline flex-1 justify-center text-sm">
                         <i class="fas fa-external-link-alt mr-1"></i> Store
                     </a>
@@ -428,7 +429,7 @@ function subcatPicker(initCat, initSub) {
             this.subcategories = [];
             if (!this.categoryId) return;
             try {
-                const res  = await fetch(`/admin/categories/${this.categoryId}/subcategories`);
+                const res  = await fetch(`/{{ $rPrefix }}/categories/${this.categoryId}/subcategories`);
                 this.subcategories = await res.json();
             } catch (e) { this.subcategories = []; }
         },
@@ -442,7 +443,7 @@ function productEditForm() {
         async generateBarcode() {
             try {
                 const categoryId = document.querySelector('[name="category_id"]')?.value || '';
-                const url = '/admin/products/generate-barcode' + (categoryId ? '?category_id=' + categoryId : '');
+                const url = '/{{ $rPrefix }}/products/generate-barcode' + (categoryId ? '?category_id=' + categoryId : '');
                 const res = await fetch(url);
                 const data = await res.json();
                 document.getElementById('barcode').value = data.barcode;

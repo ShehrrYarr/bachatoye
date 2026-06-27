@@ -2,18 +2,21 @@
 @section('title', $product->name)
 
 @section('content')
+@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
 <div class="flex items-center justify-between mb-6">
     <div class="flex items-center gap-3">
-        <a href="{{ route('admin.products.index') }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
+        <a href="{{ route("{$rPrefix}.products.index") }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
         <h1 class="text-xl font-bold text-gray-900 truncate max-w-md">{{ $product->name }}</h1>
     </div>
     <div class="flex gap-2">
         <a href="{{ route('products.show', $product->slug) }}" target="_blank" class="btn-outline btn-sm">
             <i class="fas fa-external-link-alt mr-1"></i> View in Store
         </a>
-        <a href="{{ route('admin.products.edit', $product) }}" class="btn-primary btn-sm">
+        @can('products.manage')
+        <a href="{{ route("{$rPrefix}.products.edit", $product) }}" class="btn-primary btn-sm">
             <i class="fas fa-edit mr-1"></i> Edit
         </a>
+        @endcan
     </div>
 </div>
 
@@ -46,8 +49,9 @@
 
                         {{-- Hover action buttons --}}
                         <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            @can('products.manage')
                             @if(!$img->is_primary)
-                            <form method="POST" action="{{ route('admin.products.images.primary', $img) }}">
+                            <form method="POST" action="{{ route("{$rPrefix}.products.images.primary", $img) }}">
                                 @csrf @method('PATCH')
                                 <button type="submit" title="Set as Primary"
                                         class="w-8 h-8 bg-yellow-400 hover:bg-yellow-300 text-yellow-900 rounded-lg flex items-center justify-center text-xs">
@@ -55,7 +59,7 @@
                                 </button>
                             </form>
                             @endif
-                            <form method="POST" action="{{ route('admin.products.images.delete', $img) }}"
+                            <form method="POST" action="{{ route("{$rPrefix}.products.images.delete", $img) }}"
                                   onsubmit="return confirm('Delete this image?')">
                                 @csrf @method('DELETE')
                                 <button type="submit" title="Delete"
@@ -63,6 +67,7 @@
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </form>
+                            @endcan
                         </div>
                     </div>
                     @endforeach
@@ -70,7 +75,8 @@
                 @endif
 
                 {{-- Upload new images --}}
-                <form method="POST" action="{{ route('admin.products.images.upload', $product) }}"
+                @can('products.manage')
+                <form method="POST" action="{{ route("{$rPrefix}.products.images.upload", $product) }}"
                       enctype="multipart/form-data"
                       x-data="{ files: [], dragging: false }"
                       @dragover.prevent="dragging = true"
@@ -102,6 +108,7 @@
                         </button>
                     </div>
                 </form>
+                @endcan
             </div>
         </div>
 
@@ -118,7 +125,8 @@
                     <iframe src="{{ $video->embed_url }}" class="w-full aspect-video" allowfullscreen
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
                     @endif
-                    <form method="POST" action="{{ route('admin.products.videos.delete', $video) }}"
+                    @can('products.manage')
+                    <form method="POST" action="{{ route("{$rPrefix}.products.videos.delete", $video) }}"
                           onsubmit="return confirm('Remove this video?')"
                           class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         @csrf @method('DELETE')
@@ -126,6 +134,7 @@
                             <i class="fas fa-trash mr-1"></i>Remove
                         </button>
                     </form>
+                    @endcan
                 </div>
                 @empty
                 <p class="text-sm text-gray-400">No videos yet.</p>
@@ -139,7 +148,8 @@
                         <span x-text="open ? 'Cancel' : 'Add Video'"></span>
                     </button>
                     <div x-show="open" x-transition class="mt-3">
-                        <form method="POST" action="{{ route('admin.products.videos.upload', $product) }}"
+                        @can('products.manage')
+                        <form method="POST" action="{{ route("{$rPrefix}.products.videos.upload", $product) }}"
                               enctype="multipart/form-data" class="space-y-3">
                             @csrf
                             <input type="hidden" name="type" value="embed">
@@ -154,6 +164,7 @@
                                 <i class="fas fa-save mr-1"></i> Save Video
                             </button>
                         </form>
+                        @endcan
                     </div>
                 </div>
             </div>
@@ -173,7 +184,7 @@
         <div class="card">
             <div class="card-header">
                 <h2 class="font-semibold text-gray-800">Recent Stock Movements</h2>
-                <a href="{{ route('admin.inventory.history', $product) }}" class="text-sm text-primary-600 hover:underline">View All</a>
+                <a href="{{ route("{$rPrefix}.inventory.history", $product) }}" class="text-sm text-primary-600 hover:underline">View All</a>
             </div>
             <div class="card-body">
                 @if($product->stockMovements->count())
@@ -266,10 +277,14 @@
                                 </td>
                                 <td class="px-3 py-2.5">
                                     @if($purchase)
-                                    <a href="{{ route('admin.purchases.show', $purchase) }}"
+                                    @can('purchases.view')
+                                    <a href="{{ route("{$rPrefix}.purchases.show", $purchase) }}"
                                        class="font-mono text-xs text-primary-600 hover:underline">
                                         {{ $purchase->reference ?? 'PO-'.$purchase->id }}
                                     </a>
+                                    @else
+                                    <span class="font-mono text-xs text-gray-600">{{ $purchase->reference ?? 'PO-'.$purchase->id }}</span>
+                                    @endcan
                                     @else
                                     <span class="text-xs text-gray-400">—</span>
                                     @endif
@@ -350,6 +365,7 @@
                     <dt class="text-gray-500">Selling Price</dt>
                     <dd class="font-bold text-primary-700">Rs. {{ number_format($product->price) }}</dd>
                 </div>
+                @can('products.view_cost')
                 @if($product->cost_price)
                 <div class="flex justify-between">
                     <dt class="text-gray-500">Cost Price</dt>
@@ -363,6 +379,7 @@
                     </dd>
                 </div>
                 @endif
+                @endcan
                 <div class="flex justify-between border-t border-gray-100 pt-3">
                     <dt class="text-gray-500">Stock</dt>
                     @php
@@ -443,38 +460,43 @@
         @endif
 
         <div class="flex flex-col gap-2">
-            <a href="{{ route('admin.products.edit', $product) }}" class="btn-primary justify-center">
+            @can('products.manage')
+            <a href="{{ route("{$rPrefix}.products.edit", $product) }}" class="btn-primary justify-center">
                 <i class="fas fa-edit mr-2"></i> Edit Product
             </a>
+            @endcan
             @if($product->barcode)
-            <a href="{{ route('admin.products.print-barcode', $product) }}" target="_blank"
+            <a href="{{ route("{$rPrefix}.products.print-barcode", $product) }}" target="_blank"
                class="btn-outline justify-center">
                 <i class="fas fa-barcode mr-2"></i> Print Barcode
             </a>
             @endif
             @if($product->is_serialized)
-            <a href="{{ route('admin.products.stickers', $product) }}"
+            <a href="{{ route("{$rPrefix}.products.stickers", $product) }}"
                class="btn-outline justify-center">
                 <i class="fas fa-tag mr-2"></i> Print Stickers
             </a>
             @endif
             @if($stockAdjustmentEnabled)
-            <a href="{{ route('admin.inventory.adjust.form', $product) }}" class="btn-outline justify-center">
+            <a href="{{ route("{$rPrefix}.inventory.adjust.form", $product) }}" class="btn-outline justify-center">
                 <i class="fas fa-cubes mr-2"></i> Adjust Stock
             </a>
             @endif
-            <form method="POST" action="{{ route('admin.products.destroy', $product) }}"
+            @can('products.manage')
+            <form method="POST" action="{{ route("{$rPrefix}.products.destroy", $product) }}"
                   onsubmit="return confirm('Delete this product permanently?')">
                 @csrf @method('DELETE')
                 <button type="submit" class="btn-danger w-full justify-center">
                     <i class="fas fa-trash mr-2"></i> Delete
                 </button>
             </form>
+            @endcan
         </div>
     </div>
 </div>
 
-{{-- ===== Store Attribute Selector + Pricing (serialized products only) ===== --}}
+{{-- ===== Store Attribute Selector + Pricing (serialized products only — admin only) ===== --}}
+@hasrole('admin')
 @if($product->is_serialized)
 <div class="mt-6 max-w-2xl space-y-4">
 
@@ -622,5 +644,6 @@
 
 </div>
 @endif
+@endrole
 
 @endsection

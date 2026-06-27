@@ -2,23 +2,22 @@
 @section('title', 'Products')
 
 @section('content')
+@php
+    $rPrefix       = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+    $toggleCatUrl  = route("{$rPrefix}.products.index");
+    $toggleListUrl = route("{$rPrefix}.products.index") . '?view=list';
+@endphp
 
 {{-- ── localStorage view-mode preference ──────────────────────────────── --}}
 <script>
 (function() {
     var pref = localStorage.getItem('admin_products_view');
     var params = new URLSearchParams(window.location.search);
-    // Auto-redirect only on bare /admin/products with no params
     if (!params.toString() && pref === 'list') {
-        window.location.replace('{{ route('admin.products.index') }}?view=list');
+        window.location.replace('{{ $toggleListUrl }}');
     }
 })();
 </script>
-
-@php
-    $toggleCatUrl  = route('admin.products.index');
-    $toggleListUrl = route('admin.products.index') . '?view=list';
-@endphp
 
 @if(!isset($products) && !isset($subcategories))
 {{-- ===== PARENT CATEGORY GRID VIEW ===== --}}
@@ -41,9 +40,11 @@
                 <i class="fas fa-list text-xs"></i> All Products
             </a>
         </div>
-        <a href="{{ route('admin.products.create') }}" class="btn-primary">
+        @can('products.manage')
+        <a href="{{ route("{$rPrefix}.products.create") }}" class="btn-primary">
             <i class="fas fa-plus mr-2"></i> Add Product
         </a>
+        @endcan
     </div>
 </div>
 
@@ -62,7 +63,7 @@
 <div class="grid gap-2 mt-4" style="grid-template-columns: repeat(auto-fill, minmax(120px, 1fr))">
 
     @forelse($categories as $cat)
-    <a href="{{ route('admin.products.index', ['category' => $cat->id]) }}"
+    <a href="{{ route("{$rPrefix}.products.index", ['category' => $cat->id]) }}"
        x-show="!catSearch || '{{ strtolower($cat->name) }}'.includes(catSearch.toLowerCase())"
        class="group flex flex-col hover:opacity-90 transition-opacity">
 
@@ -93,7 +94,7 @@
 
     {{-- Uncategorized card --}}
     @if($uncategorizedCount > 0)
-    <a href="{{ route('admin.products.index', ['category' => 'uncategorized']) }}"
+    <a href="{{ route("{$rPrefix}.products.index", ['category' => 'uncategorized']) }}"
        x-show="!catSearch || 'uncategorized'.includes(catSearch.toLowerCase())"
        class="group flex flex-col hover:opacity-90 transition-opacity">
         <div class="aspect-square rounded-xl border border-dashed border-gray-300 overflow-hidden bg-gray-50 group-hover:border-gray-400 group-hover:shadow-md transition-all flex items-center justify-center">
@@ -113,7 +114,7 @@
 {{-- ===== SUBCATEGORY GRID VIEW ===== --}}
 <div class="flex items-center justify-between mb-6">
     <div class="flex items-center gap-3">
-        <a href="{{ route('admin.products.index') }}"
+        <a href="{{ route("{$rPrefix}.products.index") }}"
            class="text-gray-400 hover:text-gray-700 transition-colors text-sm flex items-center gap-1.5">
             <i class="fas fa-arrow-left text-xs"></i> Categories
         </a>
@@ -123,16 +124,18 @@
             <p class="text-sm text-gray-500 mt-0.5">{{ $subcategories->count() }} subcategories</p>
         </div>
     </div>
-    <a href="{{ route('admin.products.create') }}" class="btn-primary">
+    @can('products.manage')
+    <a href="{{ route("{$rPrefix}.products.create") }}" class="btn-primary">
         <i class="fas fa-plus mr-2"></i> Add Product
     </a>
+    @endcan
 </div>
 
 <div class="grid gap-2" style="grid-template-columns: repeat(auto-fill, minmax(120px, 1fr))">
 
     {{-- "All [Parent]" tile for products assigned directly to the parent category --}}
     @if(isset($parentDirectCount) && $parentDirectCount > 0)
-    <a href="{{ route('admin.products.index', ['category' => $selectedCat->id, 'all' => 1]) }}"
+    <a href="{{ route("{$rPrefix}.products.index", ['category' => $selectedCat->id, 'all' => 1]) }}"
        class="group flex flex-col hover:opacity-90 transition-opacity">
         <div class="aspect-square rounded-xl border-2 border-dashed overflow-hidden flex items-center justify-center transition-all group-hover:shadow-md"
              style="border-color: var(--app-primary, #e11d48); background: #fff5f7;">
@@ -147,7 +150,7 @@
     @endif
 
     @forelse($subcategories as $sub)
-    <a href="{{ route('admin.products.index', ['category' => $sub->id]) }}"
+    <a href="{{ route("{$rPrefix}.products.index", ['category' => $sub->id]) }}"
        class="group flex flex-col hover:opacity-90 transition-opacity">
         <div class="aspect-square rounded-xl border border-gray-200 overflow-hidden shadow-sm group-hover:border-primary-400 group-hover:shadow-md transition-all">
             @if($sub->image)
@@ -182,12 +185,12 @@
         {{-- In list-view mode: back arrow goes to categories grid --}}
         @else
         @if(isset($parentCat) && $parentCat)
-        <a href="{{ route('admin.products.index', ['category' => $parentCat->id]) }}"
+        <a href="{{ route("{$rPrefix}.products.index", ['category' => $parentCat->id]) }}"
            class="text-gray-400 hover:text-gray-700 transition-colors text-sm flex items-center gap-1.5">
             <i class="fas fa-arrow-left text-xs"></i> {{ $parentCat->name }}
         </a>
         @else
-        <a href="{{ route('admin.products.index') }}"
+        <a href="{{ route("{$rPrefix}.products.index") }}"
            class="text-gray-400 hover:text-gray-700 transition-colors text-sm flex items-center gap-1.5">
             <i class="fas fa-arrow-left text-xs"></i> Categories
         </a>
@@ -219,15 +222,17 @@
             </span>
         </div>
         @endif
-        <a href="{{ route('admin.products.create') }}" class="btn-primary">
+        @can('products.manage')
+        <a href="{{ route("{$rPrefix}.products.create") }}" class="btn-primary">
             <i class="fas fa-plus mr-2"></i> Add Product
         </a>
+        @endcan
     </div>
 </div>
 
 {{-- Inline search / filter --}}
 <div class="card p-4 mb-5">
-    <form method="GET" action="{{ route('admin.products.index') }}" class="flex flex-wrap gap-3 items-end">
+    <form method="GET" action="{{ route("{$rPrefix}.products.index") }}" class="flex flex-wrap gap-3 items-end">
         @if(isset($listView) && $listView)
         <input type="hidden" name="view" value="list">
         @endif
@@ -257,7 +262,7 @@
         </div>
         <button type="submit" class="btn-primary btn-sm">Filter</button>
         @if(request()->hasAny(['q','status','brand']))
-        <a href="{{ isset($listView) && $listView ? route('admin.products.index').'?view=list' : route('admin.products.index', ['category' => request('category')]) }}"
+        <a href="{{ isset($listView) && $listView ? route("{$rPrefix}.products.index").'?view=list' : route("{$rPrefix}.products.index", ['category' => request('category')]) }}"
            class="btn-outline btn-sm">Clear</a>
         @endif
     </form>
@@ -314,9 +319,11 @@
                     </td>
                     <td>
                         <div class="font-semibold text-gray-800">Rs. {{ number_format($product->price) }}</div>
+                        @can('products.view_cost')
                         @if($product->cost_price)
                         <div class="text-xs text-gray-400">Cost: Rs. {{ number_format($product->cost_price) }}</div>
                         @endif
+                        @endcan
                     </td>
                     <td>
                         @if($product->track_inventory)
@@ -341,25 +348,29 @@
                     </td>
                     <td class="text-right">
                         <div class="flex items-center justify-end gap-2">
-                            <a href="{{ route('admin.products.show', $product) }}" class="btn-outline btn-sm" title="View">
+                            <a href="{{ route("{$rPrefix}.products.show", $product) }}" class="btn-outline btn-sm" title="View">
                                 <i class="fas fa-eye"></i>
                             </a>
-                            <a href="{{ route('admin.products.edit', $product) }}" class="btn-outline btn-sm" title="Edit">
+                            @can('products.manage')
+                            <a href="{{ route("{$rPrefix}.products.edit", $product) }}" class="btn-outline btn-sm" title="Edit">
                                 <i class="fas fa-edit"></i>
                             </a>
+                            @endcan
                             @if($product->barcode)
-                            <a href="{{ route('admin.products.print-barcode', $product) }}" target="_blank"
+                            <a href="{{ route("{$rPrefix}.products.print-barcode", $product) }}" target="_blank"
                                class="btn-outline btn-sm" title="Print Barcode">
                                 <i class="fas fa-barcode"></i>
                             </a>
                             @endif
-                            <form method="POST" action="{{ route('admin.products.destroy', $product) }}"
+                            @can('products.manage')
+                            <form method="POST" action="{{ route("{$rPrefix}.products.destroy", $product) }}"
                                   onsubmit="return confirm('Delete this product?')">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="btn-danger btn-sm" title="Delete">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </form>
+                            @endcan
                         </div>
                     </td>
                 </tr>

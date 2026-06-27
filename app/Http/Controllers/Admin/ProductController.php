@@ -216,7 +216,8 @@ class ProductController extends Controller
         $this->saveSocialLinks($product, $request);
         $this->saveColors($product, $request);
 
-        return redirect()->route('admin.products.show', $product)->with('success', 'Product created successfully.');
+        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        return redirect()->route("{$rPrefix}.products.show", $product)->with('success', 'Product created successfully.');
     }
 
     public function show(Product $product)
@@ -348,13 +349,15 @@ class ProductController extends Controller
         $this->saveSocialLinks($product, $request);
         $this->saveColors($product, $request);
 
-        return redirect()->route('admin.products.show', $product)->with('success', 'Product updated.');
+        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        return redirect()->route("{$rPrefix}.products.show", $product)->with('success', 'Product updated.');
     }
 
     public function destroy(Product $product)
     {
         $product->delete();
-        return redirect()->route('admin.products.index')->with('success', 'Product deleted.');
+        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        return redirect()->route("{$rPrefix}.products.index")->with('success', 'Product deleted.');
     }
 
     public function uploadImages(Request $request, Product $product)

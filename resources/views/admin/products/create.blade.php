@@ -2,12 +2,13 @@
 @section('title', 'Add Product')
 
 @section('content')
+@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
 <div class="flex items-center gap-3 mb-6">
-    <a href="{{ route('admin.products.index') }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
+    <a href="{{ route("{$rPrefix}.products.index") }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
     <h1 class="text-xl font-bold text-gray-900">Add New Product</h1>
 </div>
 
-<form method="POST" action="{{ route('admin.products.store') }}" enctype="multipart/form-data"
+<form method="POST" action="{{ route("{$rPrefix}.products.store") }}" enctype="multipart/form-data"
       x-data="productForm()">
     @csrf
 
@@ -366,7 +367,7 @@
                         <i class="fas fa-save mr-2"></i> Save Product
                     </button>
                 </div>
-                <a href="{{ route('admin.products.index') }}" class="block text-center text-sm text-gray-500 hover:text-gray-700 mt-3">
+                <a href="{{ route("{$rPrefix}.products.index") }}" class="block text-center text-sm text-gray-500 hover:text-gray-700 mt-3">
                     Cancel
                 </a>
             </div>
@@ -391,7 +392,7 @@ function subcatPicker(initCat, initSub) {
             this.subcategories = [];
             if (!this.categoryId) return;
             try {
-                const res  = await fetch(`/admin/categories/${this.categoryId}/subcategories`);
+                const res  = await fetch(`/{{ $rPrefix }}/categories/${this.categoryId}/subcategories`);
                 this.subcategories = await res.json();
             } catch (e) { this.subcategories = []; }
         },

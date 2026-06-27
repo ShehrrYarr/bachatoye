@@ -411,8 +411,40 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
         return response()->json(['exists' => $exists]);
     })->middleware('permission:purchases.manage')->name('api.serials.check');
 
+    // Product routes for salesmen with products.view / products.manage permissions
+    Route::get('categories/{category}/subcategories', [Admin\ProductController::class, 'subcategories'])
+        ->middleware('permission:products.view')->name('categories.subcategories');
+    Route::get('products', [Admin\ProductController::class, 'index'])
+        ->middleware('permission:products.view')->name('products.index');
+    Route::get('products/create', [Admin\ProductController::class, 'create'])
+        ->middleware('permission:products.manage')->name('products.create');
+    Route::post('products', [Admin\ProductController::class, 'store'])
+        ->middleware('permission:products.manage')->name('products.store');
+    Route::post('products/{product}/images', [Admin\ProductController::class, 'uploadImages'])
+        ->middleware('permission:products.manage')->name('products.images.upload');
+    Route::delete('products/images/{image}', [Admin\ProductController::class, 'deleteImage'])
+        ->middleware('permission:products.manage')->name('products.images.delete');
+    Route::patch('products/images/{image}/primary', [Admin\ProductController::class, 'setPrimaryImage'])
+        ->middleware('permission:products.manage')->name('products.images.primary');
+    Route::post('products/{product}/videos', [Admin\ProductController::class, 'uploadVideo'])
+        ->middleware('permission:products.manage')->name('products.videos.upload');
+    Route::delete('products/videos/{video}', [Admin\ProductController::class, 'deleteVideo'])
+        ->middleware('permission:products.manage')->name('products.videos.delete');
+    Route::get('products/{product}/print-barcode', [Admin\ProductController::class, 'printBarcode'])
+        ->middleware('permission:products.view')->name('products.print-barcode');
+    Route::get('products/{product}/stickers', [Admin\ProductController::class, 'printStickers'])
+        ->middleware('permission:products.view')->name('products.stickers');
+    Route::get('products/{product}/edit', [Admin\ProductController::class, 'edit'])
+        ->middleware('permission:products.manage')->name('products.edit');
+    Route::put('products/{product}', [Admin\ProductController::class, 'update'])
+        ->middleware('permission:products.manage')->name('products.update');
+    Route::delete('products/{product}', [Admin\ProductController::class, 'destroy'])
+        ->middleware('permission:products.manage')->name('products.destroy');
+    // Literal generate-barcode must stay before the parameterized {product} GET route
     Route::get('products/generate-barcode', [Admin\ProductController::class, 'generateBarcodeAjax'])
-        ->middleware('permission:purchases.manage')->name('products.generate_barcode');
+        ->middleware('permission:purchases.manage|products.manage')->name('products.generate_barcode');
+    Route::get('products/{product}', [Admin\ProductController::class, 'show'])
+        ->middleware('permission:products.view')->name('products.show');
 });
 
 /*
