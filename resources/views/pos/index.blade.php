@@ -521,6 +521,13 @@
                                     <i class="fas fa-times text-xs"></i>
                                 </button>
                             </div>
+                            {{-- Stock error --}}
+                            <template x-if="item.stockError">
+                                <p class="text-[10px] text-red-500 font-semibold mt-1 flex items-center gap-1">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    <span>Cannot sell more — only <span x-text="item.stock"></span> unit(s) in stock</span>
+                                </p>
+                            </template>
                         </div>
                     </div>
                     <div class="text-right text-xs font-bold text-gray-800 mt-1"
@@ -2584,7 +2591,12 @@ function posApp() {
             const cartKey  = colorId ? `${product.id}_c${colorId}` : `${product.id}`;
             const existing = this.cart.find(i => i._key === cartKey);
             if (existing) {
-                if (existing.quantity < maxStock) existing.quantity++;
+                if (existing.quantity < existing.stock) {
+                    existing.quantity++;
+                    existing.stockError = false;
+                } else if (existing.track_inventory) {
+                    existing.stockError = true;
+                }
             } else {
                 const label = product.name + (colorName ? ` — ${colorName}` : '');
                 this.cart.push({
@@ -2598,6 +2610,8 @@ function posApp() {
                     cost_price:       parseFloat(product.cost_price) || 0,
                     quantity:         1,
                     stock:            maxStock,
+                    track_inventory:  product.track_inventory !== undefined ? !!product.track_inventory : true,
+                    stockError:       false,
                     exchange_eligible: product.exchange_eligible || false,
                 });
             }
@@ -2610,15 +2624,21 @@ function posApp() {
         },
 
         increaseQty(index) {
-            if (this.cart[index].quantity < this.cart[index].stock) {
-                this.cart[index].quantity++;
+            const item = this.cart[index];
+            if (item.quantity < item.stock) {
+                item.quantity++;
+                item.stockError = false;
                 this.recalculate();
+            } else if (item.track_inventory) {
+                item.stockError = true;
             }
         },
 
         decreaseQty(index) {
-            if (this.cart[index].quantity > 1) {
-                this.cart[index].quantity--;
+            const item = this.cart[index];
+            if (item.quantity > 1) {
+                item.quantity--;
+                item.stockError = false;
             } else {
                 this.cart.splice(index, 1);
             }
@@ -2628,7 +2648,12 @@ function posApp() {
         updateQty(index) {
             const item = this.cart[index];
             if (item.quantity < 1) item.quantity = 1;
-            if (item.quantity > item.stock) item.quantity = item.stock;
+            if (item.track_inventory && item.quantity > item.stock) {
+                item.stockError = true;
+                item.quantity   = item.stock || 1;
+            } else {
+                item.stockError = false;
+            }
             this.recalculate();
         },
 

@@ -367,6 +367,7 @@ class PosController extends Controller
                 'image'            => $p->primary_image_url,
                 'exchange_eligible' => (bool)($p->category?->section?->exchange_enabled),
                 'is_serialized'    => (bool) $p->is_serialized,
+                'track_inventory'  => (bool) $p->track_inventory,
                 'serial_number'    => null,
                 'serial_id'        => null,
                 'colors'           => $p->colors->map(fn($c) => [
@@ -449,6 +450,7 @@ class PosController extends Controller
                 'image'             => $p->primary_image_url,
                 'exchange_eligible' => (bool)($p->category?->section?->exchange_enabled),
                 'is_serialized'     => (bool) $p->is_serialized,
+                'track_inventory'   => (bool) $p->track_inventory,
                 'serial_number'     => null,
                 'serial_id'         => null,
                 'category_id'       => $p->category_id,
