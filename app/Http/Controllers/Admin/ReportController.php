@@ -111,23 +111,78 @@ class ReportController extends Controller
     {
         ['from' => $from, 'to' => $to, 'label' => $periodLabel] = $this->dateRange($request);
 
-        $ordersBase = Order::whereBetween(DB::raw('DATE(created_at)'), [$from, $to])
-                            ->where('status', 'delivered');
+        $sections   = Section::orderBy('sort_order')->get();
+        $categories = Category::active()
+            ->with(['children' => fn($q) => $q->active()->orderBy('name')])
+            ->whereNull('parent_id')
+            ->orderBy('name')
+            ->get();
 
-        $grossRevenue   = $ordersBase->sum('total');
-        $totalDiscounts = $ordersBase->sum('discount_amount');
-        $deliveryIncome = $ordersBase->sum('delivery_charge');
-        $netRevenue     = $grossRevenue - $totalDiscounts;
+        $sectionId  = $request->filled('section')  ? (int) $request->section  : null;
+        $categoryId = $request->filled('category') ? (int) $request->category : null;
+        $isFiltered = $sectionId || $categoryId;
 
-        $totalCogs = DB::table('order_items')
-            ->join('orders', 'orders.id', '=', 'order_items.order_id')
-            ->whereBetween(DB::raw('DATE(orders.created_at)'), [$from, $to])
-            ->where('orders.status', 'delivered')
-            ->sum(DB::raw('order_items.quantity * COALESCE(order_items.cost_price, 0)'));
+        if ($isFiltered) {
+            $baseItems = DB::table('order_items')
+                ->join('orders',    'orders.id',    '=', 'order_items.order_id')
+                ->join('products',  'products.id',  '=', 'order_items.product_id')
+                ->join('categories as cats', 'cats.id', '=', 'products.category_id')
+                ->whereBetween(DB::raw('DATE(orders.created_at)'), [$from, $to])
+                ->where('orders.status', 'delivered');
 
-        $grossProfit   = $netRevenue - $totalCogs;
+            if ($sectionId)  $baseItems->where('cats.section_id', $sectionId);
+            if ($categoryId) $baseItems->where(fn($q) =>
+                $q->where('products.category_id', $categoryId)
+                  ->orWhere('products.subcategory_id', $categoryId)
+            );
+
+            $grossRevenue   = (clone $baseItems)->sum(DB::raw('order_items.quantity * order_items.unit_price'));
+            $totalDiscounts = (clone $baseItems)->sum('order_items.discount_amount');
+            $totalCogs      = (clone $baseItems)->sum(DB::raw('order_items.quantity * COALESCE(order_items.cost_price, 0)'));
+            $deliveryIncome = 0;
+
+            $monthlyData = (clone $baseItems)
+                ->select(
+                    DB::raw('MONTH(orders.created_at) as month'),
+                    DB::raw('SUM(order_items.quantity * order_items.unit_price) as revenue')
+                )
+                ->groupBy(DB::raw('MONTH(orders.created_at)'))
+                ->orderBy(DB::raw('MONTH(orders.created_at)'))
+                ->get()
+                ->map(fn($r) => ['month' => $r->month, 'revenue' => $r->revenue, 'cogs' => 0])
+                ->toArray();
+        } else {
+            $ordersBase = Order::whereBetween(DB::raw('DATE(created_at)'), [$from, $to])
+                                ->where('status', 'delivered');
+
+            $grossRevenue   = $ordersBase->sum('total');
+            $totalDiscounts = $ordersBase->sum('discount_amount');
+            $deliveryIncome = $ordersBase->sum('delivery_charge');
+
+            $totalCogs = DB::table('order_items')
+                ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                ->whereBetween(DB::raw('DATE(orders.created_at)'), [$from, $to])
+                ->where('orders.status', 'delivered')
+                ->sum(DB::raw('order_items.quantity * COALESCE(order_items.cost_price, 0)'));
+
+            $monthlyData = DB::table('orders')
+                ->whereBetween(DB::raw('DATE(created_at)'), [$from, $to])
+                ->where('status', 'delivered')
+                ->select(
+                    DB::raw('MONTH(created_at) as month'),
+                    DB::raw('SUM(total) as revenue')
+                )
+                ->groupBy(DB::raw('MONTH(created_at)'))
+                ->orderBy(DB::raw('MONTH(created_at)'))
+                ->get()
+                ->map(fn($r) => ['month' => $r->month, 'revenue' => $r->revenue, 'cogs' => 0])
+                ->toArray();
+        }
+
+        $netRevenue  = $grossRevenue - $totalDiscounts;
+        $grossProfit = $netRevenue - $totalCogs;
         $totalExpenses = Expense::whereBetween('expense_date', [$from, $to])->sum('amount');
-        $netProfit     = $grossProfit - $totalExpenses + $deliveryIncome;
+        $netProfit   = $grossProfit - $totalExpenses + $deliveryIncome;
 
         $expensesByCategory = DB::table('expenses')
             ->leftJoin('expense_categories', 'expense_categories.id', '=', 'expenses.expense_category_id')
@@ -141,23 +196,11 @@ class ReportController extends Controller
             ->orderByDesc('total')
             ->get();
 
-        $monthlyData = DB::table('orders')
-            ->whereBetween(DB::raw('DATE(created_at)'), [$from, $to])
-            ->where('status', 'delivered')
-            ->select(
-                DB::raw('MONTH(created_at) as month'),
-                DB::raw('SUM(total) as revenue')
-            )
-            ->groupBy(DB::raw('MONTH(created_at)'))
-            ->orderBy(DB::raw('MONTH(created_at)'))
-            ->get()
-            ->map(fn($r) => ['month' => $r->month, 'revenue' => $r->revenue, 'cogs' => 0])
-            ->toArray();
-
         return view('admin.reports.profit-loss', compact(
             'grossRevenue', 'totalDiscounts', 'netRevenue', 'totalCogs', 'grossProfit',
             'totalExpenses', 'deliveryIncome', 'netProfit', 'periodLabel',
-            'expensesByCategory', 'monthlyData', 'from', 'to'
+            'expensesByCategory', 'monthlyData', 'from', 'to',
+            'sections', 'categories', 'sectionId', 'categoryId', 'isFiltered'
         ));
     }
 
