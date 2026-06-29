@@ -9,6 +9,7 @@ use App\Models\Expense;
 use App\Models\LoginLog;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\Section;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -38,11 +39,25 @@ class ReportController extends Controller
     {
         ['from' => $from, 'to' => $to] = $this->dateRange($request);
 
+        $sections  = Section::orderBy('sort_order')->get();
+        $sectionId = $request->filled('section') ? (int) $request->section : null;
+
         $query = Order::whereBetween(DB::raw('DATE(created_at)'), [$from, $to])
                        ->where('status', 'delivered');
 
         if ($request->filled('source')) {
             $query->where('source', $request->source);
+        }
+
+        if ($sectionId) {
+            $query->whereExists(fn($sub) =>
+                $sub->select(DB::raw(1))
+                    ->from('order_items')
+                    ->join('products', 'products.id', '=', 'order_items.product_id')
+                    ->join('categories', 'categories.id', '=', 'products.category_id')
+                    ->whereColumn('order_items.order_id', 'orders.id')
+                    ->where('categories.section_id', $sectionId)
+            );
         }
 
         $orders = $query->with('items')->latest()->get();
@@ -59,10 +74,19 @@ class ReportController extends Controller
                             ->values()
                             ->toArray();
 
-        $topProducts = DB::table('order_items')
+        $topProductsQuery = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->whereBetween(DB::raw('DATE(orders.created_at)'), [$from, $to])
-            ->where('orders.status', 'delivered')
+            ->where('orders.status', 'delivered');
+
+        if ($sectionId) {
+            $topProductsQuery
+                ->join('products', 'products.id', '=', 'order_items.product_id')
+                ->join('categories', 'categories.id', '=', 'products.category_id')
+                ->where('categories.section_id', $sectionId);
+        }
+
+        $topProducts = $topProductsQuery
             ->select(
                 'order_items.product_name',
                 DB::raw('SUM(order_items.quantity) as total_qty'),
@@ -78,7 +102,8 @@ class ReportController extends Controller
 
         return view('admin.reports.sales', compact(
             'orders', 'totalRevenue', 'totalOrders', 'avgOrderValue', 'itemsSold',
-            'totalExchangeValue', 'dailyData', 'topProducts', 'byPayment', 'from', 'to'
+            'totalExchangeValue', 'dailyData', 'topProducts', 'byPayment', 'from', 'to',
+            'sections', 'sectionId'
         ));
     }
 

@@ -36,7 +36,8 @@
     </div>
 
     {{-- Date range inputs + source + submit --}}
-    <form method="GET" action="{{ route('admin.reports.sales') }}" id="salesFilterForm"
+    @php $salesRoute = auth()->user()->hasRole('admin') ? 'admin.reports.sales' : 'salesman.reports.sales'; @endphp
+    <form method="GET" action="{{ route($salesRoute) }}" id="salesFilterForm"
           class="flex flex-wrap items-end gap-3">
         <div>
             <label class="form-label text-xs">From</label>
@@ -54,6 +55,17 @@
                 <option value="">All Sources</option>
                 <option value="ecommerce" {{ request('source') === 'ecommerce' ? 'selected' : '' }}>Ecommerce</option>
                 <option value="pos" {{ request('source') === 'pos' ? 'selected' : '' }}>POS</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label text-xs">Section</label>
+            <select name="section" class="form-select text-sm">
+                <option value="">All Sections</option>
+                @foreach($sections as $section)
+                    <option value="{{ $section->id }}" {{ $sectionId == $section->id ? 'selected' : '' }}>
+                        {{ $section->name }}
+                    </option>
+                @endforeach
             </select>
         </div>
         <button type="submit" class="btn-primary btn-sm">
