@@ -2,13 +2,14 @@
 @section('title', 'Add Vendor')
 
 @section('content')
+@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
 <div class="flex items-center gap-3 mb-6">
-    <a href="{{ route('admin.vendors.index') }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
+    <a href="{{ route("{$rPrefix}.vendors.index") }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
     <h1 class="text-xl font-bold text-gray-900">Add Vendor</h1>
 </div>
 
 <div class="max-w-2xl">
-    <form method="POST" action="{{ route('admin.vendors.store') }}">
+    <form method="POST" action="{{ route("{$rPrefix}.vendors.store") }}">
         @csrf
         <div class="card">
             <div class="card-header"><h2 class="font-semibold text-gray-800">Vendor Information</h2></div>
@@ -57,7 +58,7 @@
             <button type="submit" class="btn-primary btn-lg">
                 <i class="fas fa-save mr-2"></i> Save Vendor
             </button>
-            <a href="{{ route('admin.vendors.index') }}" class="btn-outline btn-lg">Cancel</a>
+            <a href="{{ route("{$rPrefix}.vendors.index") }}" class="btn-outline btn-lg">Cancel</a>
         </div>
     </form>
 </div>

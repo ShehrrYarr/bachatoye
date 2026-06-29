@@ -2,11 +2,14 @@
 @section('title', 'Vendors')
 
 @section('content')
+@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
 <div class="flex items-center justify-between mb-6">
     <h1 class="text-xl font-bold text-gray-900">Vendors</h1>
-    <a href="{{ route('admin.vendors.create') }}" class="btn-primary btn-sm">
+    @can('vendors.manage')
+    <a href="{{ route("{$rPrefix}.vendors.create") }}" class="btn-primary btn-sm">
         <i class="fas fa-plus mr-1"></i> Add Vendor
     </a>
+    @endcan
 </div>
 
 {{-- Filters --}}
@@ -19,7 +22,7 @@
     </select>
     <button type="submit" class="btn-outline btn-sm">Filter</button>
     @if(request()->hasAny(['q','balance']))
-        <a href="{{ route('admin.vendors.index') }}" class="btn-outline btn-sm">Clear</a>
+        <a href="{{ route("{$rPrefix}.vendors.index") }}" class="btn-outline btn-sm">Clear</a>
     @endif
 </form>
 
@@ -64,16 +67,18 @@
                     </td>
                     <td class="text-right">
                         <div class="flex items-center justify-end gap-2">
-                            <a href="{{ route('admin.vendors.show', $vendor) }}" class="btn-outline btn-sm" title="View Details">
+                            <a href="{{ route("{$rPrefix}.vendors.show", $vendor) }}" class="btn-outline btn-sm" title="View Details">
                                 <i class="fas fa-eye"></i>
                             </a>
-                            <a href="{{ route('admin.vendors.khata', $vendor) }}"
+                            <a href="{{ route("{$rPrefix}.vendors.khata", $vendor) }}"
                                class="btn-outline btn-sm text-purple-600 border-purple-300 hover:bg-purple-50" title="Khata / Ledger">
                                 <i class="fas fa-book"></i>
                             </a>
-                            <a href="{{ route('admin.vendors.edit', $vendor) }}" class="btn-outline btn-sm" title="Edit">
+                            @can('vendors.manage')
+                            <a href="{{ route("{$rPrefix}.vendors.edit", $vendor) }}" class="btn-outline btn-sm" title="Edit">
                                 <i class="fas fa-edit"></i>
                             </a>
+                            @endcan
                         </div>
                     </td>
                 </tr>

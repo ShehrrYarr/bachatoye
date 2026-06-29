@@ -445,6 +445,25 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
         ->middleware('permission:purchases.manage|products.manage')->name('products.generate_barcode');
     Route::get('products/{product}', [Admin\ProductController::class, 'show'])
         ->middleware('permission:products.view')->name('products.show');
+
+    // Vendor routes for salesmen with vendors.view / vendors.manage permissions
+    Route::get('vendors', [Admin\VendorController::class, 'index'])
+        ->middleware('permission:vendors.view')->name('vendors.index');
+    Route::get('vendors/create', [Admin\VendorController::class, 'create'])
+        ->middleware('permission:vendors.manage')->name('vendors.create');
+    Route::post('vendors', [Admin\VendorController::class, 'store'])
+        ->middleware('permission:vendors.manage')->name('vendors.store');
+    Route::get('vendors/{vendor}/edit', [Admin\VendorController::class, 'edit'])
+        ->middleware('permission:vendors.manage')->name('vendors.edit');
+    Route::put('vendors/{vendor}', [Admin\VendorController::class, 'update'])
+        ->middleware('permission:vendors.manage')->name('vendors.update');
+    Route::get('vendors/{vendor}/khata', [Admin\VendorController::class, 'khata'])
+        ->middleware('permission:vendors.view')->name('vendors.khata');
+    Route::get('vendors/{vendor}/khata/print', [Admin\VendorController::class, 'khataPrint'])
+        ->middleware('permission:vendors.view')->name('vendors.khata.print');
+    // Parameterized show must come after literal create/khata routes
+    Route::get('vendors/{vendor}', [Admin\VendorController::class, 'show'])
+        ->middleware('permission:vendors.view')->name('vendors.show');
 });
 
 /*

@@ -124,7 +124,8 @@
 
     <div class="print-bar">
         <div style="display:flex;align-items:center;gap:12px;">
-            <a href="{{ route('admin.vendors.khata', $vendor) }}" class="btn-back">&#8592; Back</a>
+            @php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
+            <a href="{{ route("{$rPrefix}.vendors.khata", $vendor) }}" class="btn-back">&#8592; Back</a>
             <span>Vendor Khata — {{ $vendor->name }}</span>
         </div>
         <button class="btn-print" onclick="window.print()">&#128438; Print / Save as PDF</button>

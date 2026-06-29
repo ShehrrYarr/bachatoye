@@ -2,9 +2,10 @@
 @section('title', 'Khata: ' . $vendor->name)
 
 @section('content')
+@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
 <div class="flex items-center justify-between mb-6">
     <div class="flex items-center gap-3">
-        <a href="{{ route('admin.vendors.show', $vendor) }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
+        <a href="{{ route("{$rPrefix}.vendors.show", $vendor) }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
         <h1 class="text-xl font-bold text-gray-900">Vendor Khata: {{ $vendor->name }}</h1>
     </div>
     <div class="flex items-center gap-3 flex-wrap">
@@ -21,7 +22,7 @@
                    class="form-input text-sm py-1 h-8 w-36"
                    title="To date">
             <button @click="
-                let url = '{{ route('admin.vendors.khata.print', $vendor) }}';
+                let url = '{{ route("{$rPrefix}.vendors.khata.print", $vendor) }}';
                 let p = new URLSearchParams();
                 if (from) p.append('date_from', from);
                 if (to) p.append('date_to', to);
@@ -95,7 +96,8 @@
         </div>
     </div>
 
-    {{-- Add entry form --}}
+    {{-- Add entry form (admin only — ledger.add route not available to salesmen) --}}
+    @hasrole('admin')
     <div>
         <div class="card p-5 sticky top-6">
             <h2 class="font-semibold text-gray-800 mb-4">Add Manual Entry</h2>
@@ -187,5 +189,6 @@
             </div>
         </div>
     </div>
+    @endrole
 </div>
 @endsection

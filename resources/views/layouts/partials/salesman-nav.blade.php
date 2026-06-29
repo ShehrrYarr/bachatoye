@@ -22,6 +22,12 @@
 </a>
 @endcan
 
+@can('vendors.view')
+<a href="{{ route('salesman.vendors.index') }}" class="sidebar-link {{ $is('salesman.vendors') ? 'active' : '' }}">
+    <i class="fas fa-truck"></i> Vendors
+</a>
+@endcan
+
 @can('customers.view')
 <a href="{{ route('salesman.customers.index') }}" class="sidebar-link {{ $is('salesman.customers') ? 'active' : '' }}">
     <i class="fas fa-users"></i> Customers

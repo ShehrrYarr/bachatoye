@@ -50,7 +50,8 @@ class VendorController extends Controller
         $data['khata_enabled'] = $request->boolean('khata_enabled');
 
         $vendor = Vendor::create($data);
-        return redirect()->route('admin.vendors.show', $vendor)->with('success', 'Vendor created.');
+        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        return redirect()->route("{$rPrefix}.vendors.show", $vendor)->with('success', 'Vendor created.');
     }
 
     public function show(Vendor $vendor)
@@ -103,7 +104,8 @@ class VendorController extends Controller
 
         $data['khata_enabled'] = $request->boolean('khata_enabled');
         $vendor->update($data);
-        return redirect()->route('admin.vendors.show', $vendor)->with('success', 'Vendor updated.');
+        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        return redirect()->route("{$rPrefix}.vendors.show", $vendor)->with('success', 'Vendor updated.');
     }
 
     public function destroy(Vendor $vendor)

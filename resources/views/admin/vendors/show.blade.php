@@ -2,24 +2,29 @@
 @section('title', $vendor->name)
 
 @section('content')
+@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
 <div class="flex items-center justify-between mb-6">
     <div class="flex items-center gap-3">
-        <a href="{{ route('admin.vendors.index') }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
+        <a href="{{ route("{$rPrefix}.vendors.index") }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
         <h1 class="text-xl font-bold text-gray-900">{{ $vendor->name }}</h1>
         @if($vendor->company)
             <span class="text-gray-400 text-sm">{{ $vendor->company }}</span>
         @endif
     </div>
     <div class="flex gap-2">
-        <a href="{{ route('admin.purchases.create') }}?vendor_id={{ $vendor->id }}" class="btn-primary btn-sm">
+        @can('purchases.manage')
+        <a href="{{ route("{$rPrefix}.purchases.create") }}?vendor_id={{ $vendor->id }}" class="btn-primary btn-sm">
             <i class="fas fa-plus mr-1"></i> New Purchase
         </a>
-        <a href="{{ route('admin.vendors.khata', $vendor) }}" class="btn-outline btn-sm text-purple-700 border-purple-300 hover:bg-purple-50">
+        @endcan
+        <a href="{{ route("{$rPrefix}.vendors.khata", $vendor) }}" class="btn-outline btn-sm text-purple-700 border-purple-300 hover:bg-purple-50">
             <i class="fas fa-book mr-1"></i> Khata
         </a>
-        <a href="{{ route('admin.vendors.edit', $vendor) }}" class="btn-outline btn-sm">
+        @can('vendors.manage')
+        <a href="{{ route("{$rPrefix}.vendors.edit", $vendor) }}" class="btn-outline btn-sm">
             <i class="fas fa-edit mr-1"></i> Edit
         </a>
+        @endcan
     </div>
 </div>
 
@@ -62,7 +67,9 @@
                                 </span>
                             </td>
                             <td>
-                                <a href="{{ route('admin.purchases.show', $purchase) }}" class="text-primary-600 hover:underline text-xs">View</a>
+                                @can('purchases.view')
+                                <a href="{{ route("{$rPrefix}.purchases.show", $purchase) }}" class="text-primary-600 hover:underline text-xs">View</a>
+                                @endcan
                             </td>
                         </tr>
                         @empty
@@ -102,7 +109,7 @@
                     <dd class="font-semibold">Rs. {{ number_format($vendor->purchases->sum('total')) }}</dd>
                 </div>
             </dl>
-            <a href="{{ route('admin.vendors.khata', $vendor) }}"
+            <a href="{{ route("{$rPrefix}.vendors.khata", $vendor) }}"
                class="mt-4 flex items-center justify-center gap-2 w-full py-2 rounded-lg border border-purple-300 text-purple-700 text-sm font-medium hover:bg-purple-50 transition-colors">
                 <i class="fas fa-book"></i> View Full Khata
             </a>
@@ -130,7 +137,8 @@
             </dl>
         </div>
 
-        {{-- Quick payment --}}
+        {{-- Quick payment (admin only — ledger.add route not available to salesmen) --}}
+        @hasrole('admin')
         @if($vendor->balance != 0)
         <div class="card p-5">
             <h2 class="font-semibold text-gray-800 mb-3">Record Payment</h2>
@@ -184,6 +192,7 @@
             </form>
         </div>
         @endif
+        @endrole
     </div>
 </div>
 @endsection

@@ -40,6 +40,8 @@ class DatabaseSeeder extends Seeder
             'expenses.delete',
             'purchases.view',
             'purchases.manage',
+            'vendors.view',
+            'vendors.manage',
             'reports.view',
             'deals.manage',
             'banners.manage',
