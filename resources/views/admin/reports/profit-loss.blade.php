@@ -56,22 +56,34 @@ $activeCategoryLabel = $categoryId ? collect($categoryOptions)->firstWhere('valu
                 options: {{ json_encode($sectionOptions) }},
                 initial: {{ $sectionId ?? 'null' }},
                 placeholder: 'All Sections'
-            })" class="relative w-44">
+            })"
+             @click.outside="closeDropdown()"
+             class="relative w-44">
             <label class="form-label text-xs">Section</label>
-            <input type="text" x-model="search" @focus="open = true" @keydown.escape="open = false"
-                   class="form-input text-sm w-full pr-7"
-                   :placeholder="selectedLabel || 'All Sections'"
-                   autocomplete="off">
-            <span class="absolute right-2 bottom-2 text-gray-400 pointer-events-none"><i class="fas fa-chevron-down text-xs"></i></span>
+            <div class="relative">
+                <input type="text" x-model="search"
+                       @click="openDropdown()"
+                       @input="open = true"
+                       @keydown.escape="closeDropdown()"
+                       class="form-input text-sm w-full pr-7"
+                       :placeholder="selectedLabel || placeholder"
+                       autocomplete="off">
+                <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                    <i class="fas fa-chevron-down text-xs"></i>
+                </span>
+            </div>
             <input type="hidden" name="section" :value="value">
-            <div x-show="open" x-transition @click.outside="open = false"
+            <div x-show="open"
                  class="absolute z-50 top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-y-auto mt-1"
                  style="display:none;">
-                <div @click="clear()" class="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 text-gray-400 border-b border-gray-100">All Sections</div>
+                <div @mousedown.prevent="clear()"
+                     class="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 text-gray-400 border-b border-gray-100">
+                    All Sections
+                </div>
                 <template x-for="opt in filtered" :key="opt.value">
-                    <div @click="pick(opt)"
+                    <div @mousedown.prevent="pick(opt)"
                          class="px-3 py-2 text-sm cursor-pointer hover:bg-primary-50 hover:text-primary-700"
-                         :class="{ 'bg-primary-50 text-primary-700 font-medium': opt.value == value }"
+                         :class="{ 'bg-primary-50 text-primary-700 font-medium': String(opt.value) === String(value) }"
                          x-text="opt.label"></div>
                 </template>
                 <div x-show="filtered.length === 0" class="px-3 py-2 text-sm text-gray-400">No results</div>
@@ -83,22 +95,34 @@ $activeCategoryLabel = $categoryId ? collect($categoryOptions)->firstWhere('valu
                 options: {{ json_encode($categoryOptions) }},
                 initial: {{ $categoryId ?? 'null' }},
                 placeholder: 'All Categories'
-            })" class="relative w-48">
+            })"
+             @click.outside="closeDropdown()"
+             class="relative w-48">
             <label class="form-label text-xs">Category</label>
-            <input type="text" x-model="search" @focus="open = true" @keydown.escape="open = false"
-                   class="form-input text-sm w-full pr-7"
-                   :placeholder="selectedLabel || 'All Categories'"
-                   autocomplete="off">
-            <span class="absolute right-2 bottom-2 text-gray-400 pointer-events-none"><i class="fas fa-chevron-down text-xs"></i></span>
+            <div class="relative">
+                <input type="text" x-model="search"
+                       @click="openDropdown()"
+                       @input="open = true"
+                       @keydown.escape="closeDropdown()"
+                       class="form-input text-sm w-full pr-7"
+                       :placeholder="selectedLabel || placeholder"
+                       autocomplete="off">
+                <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                    <i class="fas fa-chevron-down text-xs"></i>
+                </span>
+            </div>
             <input type="hidden" name="category" :value="value">
-            <div x-show="open" x-transition @click.outside="open = false"
+            <div x-show="open"
                  class="absolute z-50 top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-y-auto mt-1"
                  style="display:none;">
-                <div @click="clear()" class="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 text-gray-400 border-b border-gray-100">All Categories</div>
+                <div @mousedown.prevent="clear()"
+                     class="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 text-gray-400 border-b border-gray-100">
+                    All Categories
+                </div>
                 <template x-for="opt in filtered" :key="opt.value">
-                    <div @click="pick(opt)"
+                    <div @mousedown.prevent="pick(opt)"
                          class="px-3 py-2 text-sm cursor-pointer hover:bg-primary-50 hover:text-primary-700"
-                         :class="{ 'bg-primary-50 text-primary-700 font-medium': opt.value == value }"
+                         :class="{ 'bg-primary-50 text-primary-700 font-medium': String(opt.value) === String(value) }"
                          x-text="opt.label"></div>
                 </template>
                 <div x-show="filtered.length === 0" class="px-3 py-2 text-sm text-gray-400">No results</div>
@@ -260,21 +284,29 @@ $activeCategoryLabel = $categoryId ? collect($categoryOptions)->firstWhere('valu
 function searchableSelect({ options, initial, placeholder }) {
     return {
         options,
-        value:  initial ?? '',
+        value:  initial != null ? String(initial) : '',
         search: '',
         open:   false,
         placeholder,
 
         get selectedLabel() {
-            const opt = this.options.find(o => o.value == this.value);
+            const opt = this.options.find(o => String(o.value) === this.value);
             return opt ? opt.label : '';
         },
         get filtered() {
             const q = this.search.toLowerCase().trim();
             return q ? this.options.filter(o => o.label.toLowerCase().includes(q)) : this.options;
         },
+        openDropdown() {
+            this.search = '';   // clear so all options show when user clicks to change
+            this.open   = true;
+        },
+        closeDropdown() {
+            this.open   = false;
+            this.search = this.selectedLabel; // restore display to chosen value
+        },
         pick(opt) {
-            this.value  = opt.value;
+            this.value  = String(opt.value);
             this.search = opt.label;
             this.open   = false;
         },
@@ -284,8 +316,7 @@ function searchableSelect({ options, initial, placeholder }) {
             this.open   = false;
         },
         init() {
-            const opt = this.options.find(o => o.value == this.value);
-            if (opt) this.search = opt.label;
+            this.search = this.selectedLabel;
         },
     };
 }
