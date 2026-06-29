@@ -48,6 +48,7 @@ class HomeController extends Controller
 
             $products = Product::active()->ecomVisible()
                 ->whereIn('category_id', $catIds)
+                ->where('is_new_arrival', true)
                 ->with(['images', 'category', 'colors'])
                 ->latest()
                 ->take(8)

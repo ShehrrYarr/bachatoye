@@ -141,6 +141,7 @@ class ProductController extends Controller
             'sku'                 => 'nullable|string|max:100|unique:products',
             'is_active'           => 'boolean',
             'is_featured'         => 'boolean',
+            'is_new_arrival'      => 'boolean',
             'show_in_ecom'        => 'boolean',
             'track_inventory'     => 'boolean',
             'is_serialized'                => 'boolean',
@@ -157,6 +158,7 @@ class ProductController extends Controller
 
         $data['is_active']                    = $request->boolean('is_active');
         $data['is_featured']                  = $request->boolean('is_featured');
+        $data['is_new_arrival']               = $request->boolean('is_new_arrival');
         $data['show_in_ecom']                 = $request->boolean('show_in_ecom', true);
         $data['track_inventory']              = $request->boolean('track_inventory', true);
         $data['is_serialized']                = $request->boolean('is_serialized');
@@ -276,6 +278,7 @@ class ProductController extends Controller
             'sku'                 => 'nullable|string|max:100|unique:products,sku,' . $product->id,
             'is_active'           => 'boolean',
             'is_featured'         => 'boolean',
+            'is_new_arrival'      => 'boolean',
             'show_in_ecom'        => 'boolean',
             'track_inventory'     => 'boolean',
             'is_serialized'                => 'boolean',
@@ -292,6 +295,7 @@ class ProductController extends Controller
 
         $data['is_active']                   = $request->boolean('is_active');
         $data['is_featured']                 = $request->boolean('is_featured');
+        $data['is_new_arrival']              = $request->boolean('is_new_arrival');
         $data['show_in_ecom']                = $request->boolean('show_in_ecom', true);
         $data['track_inventory']             = $request->boolean('track_inventory', true);
         $data['is_serialized']               = $request->boolean('is_serialized');

@@ -13,7 +13,7 @@ class Product extends Model
         'name', 'slug', 'sku', 'barcode', 'short_description', 'description',
         'price', 'cost_price', 'compare_price', 'stock_quantity',
         'low_stock_threshold', 'low_stock_dismissed', 'category_id', 'subcategory_id', 'brand_id',
-        'is_active', 'is_featured', 'show_in_ecom', 'track_inventory', 'is_serialized', 'free_delivery', 'bank_free_delivery', 'cod_enabled',
+        'is_active', 'is_featured', 'is_new_arrival', 'show_in_ecom', 'track_inventory', 'is_serialized', 'free_delivery', 'bank_free_delivery', 'cod_enabled',
         'primary_serial_attribute_id', 'serial_attribute_ids',
     ];
 
@@ -25,6 +25,7 @@ class Product extends Model
             'compare_price'          => 'decimal:2',
             'is_active'              => 'boolean',
             'is_featured'            => 'boolean',
+            'is_new_arrival'         => 'boolean',
             'show_in_ecom'           => 'boolean',
             'track_inventory'        => 'boolean',
             'is_serialized'          => 'boolean',
