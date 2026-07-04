@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Pos;
 use App\Http\Controllers\Controller;
 use App\Models\AccountLedger;
 use App\Models\BankAccount;
+use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -21,8 +22,9 @@ class PosReturnController extends Controller
 {
     public function index()
     {
-        $bankAccounts = BankAccount::active()->orderBy('sort_order')->get();
-        return view('pos.return', compact('bankAccounts'));
+        $bankAccounts  = BankAccount::active()->orderBy('sort_order')->get();
+        $subcategories = Category::active()->whereNotNull('parent_id')->orderBy('name')->get(['id', 'name']);
+        return view('pos.return', compact('bankAccounts', 'subcategories'));
     }
 
     public function searchBySku(Request $request)
@@ -102,11 +104,13 @@ class PosReturnController extends Controller
 
         // Annotate each item with returnable qty + serial info (for cost-price update on return)
         $order->items->each(function ($item) use ($returnedQtys) {
-            $item->already_returned   = (int) ($returnedQtys[$item->id] ?? 0);
-            $item->returnable_qty     = max(0, $item->quantity - $item->already_returned);
-            $item->is_serialized      = (bool) $item->serial_number_id;
-            $item->serial_code        = $item->serialNumber?->serial_number;
-            $item->current_cost_price = $item->serialNumber ? (float) $item->serialNumber->cost_price : null;
+            $item->already_returned        = (int) ($returnedQtys[$item->id] ?? 0);
+            $item->returnable_qty          = max(0, $item->quantity - $item->already_returned);
+            $item->is_serialized           = (bool) $item->serial_number_id;
+            $item->serial_code             = $item->serialNumber?->serial_number;
+            $item->current_cost_price      = $item->serialNumber ? (float) $item->serialNumber->cost_price : null;
+            $item->current_subcategory_id  = $item->serialNumber?->subcategory_id;
+            $item->current_selling_price   = $item->serialNumber ? (float) $item->serialNumber->selling_price : null;
             $item->makeHidden('serialNumber');
         });
 
@@ -127,7 +131,9 @@ class PosReturnController extends Controller
             'items'          => 'required|array|min:1',
             'items.*.order_item_id'  => 'required|exists:order_items,id',
             'items.*.quantity'       => 'required|integer|min:1',
-            'items.*.new_cost_price' => 'nullable|numeric|min:0',
+            'items.*.new_cost_price'    => 'nullable|numeric|min:0',
+            'items.*.new_subcategory_id' => 'nullable|exists:categories,id',
+            'items.*.new_selling_price' => 'nullable|numeric|min:0',
             'reason'               => 'nullable|string|max:500',
             'refund_method'        => 'required|in:cash,khata_credit,bank_transfer',
             'bank_account_id'      => 'nullable|exists:bank_accounts,id',
@@ -180,6 +186,14 @@ class PosReturnController extends Controller
             $newCostPrices = collect($request->items)
                 ->filter(fn($i) => isset($i['new_cost_price']) && $i['new_cost_price'] !== '' && $i['new_cost_price'] !== null)
                 ->mapWithKeys(fn($i) => [$i['order_item_id'] => (float) $i['new_cost_price']]);
+
+            $newSubcategoryIds = collect($request->items)
+                ->filter(fn($i) => array_key_exists('new_subcategory_id', $i))
+                ->mapWithKeys(fn($i) => [$i['order_item_id'] => $i['new_subcategory_id'] ? (int) $i['new_subcategory_id'] : null]);
+
+            $newSellingPrices = collect($request->items)
+                ->filter(fn($i) => isset($i['new_selling_price']) && $i['new_selling_price'] !== '' && $i['new_selling_price'] !== null)
+                ->mapWithKeys(fn($i) => [$i['order_item_id'] => (float) $i['new_selling_price']]);
 
             $refund  = 0;
             $items   = [];
@@ -279,6 +293,25 @@ class PosReturnController extends Controller
                                 $serialUpdate['notes'] = $serial->notes
                                     ? $serial->notes . "\n" . $note
                                     : $note;
+                            }
+                        }
+
+                        // Subcategory reclassification (serialized items only)
+                        if ($newSubcategoryIds->has($orderItem->id)) {
+                            $serialUpdate['subcategory_id'] = $newSubcategoryIds->get($orderItem->id);
+                        }
+
+                        // Revised selling price when reclassifying condition
+                        if ($newSellingPrices->has($orderItem->id)) {
+                            $newSell = $newSellingPrices->get($orderItem->id);
+                            $oldSell = (float) $serial->selling_price;
+                            if ($newSell != $oldSell) {
+                                $serialUpdate['selling_price'] = $newSell;
+                                $sellNote = 'Selling price revised on return ' . $returnOrder->return_number
+                                          . ': Rs. ' . number_format($oldSell) . ' → Rs. ' . number_format($newSell);
+                                $serialUpdate['notes'] = isset($serialUpdate['notes'])
+                                    ? $serialUpdate['notes'] . "\n" . $sellNote
+                                    : ($serial->notes ? $serial->notes . "\n" . $sellNote : $sellNote);
                             }
                         }
 

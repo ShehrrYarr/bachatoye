@@ -179,6 +179,38 @@
                                                        class="w-28 text-center text-sm font-semibold text-indigo-700 border border-indigo-300 rounded-lg py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
                                             </div>
                                         </div>
+
+                                        {{-- Reclassify subcategory for online store --}}
+                                        <div class="bg-purple-50 border border-purple-200 rounded-lg p-3 flex items-center gap-3 mt-2">
+                                            <i class="fas fa-tags text-purple-500 shrink-0"></i>
+                                            <div class="flex-1 min-w-0">
+                                                <label class="text-xs font-semibold text-purple-800 block">Reclassify for Online Store</label>
+                                                <p class="text-[11px] text-purple-500 mt-0.5">Move this unit to a different subcategory (e.g. Old Mobiles)</p>
+                                            </div>
+                                            <select x-model.number="item.new_subcategory_id"
+                                                    class="form-select text-sm w-44 shrink-0">
+                                                <option :value="null">— No change —</option>
+                                                <template x-for="sub in SUBCATEGORIES" :key="sub.id">
+                                                    <option :value="sub.id" x-text="sub.name"></option>
+                                                </template>
+                                            </select>
+                                        </div>
+
+                                        {{-- New selling price — shown when subcategory was changed --}}
+                                        <div x-show="item.new_subcategory_id && item.new_subcategory_id !== item.current_subcategory_id"
+                                             class="bg-purple-50 border border-purple-200 rounded-lg p-3 flex items-center gap-3 mt-1">
+                                            <i class="fas fa-tag text-purple-400 shrink-0"></i>
+                                            <div class="flex-1 min-w-0">
+                                                <label class="text-xs font-semibold text-purple-800 block">New Selling Price</label>
+                                                <p class="text-[11px] text-purple-500 mt-0.5">Set the price shown on the website for this used unit</p>
+                                            </div>
+                                            <div class="flex items-center gap-1 shrink-0">
+                                                <span class="text-xs text-gray-500 font-semibold">Rs.</span>
+                                                <input type="number" x-model.number="item.new_selling_price"
+                                                       min="0" step="1"
+                                                       class="w-28 text-center text-sm font-semibold text-purple-700 border border-purple-300 rounded-lg py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white">
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </template>
@@ -302,6 +334,8 @@
 
 @push('scripts')
 <script>
+const SUBCATEGORIES = @json($subcategories);
+
 function returnApp() {
     return {
         orderSearch: '{{ request("order", "") }}',
@@ -368,6 +402,8 @@ function returnApp() {
                         selected: false,
                         return_qty: i.returnable_qty,
                         new_cost_price: i.current_cost_price,
+                        new_subcategory_id: i.current_subcategory_id ?? null,
+                        new_selling_price: i.current_selling_price ?? null,
                     }));
                 }
             } catch(e) { this.error = 'Failed to load order. Please try again.'; }
@@ -392,7 +428,9 @@ function returnApp() {
                     .map(i => ({
                         order_item_id: i.id,
                         quantity: i.return_qty,
-                        new_cost_price: i.is_serialized ? i.new_cost_price : null,
+                        new_cost_price:     i.is_serialized ? i.new_cost_price     : null,
+                        new_subcategory_id: i.is_serialized ? i.new_subcategory_id : null,
+                        new_selling_price:  i.is_serialized ? i.new_selling_price  : null,
                     }));
 
                 const res = await fetch('/pos/return', {

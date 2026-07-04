@@ -8,6 +8,7 @@ class SerialNumber extends Model
 {
     protected $fillable = [
         'product_id',
+        'subcategory_id',
         'serial_number',
         'cost_price',
         'selling_price',
@@ -37,6 +38,11 @@ class SerialNumber extends Model
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function subcategory()
+    {
+        return $this->belongsTo(\App\Models\Category::class, 'subcategory_id');
     }
 
     public function purchase()

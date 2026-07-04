@@ -14,8 +14,14 @@ class CategoryController extends Controller
         $category = Category::active()->where('slug', $slug)->with('children')->firstOrFail();
 
         $query = Product::active()->ecomVisible()
-                         ->where(fn($q) => $q->where('category_id', $category->id)
-                                             ->orWhere('subcategory_id', $category->id))
+                         ->where(fn($q) => $q
+                             ->where('category_id', $category->id)
+                             ->orWhere('subcategory_id', $category->id)
+                             ->orWhereHas('serialNumbers', fn($sq) =>
+                                 $sq->where('status', 'in_stock')
+                                    ->where('subcategory_id', $category->id)
+                             )
+                         )
                          ->with(['images', 'brand', 'colors']);
 
         if (request()->filled('brand')) {
@@ -40,8 +46,14 @@ class CategoryController extends Controller
 
         $brands = Brand::whereHas('products', fn($q) =>
             $q->active()->ecomVisible()
-              ->where(fn($q2) => $q2->where('category_id', $category->id)
-                                    ->orWhere('subcategory_id', $category->id))
+              ->where(fn($q2) => $q2
+                  ->where('category_id', $category->id)
+                  ->orWhere('subcategory_id', $category->id)
+                  ->orWhereHas('serialNumbers', fn($sq) =>
+                      $sq->where('status', 'in_stock')
+                         ->where('subcategory_id', $category->id)
+                  )
+              )
         )->orderBy('name')->get();
 
         return view('ecom.category', compact('category', 'products', 'brands'));
