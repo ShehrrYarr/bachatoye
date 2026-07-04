@@ -174,14 +174,23 @@
                 selectedAttrOption: {{ $firstInStockAttrOption ? "'".addslashes($firstInStockAttrOption['value'])."'" : 'null' }},
                 selectedAttrPrice:  {{ $initialDisplayPrice }},
                 serialImage: {{ $firstInStockAttrOption && !empty($firstInStockAttrOption['image']) ? "'".addslashes($firstInStockAttrOption['image'])."'" : 'null' }},
+                usedSerialId: null,
                 selectAttr(value, price, image) {
                     this.selectedAttrOption = value;
                     this.selectedAttrPrice  = price;
                     this.displayPrice       = price;
                     this.serialImage        = image || null;
                     this.$store.serialImg.url = image || null;
+                    this.usedSerialId       = null;   // picking new stock clears used selection
+                },
+                selectUsedUnit(id, price, image) {
+                    this.usedSerialId       = id;
+                    this.displayPrice       = price;
+                    this.$store.serialImg.url = image || null;
+                    this.selectedAttrOption = null;   // used unit is a complete pick
                 },
                 canAdd() {
+                    if (this.usedSerialId) return true;   // a specific used unit is selected
                     if (this.hasColors && !this.selectedColorId) return false;
                     if (this.hasAttr && !this.selectedAttrOption) return false;
                     return true;
@@ -195,7 +204,7 @@
 
             {{-- Price — reads displayPrice directly from shared scope, updates instantly --}}
             <div class="flex items-baseline gap-3 flex-wrap mb-5">
-                @if($attrOptions->isNotEmpty())
+                @if($attrOptions->isNotEmpty() || $usedUnits->isNotEmpty())
                 <span class="text-3xl font-extrabold text-primary-700"
                       x-text="'Rs. ' + Number(displayPrice).toLocaleString('en-PK', { maximumFractionDigits: 0 })">
                     Rs. {{ number_format($initialDisplayPrice, 0) }}
@@ -274,6 +283,7 @@
                 <input type="hidden" name="color_id"             :value="selectedColorId">
                 <input type="hidden" name="selected_attr_option"  :value="selectedAttrOption">
                 <input type="hidden" name="selected_attr_price"   :value="selectedAttrPrice">
+                <input type="hidden" name="used_serial_id"        :value="usedSerialId">
 
                 {{-- Admin hint when no store attribute is configured --}}
                 @if($product->is_serialized && !$primaryAttr && auth()->check() && auth()->user()->hasRole('admin'))
@@ -366,12 +376,51 @@
                 </div>
                 @endif
 
+                {{-- Used / pre-owned units — each in-stock serial reclassified to a subcategory --}}
+                @if($usedUnits->isNotEmpty())
+                <div class="mb-5 border-t border-gray-100 pt-5">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="text-sm font-semibold text-gray-700">Used / Pre-owned units:</span>
+                        <span class="text-xs text-gray-400">{{ $usedUnits->count() }} available</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        @foreach($usedUnits as $u)
+                        <button type="button"
+                                @click="selectUsedUnit({{ $u['id'] }}, {{ $u['price'] }}, '{{ addslashes($u['image']) }}')"
+                                :class="usedSerialId === {{ $u['id'] }}
+                                    ? 'ring-2 ring-primary-500 border-primary-400 bg-primary-50'
+                                    : 'ring-1 ring-gray-200 hover:ring-gray-300 bg-white'"
+                                class="flex gap-3 p-3 rounded-xl border text-left transition-all">
+                            <img src="{{ $u['image'] }}" alt="Used unit"
+                                 class="w-16 h-16 object-cover rounded-lg bg-gray-100 shrink-0">
+                            <div class="min-w-0">
+                                <div class="flex flex-wrap gap-1 mb-1.5">
+                                    @foreach($u['attributes'] as $k => $v)
+                                    <span class="text-[11px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{{ $k }}: {{ $v }}</span>
+                                    @endforeach
+                                    @if(empty($u['attributes']))
+                                    <span class="text-[11px] text-gray-400 italic">No attributes listed</span>
+                                    @endif
+                                </div>
+                                <div class="text-sm font-bold text-primary-700">Rs. {{ number_format($u['price']) }}</div>
+                            </div>
+                        </button>
+                        @endforeach
+                    </div>
+                    <p x-show="usedSerialId" class="text-xs text-primary-600 mt-2 font-medium">
+                        <i class="fas fa-check-circle mr-1"></i> A used unit is selected — quantity is fixed to 1.
+                    </p>
+                </div>
+                @endif
+
                 <div class="flex items-center gap-3 mb-4">
                     <label class="text-sm font-medium text-gray-700">Qty:</label>
-                    <div class="flex items-center border border-gray-300 rounded-xl overflow-hidden">
+                    <div class="flex items-center border border-gray-300 rounded-xl overflow-hidden"
+                         :class="usedSerialId ? 'opacity-50 pointer-events-none' : ''">
                         <button type="button" onclick="adjustQty(-1)" class="px-3 py-2 text-gray-600 hover:bg-gray-50 transition-colors">–</button>
                         <input type="number" name="quantity" id="qty" value="1" min="1"
                                max="{{ $product->track_inventory ? $product->stock_quantity : 999 }}"
+                               :disabled="usedSerialId !== null"
                                class="w-14 text-center text-sm font-semibold border-0 focus:outline-none py-2">
                         <button type="button" onclick="adjustQty(1)" class="px-3 py-2 text-gray-600 hover:bg-gray-50 transition-colors">+</button>
                     </div>

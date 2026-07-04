@@ -126,7 +126,23 @@ class ProductController extends Controller
             }
         }
 
-        return view('ecom.products.show', compact('product', 'related', 'deal', 'primaryAttr', 'attrOptions'));
+        // In-stock used / pre-owned units (serials reclassified to a subcategory on return)
+        $usedUnits = SerialNumber::where('product_id', $product->id)
+            ->where('status', 'in_stock')
+            ->whereNotNull('subcategory_id')
+            ->orderBy('selling_price')
+            ->get()
+            ->map(fn($s) => [
+                'id'         => $s->id,
+                'attributes' => $s->attributes ?: [],
+                'label'      => collect($s->attributes ?: [])->values()->implode(' · '),
+                'price'      => (float) ($s->selling_price ?: $product->getDiscountedPrice()),
+                'image'      => $s->image
+                    ? \Illuminate\Support\Facades\Storage::disk('public')->url($s->image)
+                    : $product->primary_image_url,
+            ])->values();
+
+        return view('ecom.products.show', compact('product', 'related', 'deal', 'primaryAttr', 'attrOptions', 'usedUnits'));
     }
 
     public function search(Request $request)

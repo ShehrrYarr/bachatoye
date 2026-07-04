@@ -125,6 +125,20 @@ class OrderController extends Controller
             }
         }
 
+        // ── Release reserved used-unit serials when an ecommerce order is cancelled ──
+        if ($data['status'] === 'cancelled' && $previousStatus !== 'cancelled' && $order->source === 'ecommerce') {
+            $order->loadMissing('items.serialNumber');
+            foreach ($order->items as $item) {
+                if ($item->serialNumber && $item->serialNumber->status === 'sold') {
+                    $item->serialNumber->update([
+                        'status'        => 'in_stock',
+                        'order_id'      => null,
+                        'order_item_id' => null,
+                    ]);
+                }
+            }
+        }
+
         return back()->with('success', 'Order updated.');
     }
 

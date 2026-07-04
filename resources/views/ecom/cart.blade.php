@@ -43,10 +43,22 @@
                             <i class="fas fa-tag text-[10px] mr-1 opacity-70"></i>{{ $item['attr_option'] }}
                         </div>
                     @endif
+                    @if(!empty($item['serial_id']))
+                        <div class="text-xs text-purple-600 font-medium mb-1">
+                            <i class="fas fa-mobile-alt text-[10px] mr-1 opacity-70"></i>Used unit{{ !empty($item['serial_label']) ? ': '.$item['serial_label'] : '' }}
+                        </div>
+                    @endif
                     <div class="flex items-center justify-between flex-wrap gap-3">
                         <span class="text-base font-bold text-primary-700">Rs. {{ number_format($item['price']) }}</span>
                         <div class="flex items-center gap-3">
-                            {{-- Qty adjuster --}}
+                            {{-- Qty adjuster — fixed at 1 for one-of-a-kind used units --}}
+                            @if(!empty($item['serial_id']))
+                            <div class="flex items-center border border-gray-200 rounded-xl overflow-hidden opacity-60">
+                                <span class="px-2.5 py-1.5 text-gray-300 text-sm cursor-not-allowed">–</span>
+                                <span class="w-8 text-center text-sm font-semibold">1</span>
+                                <span class="px-2.5 py-1.5 text-gray-300 text-sm cursor-not-allowed">+</span>
+                            </div>
+                            @else
                             <div class="flex items-center border border-gray-300 rounded-xl overflow-hidden">
                                 <form method="POST" action="{{ route('cart.update', $item['row_id']) }}">
                                     @csrf @method('PATCH')
@@ -62,6 +74,7 @@
                                             class="px-2.5 py-1.5 text-gray-600 hover:bg-gray-50 transition-colors text-sm">+</button>
                                 </form>
                             </div>
+                            @endif
                             {{-- Remove --}}
                             <form method="POST" action="{{ route('cart.remove', $item['row_id']) }}">
                                 @csrf

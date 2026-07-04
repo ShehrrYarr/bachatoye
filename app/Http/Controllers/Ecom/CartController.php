@@ -7,7 +7,9 @@ use App\Models\Deal;
 use App\Models\Product;
 use App\Models\ProductAttributePrice;
 use App\Models\ProductColor;
+use App\Models\SerialNumber;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class CartController extends Controller
 {
@@ -58,9 +60,47 @@ class CartController extends Controller
             'quantity'            => 'required|integer|min:1|max:100',
             'color_id'            => 'nullable|exists:product_colors,id',
             'selected_attr_option'=> 'nullable|string|max:100',
+            'used_serial_id'      => 'nullable|exists:serial_numbers,id',
         ]);
 
         $product = Product::active()->inStock()->with('colors')->findOrFail($request->product_id);
+
+        // ── Used / pre-owned unit: reserve-per-serial flow ───────────────────
+        if ($request->filled('used_serial_id')) {
+            $serial = SerialNumber::where('id', $request->used_serial_id)
+                ->where('product_id', $product->id)
+                ->where('status', 'in_stock')
+                ->first();
+
+            if (!$serial) {
+                return back()->withErrors(['used' => 'Sorry, that unit is no longer available.']);
+            }
+
+            $cart = $this->cart();
+            $key  = "product_{$product->id}_serial_{$serial->id}"; // unique per physical unit
+
+            $cart[$key] = [
+                'product_id'   => $product->id,
+                'serial_id'    => $serial->id,
+                'serial_label' => collect($serial->attributes ?: [])->values()->implode(' · '),
+                'serial_image' => $serial->image ? Storage::disk('public')->url($serial->image) : null,
+                'color_id'     => null,
+                'color_name'   => null,
+                'attr_option'  => null,
+                'quantity'     => 1,   // one-of-a-kind unit — never more than 1
+                'price'        => (float) ($serial->selling_price ?: $product->getDiscountedPrice()),
+            ];
+
+            $this->saveCart($cart);
+
+            if ($request->wantsJson()) {
+                return response()->json(['count' => array_sum(array_column($cart, 'quantity'))]);
+            }
+            if ($request->boolean('buy_now')) {
+                return redirect()->route('checkout.index');
+            }
+            return back()->with('success', "{$product->name} (used unit) added to cart.");
+        }
 
         // Resolve color selection
         $color     = null;
@@ -193,15 +233,17 @@ class CartController extends Controller
             $color = !empty($item['color_id']) ? $product->colors->find($item['color_id']) : null;
 
             return [
-                'row_id'      => $rowId,
-                'product'     => $product,
-                'color_id'    => $item['color_id'] ?? null,
-                'color_name'  => $item['color_name'] ?? null,
-                'color_hex'   => $color?->hex_code ?? null,
-                'attr_option' => $item['attr_option'] ?? null,
-                'quantity'    => $item['quantity'],
-                'price'       => $item['price'],
-                'line_total'  => $item['price'] * $item['quantity'],
+                'row_id'       => $rowId,
+                'product'      => $product,
+                'color_id'     => $item['color_id'] ?? null,
+                'color_name'   => $item['color_name'] ?? null,
+                'color_hex'    => $color?->hex_code ?? null,
+                'attr_option'  => $item['attr_option'] ?? null,
+                'serial_id'    => $item['serial_id'] ?? null,
+                'serial_label' => $item['serial_label'] ?? null,
+                'quantity'     => $item['quantity'],
+                'price'        => $item['price'],
+                'line_total'   => $item['price'] * $item['quantity'],
             ];
         })->filter()->values()->toArray();
     }

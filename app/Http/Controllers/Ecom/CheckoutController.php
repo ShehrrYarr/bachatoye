@@ -8,6 +8,7 @@ use App\Models\Deal;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\SerialNumber;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -111,18 +112,40 @@ class CheckoutController extends Controller
             ]);
 
             foreach ($items as $item) {
-                OrderItem::create([
-                    'order_id'        => $order->id,
-                    'product_id'      => $item['product']->id,
-                    'product_name'    => $item['product']->name,
-                    'color_name'      => $item['color_name'] ?? null,
-                    'product_barcode' => $item['product']->barcode,
-                    'unit_price'      => $item['price'],
-                    'cost_price'      => $item['product']->cost_price,
-                    'quantity'        => $item['quantity'],
-                    'line_total'      => $item['line_total'],
+                // Lock + verify a reserved used unit is still available
+                $serial = !empty($item['serial_id'])
+                    ? SerialNumber::where('id', $item['serial_id'])->lockForUpdate()->first()
+                    : null;
+
+                if (!empty($item['serial_id']) && (!$serial || $serial->status !== 'in_stock')) {
+                    DB::rollBack();
+                    return back()->withErrors([
+                        'error' => 'A used unit in your cart was just sold. Please review your cart and try again.',
+                    ]);
+                }
+
+                $orderItem = OrderItem::create([
+                    'order_id'         => $order->id,
+                    'product_id'       => $item['product']->id,
+                    'product_name'     => $item['product']->name,
+                    'color_name'       => $item['color_name'] ?? null,
+                    'product_barcode'  => $item['product']->barcode,
+                    'unit_price'       => $item['price'],
+                    'cost_price'       => $serial ? $serial->cost_price : $item['product']->cost_price,
+                    'quantity'         => $item['quantity'],
+                    'line_total'       => $item['line_total'],
+                    'serial_number_id' => $serial?->id,
                 ]);
-                // Stock is deducted when order status changes to "Delivered" in OrderController
+
+                // Reserve the exact physical unit so it can't be double-sold
+                if ($serial) {
+                    $serial->update([
+                        'status'        => 'sold',
+                        'order_id'      => $order->id,
+                        'order_item_id' => $orderItem->id,
+                    ]);
+                }
+                // Non-serial stock is deducted when order status changes to "Delivered" in OrderController
             }
 
             // Add free items from triggered bundle_free deals
@@ -216,12 +239,14 @@ class CheckoutController extends Controller
             $product = $products[$item['product_id']] ?? null;
             if (!$product) return null;
             return [
-                'product'    => $product,
-                'color_id'   => $item['color_id'] ?? null,
-                'color_name' => $item['color_name'] ?? null,
-                'quantity'   => $item['quantity'],
-                'price'      => $item['price'],
-                'line_total' => $item['price'] * $item['quantity'],
+                'product'      => $product,
+                'color_id'     => $item['color_id'] ?? null,
+                'color_name'   => $item['color_name'] ?? null,
+                'serial_id'    => $item['serial_id'] ?? null,
+                'serial_label' => $item['serial_label'] ?? null,
+                'quantity'     => $item['quantity'],
+                'price'        => $item['price'],
+                'line_total'   => $item['price'] * $item['quantity'],
             ];
         })->filter()->values()->toArray();
     }
