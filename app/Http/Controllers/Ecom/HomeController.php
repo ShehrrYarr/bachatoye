@@ -15,10 +15,37 @@ class HomeController extends Controller
     {
         $heroBanners    = Banner::active()->hero()->get();
         $promoBanners   = Banner::active()->where('position', 'promo')->orderBy('sort_order')->get();
-        $categories     = Category::active()->whereNull('parent_id')
-                            ->withCount('products')
-                            ->with(['children' => fn($q) => $q->active()->withCount('products')])
-                            ->orderBy('sort_order')->take(8)->get();
+        $categories = Category::active()->whereNull('parent_id')
+                        ->with(['children' => fn($q) => $q->active()])
+                        ->orderBy('sort_order')->take(8)->get();
+
+        // Compute accurate in-stock counts matching what each category page actually shows
+        foreach ($categories as $cat) {
+            $childIds   = $cat->children->pluck('id')->toArray();
+            $allCatIds  = [$cat->id, ...$childIds];
+
+            $cat->products_count = Product::active()->ecomVisible()->inStock()
+                ->where(fn($q) => $q
+                    ->whereIn('category_id', $allCatIds)
+                    ->orWhereIn('subcategory_id', $allCatIds)
+                    ->orWhereHas('serialNumbers', fn($sq) =>
+                        $sq->where('status', 'in_stock')
+                           ->whereIn('subcategory_id', $allCatIds)
+                    )
+                )->count();
+
+            foreach ($cat->children as $child) {
+                $child->products_count = Product::active()->ecomVisible()->inStock()
+                    ->where(fn($q) => $q
+                        ->where('category_id', $child->id)
+                        ->orWhere('subcategory_id', $child->id)
+                        ->orWhereHas('serialNumbers', fn($sq) =>
+                            $sq->where('status', 'in_stock')
+                               ->where('subcategory_id', $child->id)
+                        )
+                    )->count();
+            }
+        }
         $featuredProducts = Product::active()->ecomVisible()->featured()->with(['images', 'category', 'colors'])->take(8)->get();
         $activeDeals    = Deal::active()->take(4)->get();
 
