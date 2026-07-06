@@ -132,12 +132,17 @@
 
                     {{-- Item cards --}}
                     <div x-show="items.length > 0" class="space-y-3">
-                        <template x-for="(item, i) in items" :key="item.id">
+                        <template x-for="(item, i) in items" :key="item._uid">
                             <div class="border border-gray-200 rounded-xl p-4 bg-white">
                                 {{-- Product header row --}}
                                 <div class="flex items-start justify-between gap-3">
                                     <div>
-                                        <div class="font-semibold text-gray-800" x-text="item.name"></div>
+                                        <div class="font-semibold text-gray-800 flex items-center gap-2">
+                                            <span x-text="item.name"></span>
+                                            <span x-show="items.filter(x => x.id === item.id).length > 1"
+                                                  class="badge bg-indigo-100 text-indigo-700 text-xs shrink-0"
+                                                  x-text="`Entry ${items.filter(x => x.id === item.id).indexOf(item) + 1}`"></span>
+                                        </div>
                                         <div class="text-xs text-gray-400 mt-0.5" x-text="item.sku ? 'SKU: ' + item.sku : ''"></div>
                                     </div>
                                     <button type="button" @click="removeItem(i)"
@@ -821,6 +826,7 @@ document.addEventListener('alpine:init', () => {
 function purchaseForm() {
     return {
         items: [],
+        itemUid: 0,
         searchQuery: '',
         searchResults: [],
         showDropdown: false,
@@ -849,9 +855,9 @@ function purchaseForm() {
         },
 
         addProduct(p) {
-            // Prevent duplicate
-            if (this.items.find(i => i.id === p.id)) {
-                alert(`"${p.name}" is already in the list.`);
+            // Same product again = a separate entry (e.g. another attribute batch); just confirm it's intentional
+            if (this.items.find(i => i.id === p.id)
+                && !confirm(`"${p.name}" is already in the list. Add it again as a separate entry?`)) {
                 this.searchQuery = '';
                 this.searchResults = [];
                 this.showDropdown = false;
@@ -863,6 +869,7 @@ function purchaseForm() {
             // Attribute defs for this product: either the subset the admin chose, or all active defs
             const attrDefs   = isSerial ? (p.serial_attr_defs || []) : [];
             const newItem = {
+                _uid:          ++this.itemUid,
                 id:            p.id,
                 name:          p.name,
                 sku:           p.sku || '',
