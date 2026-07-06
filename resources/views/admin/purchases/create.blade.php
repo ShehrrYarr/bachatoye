@@ -306,32 +306,32 @@
                                                                         </div>
                                                                     </template>
 
-                                                                    {{-- Extra freeform fields --}}
-                                                                    <template x-for="(ef, efi) in csn.extraFields" :key="efi">
-                                                                        <div class="flex items-center gap-2">
-                                                                            <input type="text" x-model="ef.key"
-                                                                                   placeholder="Field name"
-                                                                                   class="w-28 shrink-0 border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400">
-                                                                            <span class="text-gray-300 text-sm shrink-0">:</span>
-                                                                            <input type="text" x-model="ef.value"
-                                                                                   placeholder="Value"
-                                                                                   class="flex-1 border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400">
-                                                                            <button type="button" @click="csn.extraFields.splice(efi, 1)"
-                                                                                    class="text-red-400 hover:text-red-600 transition-colors shrink-0">
-                                                                                <i class="fas fa-times text-xs"></i>
-                                                                            </button>
-                                                                        </div>
-                                                                    </template>
+                                                                    {{-- Extra freeform fields + Add field (hidden in "same attributes" mode) --}}
+                                                                    <div x-show="item.attrMode !== 'same'">
+                                                                        <template x-for="(ef, efi) in csn.extraFields" :key="efi">
+                                                                            <div class="flex items-center gap-2">
+                                                                                <input type="text" x-model="ef.key"
+                                                                                       placeholder="Field name"
+                                                                                       class="w-28 shrink-0 border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                                                                                <span class="text-gray-300 text-sm shrink-0">:</span>
+                                                                                <input type="text" x-model="ef.value"
+                                                                                       placeholder="Value"
+                                                                                       class="flex-1 border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                                                                                <button type="button" @click="csn.extraFields.splice(efi, 1)"
+                                                                                        class="text-red-400 hover:text-red-600 transition-colors shrink-0">
+                                                                                    <i class="fas fa-times text-xs"></i>
+                                                                                </button>
+                                                                            </div>
+                                                                        </template>
+                                                                        <button type="button"
+                                                                                @click="csn.extraFields.push({ key: '', value: '' })"
+                                                                                class="w-full text-xs text-indigo-600 hover:text-indigo-800 border border-dashed border-indigo-300 hover:border-indigo-500 rounded-lg py-1.5 transition-colors flex items-center justify-center gap-1.5">
+                                                                            <i class="fas fa-plus text-[10px]"></i> Add field
+                                                                        </button>
+                                                                    </div>
 
-                                                                    {{-- + Add field button --}}
-                                                                    <button type="button"
-                                                                            @click="csn.extraFields.push({ key: '', value: '' })"
-                                                                            class="w-full text-xs text-indigo-600 hover:text-indigo-800 border border-dashed border-indigo-300 hover:border-indigo-500 rounded-lg py-1.5 transition-colors flex items-center justify-center gap-1.5">
-                                                                        <i class="fas fa-plus text-[10px]"></i> Add field
-                                                                    </button>
-
-                                                                    {{-- Unit image upload --}}
-                                                                    <div class="pt-1">
+                                                                    {{-- Unit image upload (hidden in "same attributes" mode) --}}
+                                                                    <div class="pt-1" x-show="item.attrMode !== 'same'">
                                                                         <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide block mb-1">
                                                                             <i class="fas fa-camera mr-1"></i> Unit Photo
                                                                         </label>
@@ -503,32 +503,32 @@
                                                         </div>
                                                     </template>
 
-                                                    {{-- Extra freeform fields --}}
-                                                    <template x-for="(ef, efi) in sn.extraFields" :key="efi">
-                                                        <div class="flex items-center gap-2">
-                                                            <input type="text" x-model="ef.key"
-                                                                   placeholder="Field name"
-                                                                   class="w-32 shrink-0 border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400">
-                                                            <span class="text-gray-300 text-sm shrink-0">:</span>
-                                                            <input type="text" x-model="ef.value"
-                                                                   placeholder="Value"
-                                                                   class="flex-1 border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400">
-                                                            <button type="button" @click="sn.extraFields.splice(efi, 1)"
-                                                                    class="text-red-400 hover:text-red-600 transition-colors shrink-0">
-                                                                <i class="fas fa-times text-xs"></i>
-                                                            </button>
-                                                        </div>
-                                                    </template>
+                                                    {{-- Extra freeform fields + Add field (hidden in "same attributes" mode) --}}
+                                                    <div x-show="item.attrMode !== 'same'">
+                                                        <template x-for="(ef, efi) in sn.extraFields" :key="efi">
+                                                            <div class="flex items-center gap-2">
+                                                                <input type="text" x-model="ef.key"
+                                                                       placeholder="Field name"
+                                                                       class="w-32 shrink-0 border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                                                                <span class="text-gray-300 text-sm shrink-0">:</span>
+                                                                <input type="text" x-model="ef.value"
+                                                                       placeholder="Value"
+                                                                       class="flex-1 border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                                                                <button type="button" @click="sn.extraFields.splice(efi, 1)"
+                                                                        class="text-red-400 hover:text-red-600 transition-colors shrink-0">
+                                                                    <i class="fas fa-times text-xs"></i>
+                                                                </button>
+                                                            </div>
+                                                        </template>
+                                                        <button type="button"
+                                                                @click="sn.extraFields.push({ key: '', value: '' })"
+                                                                class="w-full text-xs text-indigo-600 hover:text-indigo-800 border border-dashed border-indigo-300 hover:border-indigo-500 rounded-lg py-1.5 transition-colors flex items-center justify-center gap-1.5">
+                                                            <i class="fas fa-plus text-[10px]"></i> Add field
+                                                        </button>
+                                                    </div>
 
-                                                    {{-- + Add field button --}}
-                                                    <button type="button"
-                                                            @click="sn.extraFields.push({ key: '', value: '' })"
-                                                            class="w-full text-xs text-indigo-600 hover:text-indigo-800 border border-dashed border-indigo-300 hover:border-indigo-500 rounded-lg py-1.5 transition-colors flex items-center justify-center gap-1.5">
-                                                        <i class="fas fa-plus text-[10px]"></i> Add field
-                                                    </button>
-
-                                                    {{-- Unit image upload --}}
-                                                    <div class="pt-1">
+                                                    {{-- Unit image upload (hidden in "same attributes" mode) --}}
+                                                    <div class="pt-1" x-show="item.attrMode !== 'same'">
                                                         <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide block mb-1">
                                                             <i class="fas fa-camera mr-1"></i> Unit Photo
                                                         </label>
