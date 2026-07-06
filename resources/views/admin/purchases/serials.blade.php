@@ -13,6 +13,7 @@
             $sn = $existing->values()->get($i);
             $attrs = $sn?->attributes ?? [];
             $units[] = [
+                'id'            => $sn?->id,
                 'serial'        => $sn?->serial_number ?? '',
                 'cost_price'    => $sn?->cost_price ? (string) $sn->cost_price : '',
                 'selling_price' => $sn?->selling_price ? (string) $sn->selling_price : '',
@@ -281,6 +282,7 @@ function serialMgr() {
                         container.appendChild(inp);
                     };
 
+                    mkHidden(`${base}[id]`,            unit.id            || '');
                     mkHidden(`${base}[serial]`,        sn);
                     mkHidden(`${base}[cost_price]`,    unit.cost_price    || '');
                     mkHidden(`${base}[selling_price]`, unit.selling_price || '');
