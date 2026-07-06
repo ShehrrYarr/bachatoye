@@ -150,6 +150,7 @@ class ProductController extends Controller
             'primary_serial_attribute_id'  => 'nullable|exists:serial_attribute_definitions,id',
             'serial_attribute_ids'         => 'nullable|array',
             'serial_attribute_ids.*'       => 'integer|exists:serial_attribute_definitions,id',
+            'attribute_display_mode'       => 'nullable|in:single,per_unit',
             'images'                       => 'nullable|array',
             'images.*'                     => 'image|max:5120',
             'video_embed_url'              => 'nullable|string',
@@ -173,6 +174,9 @@ class ProductController extends Controller
         $data['serial_attribute_ids']         = $request->boolean('is_serialized')
             ? ($request->input('serial_attribute_ids') ?: null)
             : null;
+        $data['attribute_display_mode']       = $request->boolean('is_serialized')
+            ? ($request->input('attribute_display_mode') ?: 'single')
+            : 'single';
 
         // Generate barcode if not provided
         if (empty($data['barcode'])) {
@@ -287,6 +291,7 @@ class ProductController extends Controller
             'primary_serial_attribute_id'  => 'nullable|exists:serial_attribute_definitions,id',
             'serial_attribute_ids'         => 'nullable|array',
             'serial_attribute_ids.*'       => 'integer|exists:serial_attribute_definitions,id',
+            'attribute_display_mode'       => 'nullable|in:single,per_unit',
             'images'                       => 'nullable|array',
             'images.*'                     => 'image|max:5120',
             'video_embed_url'              => 'nullable|string',
@@ -309,6 +314,9 @@ class ProductController extends Controller
         $data['serial_attribute_ids']        = $request->boolean('is_serialized')
             ? ($request->input('serial_attribute_ids') ?: null)
             : null;
+        $data['attribute_display_mode']      = $request->boolean('is_serialized')
+            ? ($request->input('attribute_display_mode') ?: 'single')
+            : 'single';
 
         // Strip non-model fields before updating
         $product->update(\Arr::except($data, ['images', 'video_embed_url', 'video_file']));

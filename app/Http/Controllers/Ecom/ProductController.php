@@ -76,11 +76,14 @@ class ProductController extends Controller
 
         $deal = $product->getActiveDeal();
 
+        // Display mode: 'single' = grouped chips by primary attribute; 'per_unit' = each serial sold individually
+        $perUnitMode = $product->is_serialized && $product->attribute_display_mode === 'per_unit';
+
         // Per-product primary attribute options for the store page
         $primaryAttr = null;
         $attrOptions = collect(); // [ ['value'=>'8 GB', 'price'=>35000, 'in_stock'=>true], ... ]
 
-        if ($product->is_serialized) {
+        if ($product->is_serialized && !$perUnitMode) {
             $primaryAttr = $product->primarySerialAttribute; // already eager-loaded
 
             if ($primaryAttr) {
@@ -126,10 +129,17 @@ class ProductController extends Controller
             }
         }
 
-        // In-stock used / pre-owned units (serials reclassified to a subcategory on return)
-        $usedUnits = SerialNumber::where('product_id', $product->id)
-            ->where('status', 'in_stock')
-            ->whereNotNull('subcategory_id')
+        // Per-unit selectable serials:
+        //  - per_unit mode: ALL in-stock serials (each unit is unique — dedicated used-mobile listings)
+        //  - single mode:   only serials reclassified to a subcategory on return (used / pre-owned section)
+        $usedUnitsQuery = SerialNumber::where('product_id', $product->id)
+            ->where('status', 'in_stock');
+
+        if (!$perUnitMode) {
+            $usedUnitsQuery->whereNotNull('subcategory_id');
+        }
+
+        $usedUnits = $usedUnitsQuery
             ->orderBy('selling_price')
             ->get()
             ->map(fn($s) => [
@@ -142,7 +152,7 @@ class ProductController extends Controller
                     : $product->primary_image_url,
             ])->values();
 
-        return view('ecom.products.show', compact('product', 'related', 'deal', 'primaryAttr', 'attrOptions', 'usedUnits'));
+        return view('ecom.products.show', compact('product', 'related', 'deal', 'primaryAttr', 'attrOptions', 'usedUnits', 'perUnitMode'));
     }
 
     public function search(Request $request)

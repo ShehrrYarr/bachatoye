@@ -136,8 +136,31 @@
                     <div x-show="isSerial && trackInventory" x-cloak
                          class="ml-1 pl-4 border-l-2 border-indigo-100 space-y-4">
 
-                        {{-- Store Attribute --}}
+                        {{-- Online Store Display mode --}}
                         <div>
+                            <label class="form-label text-sm">
+                                <i class="fas fa-store text-indigo-500 mr-1"></i>Online Store Display
+                            </label>
+                            <div class="space-y-2 mt-1">
+                                <label class="flex items-start gap-2 cursor-pointer">
+                                    <input type="radio" name="attribute_display_mode" value="single"
+                                           x-model="attrMode" class="mt-0.5 text-indigo-600">
+                                    <span class="text-sm text-gray-700">Single attribute
+                                        <span class="block text-xs text-gray-400">Grouped price chips (e.g. Memory: 6GB / 8GB) — for new mobiles</span>
+                                    </span>
+                                </label>
+                                <label class="flex items-start gap-2 cursor-pointer">
+                                    <input type="radio" name="attribute_display_mode" value="per_unit"
+                                           x-model="attrMode" class="mt-0.5 text-indigo-600">
+                                    <span class="text-sm text-gray-700">Multiple attributes
+                                        <span class="block text-xs text-gray-400">Each unit sold separately with all its attributes — for used mobiles</span>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+
+                        {{-- Store Attribute (only meaningful in single-attribute mode) --}}
+                        <div x-show="attrMode === 'single'">
                             <label class="form-label text-sm">
                                 <i class="fas fa-tags text-indigo-500 mr-1"></i>Store Attribute
                                 <span class="font-normal text-gray-400 ml-1">(shown as price-selector on the product page)</span>
@@ -403,6 +426,7 @@ function productForm() {
     return {
         trackInventory: {{ old('track_inventory', true) ? 'true' : 'false' }},
         isSerial: {{ old('is_serialized') ? 'true' : 'false' }},
+        attrMode: '{{ old('attribute_display_mode', 'single') }}',
         imagePreviews: [],
 
         previewImages(e) {

@@ -157,7 +157,9 @@
             $comparePrice           = $product->compare_price && $product->compare_price > $finalPrice ? $product->compare_price : null;
             $strikePrice            = $hasDealDisc ? $product->price : $comparePrice;
             $firstInStockAttrOption = $attrOptions->firstWhere('in_stock', true);
-            $initialDisplayPrice    = $firstInStockAttrOption ? $firstInStockAttrOption['price'] : $finalPrice;
+            $initialDisplayPrice    = $perUnitMode && $usedUnits->isNotEmpty()
+                ? $usedUnits->first()['price']   // cheapest unit (ordered by selling_price)
+                : ($firstInStockAttrOption ? $firstInStockAttrOption['price'] : $finalPrice);
             $productColors          = $product->colors;
             $inStockColors          = $productColors->where('stock_quantity', '>', 0)->values();
             $preSelected            = $inStockColors->count() === 1 ? $inStockColors->first() : null;
@@ -175,6 +177,7 @@
                 selectedAttrPrice:  {{ $initialDisplayPrice }},
                 serialImage: {{ $firstInStockAttrOption && !empty($firstInStockAttrOption['image']) ? "'".addslashes($firstInStockAttrOption['image'])."'" : 'null' }},
                 usedSerialId: null,
+                requireUnit: {{ $perUnitMode ? 'true' : 'false' }},
                 selectAttr(value, price, image) {
                     this.selectedAttrOption = value;
                     this.selectedAttrPrice  = price;
@@ -190,6 +193,7 @@
                     this.selectedAttrOption = null;   // used unit is a complete pick
                 },
                 canAdd() {
+                    if (this.requireUnit && !this.usedSerialId) return false;  // per-unit mode: must pick a unit
                     if (this.usedSerialId) return true;   // a specific used unit is selected
                     if (this.hasColors && !this.selectedColorId) return false;
                     if (this.hasAttr && !this.selectedAttrOption) return false;
@@ -376,11 +380,11 @@
                 </div>
                 @endif
 
-                {{-- Used / pre-owned units — each in-stock serial reclassified to a subcategory --}}
+                {{-- Per-unit selectable serials: all units (per_unit mode) or return-reclassified used units (single mode) --}}
                 @if($usedUnits->isNotEmpty())
-                <div class="mb-5 border-t border-gray-100 pt-5">
+                <div class="mb-5 {{ $perUnitMode ? '' : 'border-t border-gray-100 pt-5' }}">
                     <div class="flex items-center gap-2 mb-3">
-                        <span class="text-sm font-semibold text-gray-700">Used / Pre-owned units:</span>
+                        <span class="text-sm font-semibold text-gray-700">{{ $perUnitMode ? 'Available Units:' : 'Used / Pre-owned units:' }}</span>
                         <span class="text-xs text-gray-400">{{ $usedUnits->count() }} available</span>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -408,7 +412,10 @@
                         @endforeach
                     </div>
                     <p x-show="usedSerialId" class="text-xs text-primary-600 mt-2 font-medium">
-                        <i class="fas fa-check-circle mr-1"></i> A used unit is selected — quantity is fixed to 1.
+                        <i class="fas fa-check-circle mr-1"></i> A {{ $perUnitMode ? 'unit' : 'used unit' }} is selected — quantity is fixed to 1.
+                    </p>
+                    <p x-show="requireUnit && !usedSerialId" class="text-xs text-red-500 mt-2 font-medium">
+                        Please select a unit to continue.
                     </p>
                 </div>
                 @endif

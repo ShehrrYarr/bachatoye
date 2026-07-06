@@ -14,7 +14,7 @@ class Product extends Model
         'price', 'cost_price', 'compare_price', 'stock_quantity',
         'low_stock_threshold', 'low_stock_dismissed', 'category_id', 'subcategory_id', 'brand_id',
         'is_active', 'is_featured', 'is_new_arrival', 'show_in_ecom', 'track_inventory', 'is_serialized', 'free_delivery', 'bank_free_delivery', 'cod_enabled',
-        'primary_serial_attribute_id', 'serial_attribute_ids',
+        'primary_serial_attribute_id', 'serial_attribute_ids', 'attribute_display_mode',
     ];
 
     protected function casts(): array
