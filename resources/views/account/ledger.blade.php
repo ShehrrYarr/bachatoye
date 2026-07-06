@@ -27,7 +27,7 @@
             </div>
 
             {{-- Ledger table --}}
-            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm">
                 <div class="px-5 sm:px-6 py-4 border-b border-gray-100">
                     <h2 class="font-bold text-gray-900 text-sm sm:text-base">Transaction History</h2>
                 </div>
