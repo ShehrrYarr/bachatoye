@@ -55,8 +55,9 @@
     </div>
 
     {{-- Category list --}}
-    <div class="card overflow-hidden">
+    <div class="card">
         <div class="card-header"><h2 class="font-semibold text-gray-800">All Categories</h2></div>
+        <div class="overflow-x-auto">
         <table class="data-table">
             <thead>
                 <tr><th>Name</th><th class="text-center">Expenses</th><th class="text-right">Actions</th></tr>
@@ -91,6 +92,7 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 @endsection

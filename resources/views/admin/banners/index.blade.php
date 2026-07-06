@@ -7,7 +7,8 @@
     <a href="{{ route('admin.banners.create') }}" class="btn-primary"><i class="fas fa-plus mr-2"></i> Add Banner</a>
 </div>
 
-<div class="card overflow-hidden">
+<div class="card">
+    <div class="overflow-x-auto">
     <table class="data-table">
         <thead>
             <tr>
@@ -66,5 +67,6 @@
             @endforelse
         </tbody>
     </table>
+    </div>
 </div>
 @endsection

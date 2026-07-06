@@ -9,7 +9,8 @@
     </a>
 </div>
 
-<div class="card overflow-hidden">
+<div class="card">
+    <div class="overflow-x-auto">
     <table class="data-table">
         <thead>
             <tr>
@@ -96,6 +97,7 @@
             @endforelse
         </tbody>
     </table>
+    </div>
 </div>
 
 @if($coupons->hasPages())
