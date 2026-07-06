@@ -180,7 +180,7 @@
                                             {{-- Same / Different attribute mode toggle --}}
                                             <template x-if="item.is_serialized && item.attrDefs && item.attrDefs.length > 0">
                                                 <div class="flex items-center gap-1 ml-auto bg-gray-100 rounded-lg p-0.5">
-                                                    <button type="button" @click="item.attrMode = 'same'"
+                                                    <button type="button" @click="item.attrMode = 'same'; applySharedPricing(item); recalc()"
                                                             :class="item.attrMode === 'same' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'"
                                                             class="text-[11px] font-semibold px-2.5 py-1 rounded-md transition-all">
                                                         Same attributes
@@ -212,7 +212,7 @@
                                                         <div class="pl-7 mt-2">
                                                             <div class="border border-indigo-200 bg-indigo-50/60 rounded-xl p-3">
                                                                 <div class="text-[10px] font-bold text-indigo-700 uppercase tracking-wide mb-2">
-                                                                    <i class="fas fa-clone mr-1"></i> Attributes for all <span x-text="clr.quantity"></span> <span x-text="clr.name"></span> unit(s)
+                                                                    <i class="fas fa-clone mr-1"></i> Attributes &amp; pricing for all <span x-text="clr.quantity"></span> <span x-text="clr.name"></span> unit(s)
                                                                 </div>
                                                                 <div class="grid grid-cols-2 gap-2">
                                                                     <template x-for="(ad, adi) in item.attrDefs" :key="adi">
@@ -228,6 +228,23 @@
                                                                             </select>
                                                                         </div>
                                                                     </template>
+                                                                </div>
+                                                                {{-- Shared cost / selling price for this color --}}
+                                                                <div class="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-indigo-100">
+                                                                    <div>
+                                                                        <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Cost Price (Rs.)</label>
+                                                                        <input type="number" x-model.number="clr.sharedCost"
+                                                                               @input="applySharedPricing(item); recalc()"
+                                                                               min="0" step="1" placeholder="0"
+                                                                               class="w-full border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                                                                    </div>
+                                                                    <div>
+                                                                        <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Selling Price (Rs.)</label>
+                                                                        <input type="number" x-model.number="clr.sharedSelling"
+                                                                               @input="applySharedPricing(item)"
+                                                                               min="0" step="1" placeholder="0"
+                                                                               class="w-full border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -255,7 +272,7 @@
                                                                         <i class="fas fa-exclamation-circle"></i>
                                                                         <span x-text="csn.serialError"></span>
                                                                     </div>
-                                                                    <div class="grid grid-cols-2 gap-2">
+                                                                    <div class="grid grid-cols-2 gap-2" x-show="item.attrMode !== 'same'">
                                                                         <div>
                                                                             <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Cost (Rs.)</label>
                                                                             <input type="number" x-model.number="clr.serials[csi].cost_price"
@@ -372,7 +389,7 @@
                                             {{-- Same / Different attribute mode toggle --}}
                                             <template x-if="item.attrDefs && item.attrDefs.length > 0">
                                                 <div class="flex items-center gap-1 ml-auto bg-gray-100 rounded-lg p-0.5">
-                                                    <button type="button" @click="item.attrMode = 'same'"
+                                                    <button type="button" @click="item.attrMode = 'same'; applySharedPricing(item); recalc()"
                                                             :class="item.attrMode === 'same' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'"
                                                             class="text-[11px] font-semibold px-2.5 py-1 rounded-md transition-all">
                                                         Same attributes
@@ -386,11 +403,11 @@
                                             </template>
                                         </div>
 
-                                        {{-- Shared attributes (entered once, applied to all units) --}}
+                                        {{-- Shared attributes + pricing (entered once, applied to all units) --}}
                                         <template x-if="item.attrMode === 'same' && item.attrDefs && item.attrDefs.length > 0">
                                             <div class="border border-indigo-200 bg-indigo-50/60 rounded-xl p-3 mb-3">
                                                 <div class="text-[10px] font-bold text-indigo-700 uppercase tracking-wide mb-2">
-                                                    <i class="fas fa-clone mr-1"></i> Attributes for all <span x-text="item.quantity"></span> unit(s)
+                                                    <i class="fas fa-clone mr-1"></i> Attributes &amp; pricing for all <span x-text="item.quantity"></span> unit(s)
                                                 </div>
                                                 <div class="grid grid-cols-2 gap-2">
                                                     <template x-for="(ad, adi) in item.attrDefs" :key="adi">
@@ -406,6 +423,23 @@
                                                             </select>
                                                         </div>
                                                     </template>
+                                                </div>
+                                                {{-- Shared cost / selling price --}}
+                                                <div class="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-indigo-100">
+                                                    <div>
+                                                        <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Cost Price (Rs.)</label>
+                                                        <input type="number" x-model.number="item.sharedCost"
+                                                               @input="applySharedPricing(item); recalc()"
+                                                               min="0" step="1" placeholder="0"
+                                                               class="w-full border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                                                    </div>
+                                                    <div>
+                                                        <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Selling Price (Rs.)</label>
+                                                        <input type="number" x-model.number="item.sharedSelling"
+                                                               @input="applySharedPricing(item)"
+                                                               min="0" step="1" placeholder="0"
+                                                               class="w-full border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                                                    </div>
                                                 </div>
                                             </div>
                                         </template>
@@ -433,8 +467,8 @@
                                                         <span x-text="sn.serialError"></span>
                                                     </div>
 
-                                                    {{-- Cost + Selling price --}}
-                                                    <div class="grid grid-cols-2 gap-2">
+                                                    {{-- Cost + Selling price (hidden in "same attributes" mode — shared pricing applies) --}}
+                                                    <div class="grid grid-cols-2 gap-2" x-show="item.attrMode !== 'same'">
                                                         <div>
                                                             <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Cost Price (Rs.)</label>
                                                             <input type="number" x-model.number="item.serials[si].cost_price"
@@ -836,8 +870,10 @@ function purchaseForm() {
                 has_colors:    hasColors,
                 is_serialized: isSerial,
                 attrDefs:      attrDefs,
-                attrMode:      'different',      // 'same' = one attribute set for all units
+                attrMode:      'different',      // 'same' = one attribute set + pricing for all units
                 sharedAttributes: {},
+                sharedCost:    '',
+                sharedSelling: '',
                 colors:        hasColors ? p.colors.map(c => ({
                                    id:       c.id,
                                    name:     c.name,
@@ -845,6 +881,8 @@ function purchaseForm() {
                                    quantity: 0,
                                    serials:  [],
                                    sharedAttributes: {},
+                                   sharedCost:    '',
+                                   sharedSelling: '',
                                })) : [],
                 quantity:      hasColors ? 0 : 1,
                 serials:       (!hasColors && isSerial) ? [{ serial:'', cost_price:'', selling_price:'', attributes:{}, extraFields:[], serialError:null, serialChecking:false }] : [],
@@ -865,6 +903,24 @@ function purchaseForm() {
         chooseAttrMode(mode) {
             if (this.attrPrompt) this.attrPrompt.attrMode = mode;
             this.attrPrompt = null;
+        },
+
+        // "Same attributes" mode: copy the shared cost/selling price onto every unit
+        applySharedPricing(item) {
+            if (!item.is_serialized || item.attrMode !== 'same') return;
+            if (!item.has_colors) {
+                item.serials.forEach(sn => {
+                    sn.cost_price    = item.sharedCost;
+                    sn.selling_price = item.sharedSelling;
+                });
+            } else {
+                item.colors.forEach(clr => {
+                    (clr.serials || []).forEach(sn => {
+                        sn.cost_price    = clr.sharedCost;
+                        sn.selling_price = clr.sharedSelling;
+                    });
+                });
+            }
         },
 
         removeItem(i) {
@@ -980,6 +1036,7 @@ function purchaseForm() {
                     clr.serials.splice(qty);
                 });
             }
+            this.applySharedPricing(item);   // new rows inherit shared prices in "same" mode
         },
 
         focusNextSerial(event) {
@@ -1080,6 +1137,7 @@ function purchaseForm() {
                         (clr.serials || []).forEach(sn => { sn.attributes = { ...shared }; });
                     });
                 }
+                this.applySharedPricing(item);
             });
 
             // Build hidden fields and inject into form
