@@ -147,9 +147,14 @@ class ProductController extends Controller
                 'attributes' => $s->attributes ?: [],
                 'label'      => collect($s->attributes ?: [])->values()->implode(' · '),
                 'price'      => (float) ($s->selling_price ?: $product->getDiscountedPrice()),
+                // Card thumbnail — falls back to the product photo
                 'image'      => $s->image
                     ? \Illuminate\Support\Facades\Storage::disk('public')->url($s->image)
                     : $product->primary_image_url,
+                // Gallery overlay — only the unit's OWN photo; null leaves the normal gallery showing
+                'overlay_image' => $s->image
+                    ? \Illuminate\Support\Facades\Storage::disk('public')->url($s->image)
+                    : null,
             ])->values();
 
         return view('ecom.products.show', compact('product', 'related', 'deal', 'primaryAttr', 'attrOptions', 'usedUnits', 'perUnitMode'));

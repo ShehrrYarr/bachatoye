@@ -62,14 +62,10 @@
                              class="absolute inset-0 w-full h-full object-contain p-4 transition-transform duration-500 ease-out select-none">
                         @endforeach
 
-                        {{-- Serial-specific image overlay (shown when an attribute with a unit photo is selected) --}}
-                        @if($attrOptions->whereNotNull('image')->isNotEmpty())
-                        <div x-show="$store.serialImg.url"
-                             style="display:none;"
-                             x-transition:enter="transition ease-out duration-300"
-                             x-transition:enter-start="opacity-0"
-                             x-transition:enter-end="opacity-100"
-                             class="absolute inset-0 z-20 bg-white rounded-2xl overflow-hidden">
+                        {{-- Serial-specific image overlay (attribute option photo or selected unit photo) --}}
+                        @if($attrOptions->whereNotNull('image')->isNotEmpty() || $usedUnits->isNotEmpty())
+                        <div :class="{ 'hidden': !$store.serialImg.url }"
+                             class="absolute inset-0 z-20 bg-white rounded-2xl overflow-hidden hidden">
                             <img :src="$store.serialImg.url" alt="{{ $product->name }}"
                                  class="absolute inset-0 w-full h-full object-contain p-4">
                         </div>
@@ -112,12 +108,20 @@
 
             </div>
             @else
-            {{-- No images: placeholder --}}
+            {{-- No images: placeholder (still hosts the unit-photo overlay) --}}
             <div class="relative rounded-2xl bg-gray-50 border border-gray-100 overflow-hidden w-full"
                  style="padding-bottom:100%;">
                 <img src="{{ asset('images/product-placeholder.png') }}"
                      alt="{{ $product->name }}"
                      class="absolute inset-0 w-full h-full object-contain p-8 opacity-40">
+
+                @if($attrOptions->whereNotNull('image')->isNotEmpty() || $usedUnits->isNotEmpty())
+                <div :class="{ 'hidden': !$store.serialImg.url }"
+                     class="absolute inset-0 z-20 bg-white rounded-2xl overflow-hidden hidden">
+                    <img :src="$store.serialImg.url" alt="{{ $product->name }}"
+                         class="absolute inset-0 w-full h-full object-contain p-4">
+                </div>
+                @endif
             </div>
             @endif
 
@@ -191,6 +195,7 @@
                     this.displayPrice       = price;
                     this.$store.serialImg.url = image || null;
                     this.selectedAttrOption = null;   // used unit is a complete pick
+                    const q = document.getElementById('qty'); if (q) q.value = 1;  // unique unit — qty always 1
                 },
                 canAdd() {
                     if (this.requireUnit && !this.usedSerialId) return false;  // per-unit mode: must pick a unit
@@ -390,7 +395,7 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         @foreach($usedUnits as $u)
                         <button type="button"
-                                @click="selectUsedUnit({{ $u['id'] }}, {{ $u['price'] }}, '{{ addslashes($u['image']) }}')"
+                                @click="selectUsedUnit({{ $u['id'] }}, {{ $u['price'] }}, '{{ addslashes($u['overlay_image'] ?? '') }}')"
                                 :class="usedSerialId === {{ $u['id'] }}
                                     ? 'ring-2 ring-primary-500 border-primary-400 bg-primary-50'
                                     : 'ring-1 ring-gray-200 hover:ring-gray-300 bg-white'"
@@ -427,7 +432,7 @@
                         <button type="button" onclick="adjustQty(-1)" class="px-3 py-2 text-gray-600 hover:bg-gray-50 transition-colors">–</button>
                         <input type="number" name="quantity" id="qty" value="1" min="1"
                                max="{{ $product->track_inventory ? $product->stock_quantity : 999 }}"
-                               :disabled="usedSerialId !== null"
+                               :readonly="usedSerialId !== null"
                                class="w-14 text-center text-sm font-semibold border-0 focus:outline-none py-2">
                         <button type="button" onclick="adjustQty(1)" class="px-3 py-2 text-gray-600 hover:bg-gray-50 transition-colors">+</button>
                     </div>

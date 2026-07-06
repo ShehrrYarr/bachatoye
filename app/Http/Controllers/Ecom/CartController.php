@@ -57,7 +57,7 @@ class CartController extends Controller
     {
         $request->validate([
             'product_id'          => 'required|exists:products,id',
-            'quantity'            => 'required|integer|min:1|max:100',
+            'quantity'            => 'required_without:used_serial_id|nullable|integer|min:1|max:100',
             'color_id'            => 'nullable|exists:product_colors,id',
             'selected_attr_option'=> 'nullable|string|max:100',
             'used_serial_id'      => 'nullable|exists:serial_numbers,id',

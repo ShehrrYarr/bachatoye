@@ -167,11 +167,11 @@
     </div>
 </div>
 @endif
-@if(session('error'))
+@if(session('error') || $errors->any())
 <div class="fixed top-20 right-4 z-50 max-w-sm" x-data x-init="setTimeout(()=>$el.remove(),5000)">
     <div class="alert-error shadow-lg">
         <i class="fas fa-exclamation-circle shrink-0"></i>
-        <span>{{ session('error') }}</span>
+        <span>{{ session('error') ?: $errors->first() }}</span>
     </div>
 </div>
 @endif
