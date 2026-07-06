@@ -685,7 +685,9 @@ class PurchaseController extends Controller
 
     public function report(Request $request)
     {
-        $query = Purchase::with('vendor')->latest('purchase_date');
+        $query = Purchase::with(['vendor', 'items'])->latest('purchase_date');
+
+        $productId = $request->filled('product') ? (int) $request->product : null;
 
         if ($request->filled('vendor')) {
             $query->where('vendor_id', $request->vendor);
@@ -699,9 +701,13 @@ class PurchaseController extends Controller
         if ($request->filled('to')) {
             $query->whereDate('purchase_date', '<=', $request->to);
         }
+        if ($productId) {
+            $query->whereHas('items', fn($q) => $q->where('product_id', $productId));
+        }
 
         $purchases = $query->get();
         $vendors   = Vendor::orderBy('name')->get(['id', 'name']);
+        $products  = Product::orderBy('name')->get(['id', 'name']);
 
         $summary = [
             'total_spent'  => $purchases->sum('total'),
@@ -710,7 +716,29 @@ class PurchaseController extends Controller
             'count'        => $purchases->count(),
         ];
 
-        return view('admin.reports.purchases', compact('purchases', 'vendors', 'summary'));
+        // ── Product-wise breakdown of the filtered purchases ──────────────────
+        $purchaseDates = $purchases->pluck('purchase_date', 'id');
+
+        $byProduct = $purchases->flatMap->items
+            ->when($productId, fn($items) => $items->where('product_id', $productId))
+            ->groupBy('product_name')
+            ->map(function ($items, $name) use ($purchaseDates) {
+                $qty    = $items->sum('quantity');
+                $spent  = $items->sum('line_total');
+                $latest = $items->sortByDesc(fn($i) => $purchaseDates[$i->purchase_id] ?? null)->first();
+
+                return [
+                    'name'      => $name,
+                    'qty'       => $qty,
+                    'spent'     => $spent,
+                    'avg_cost'  => $qty > 0 ? $spent / $qty : 0,
+                    'last_cost' => (float) $latest->unit_cost,
+                ];
+            })
+            ->sortByDesc('spent')
+            ->values();
+
+        return view('admin.reports.purchases', compact('purchases', 'vendors', 'products', 'summary', 'byProduct', 'productId'));
     }
 
     public function tempSerialImage(Request $request): \Illuminate\Http\JsonResponse

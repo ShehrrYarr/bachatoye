@@ -10,7 +10,11 @@
 </div>
 
 {{-- Filters --}}
-<form method="GET" class="flex flex-wrap gap-3 mb-6">
+@php
+    $productOptions     = $products->map(fn($p) => ['value' => $p->id, 'label' => $p->name])->values()->toArray();
+    $activeProductLabel = $productId ? $products->firstWhere('id', $productId)?->name : null;
+@endphp
+<form method="GET" class="flex flex-wrap gap-3 mb-6 items-start">
     <select name="vendor" class="form-select w-44">
         <option value="">All Vendors</option>
         @foreach($vendors as $v)
@@ -23,11 +27,62 @@
         <option value="partial" {{ request('status') === 'partial' ? 'selected' : '' }}>Partial</option>
         <option value="unpaid" {{ request('status') === 'unpaid' ? 'selected' : '' }}>Unpaid</option>
     </select>
+
+    {{-- Searchable product filter --}}
+    <div x-data="searchableSelect({
+            options: {{ json_encode($productOptions) }},
+            initial: {{ $productId ?? 'null' }},
+            placeholder: 'All Products'
+        })"
+         @click.outside="closeDropdown()"
+         class="relative w-52">
+        <div class="relative">
+            <input type="text" x-model="search"
+                   @click="openDropdown()"
+                   @input="open = true"
+                   @keydown.escape="closeDropdown()"
+                   class="form-input text-sm w-full pr-7"
+                   :placeholder="selectedLabel || placeholder"
+                   autocomplete="off">
+            <span class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                <i class="fas fa-chevron-down text-xs"></i>
+            </span>
+        </div>
+        <input type="hidden" name="product" :value="value">
+        <div x-show="open"
+             class="absolute z-50 top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-y-auto mt-1"
+             style="display:none;">
+            <div @mousedown.prevent="clear()"
+                 class="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 text-gray-400 border-b border-gray-100">
+                All Products
+            </div>
+            <template x-for="opt in filtered" :key="opt.value">
+                <div @mousedown.prevent="pick(opt)"
+                     class="px-3 py-2 text-sm cursor-pointer hover:bg-primary-50 hover:text-primary-700"
+                     :class="{ 'bg-primary-50 text-primary-700 font-medium': String(opt.value) === String(value) }"
+                     x-text="opt.label"></div>
+            </template>
+            <div x-show="filtered.length === 0" class="px-3 py-2 text-sm text-gray-400">No results</div>
+        </div>
+    </div>
+
     <input type="date" name="from" value="{{ request('from', now()->startOfMonth()->toDateString()) }}" class="form-input w-40">
     <input type="date" name="to" value="{{ request('to', now()->toDateString()) }}" class="form-input w-40">
     <button type="submit" class="btn-primary btn-sm">Generate Report</button>
     <a href="{{ route('admin.reports.purchases') }}" class="btn-outline btn-sm">Reset</a>
 </form>
+
+@if($activeProductLabel)
+<div class="mb-5 flex flex-wrap items-center gap-2">
+    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
+        <i class="fas fa-box text-[10px]"></i> Product: {{ $activeProductLabel }}
+    </span>
+    <span class="text-xs text-gray-400">
+        <i class="fas fa-info-circle mr-0.5"></i>
+        Showing purchases containing this product. Purchase totals may include other items from the same purchase.
+    </span>
+</div>
+@endif
 
 {{-- Summary cards --}}
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -81,6 +136,48 @@
                 </tr>
                 @endforeach
             </tbody>
+        </table>
+    </div>
+</div>
+@endif
+
+{{-- Breakdown by product --}}
+@if($byProduct->isNotEmpty())
+<div class="card mb-6">
+    <div class="card-header">
+        <h2 class="font-semibold text-gray-800">By Product ({{ $byProduct->count() }})</h2>
+        @if($activeProductLabel)<span class="text-xs text-purple-600 font-semibold">{{ $activeProductLabel }}</span>@endif
+    </div>
+    <div class="overflow-x-auto">
+        <table class="data-table text-sm">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th class="text-center">Qty Purchased</th>
+                    <th class="text-right">Total Spent</th>
+                    <th class="text-right">Avg Unit Cost</th>
+                    <th class="text-right">Last Unit Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($byProduct as $row)
+                <tr>
+                    <td class="font-medium text-gray-800">{{ $row['name'] }}</td>
+                    <td class="text-center">{{ number_format($row['qty']) }}</td>
+                    <td class="text-right font-semibold">Rs. {{ number_format($row['spent']) }}</td>
+                    <td class="text-right">Rs. {{ number_format($row['avg_cost']) }}</td>
+                    <td class="text-right">Rs. {{ number_format($row['last_cost']) }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+            <tfoot class="bg-gray-50 font-bold">
+                <tr>
+                    <td class="text-right">Total</td>
+                    <td class="text-center">{{ number_format($byProduct->sum('qty')) }}</td>
+                    <td class="text-right">Rs. {{ number_format($byProduct->sum('spent')) }}</td>
+                    <td colspan="2"></td>
+                </tr>
+            </tfoot>
         </table>
     </div>
 </div>
@@ -145,4 +242,48 @@
         </table>
     </div>
 </div>
+
+@push('scripts')
+<script>
+function searchableSelect({ options, initial, placeholder }) {
+    return {
+        options,
+        value:  initial != null ? String(initial) : '',
+        search: '',
+        open:   false,
+        placeholder,
+
+        get selectedLabel() {
+            const opt = this.options.find(o => String(o.value) === this.value);
+            return opt ? opt.label : '';
+        },
+        get filtered() {
+            const q = this.search.toLowerCase().trim();
+            return q ? this.options.filter(o => o.label.toLowerCase().includes(q)) : this.options;
+        },
+        openDropdown() {
+            this.search = '';
+            this.open   = true;
+        },
+        closeDropdown() {
+            this.open   = false;
+            this.search = this.selectedLabel;
+        },
+        pick(opt) {
+            this.value  = String(opt.value);
+            this.search = opt.label;
+            this.open   = false;
+        },
+        clear() {
+            this.value  = '';
+            this.search = '';
+            this.open   = false;
+        },
+        init() {
+            this.search = this.selectedLabel;
+        },
+    };
+}
+</script>
+@endpush
 @endsection
