@@ -294,8 +294,8 @@
                 <input type="hidden" name="selected_attr_price"   :value="selectedAttrPrice">
                 <input type="hidden" name="used_serial_id"        :value="usedSerialId">
 
-                {{-- Admin hint when no store attribute is configured --}}
-                @if($product->is_serialized && !$primaryAttr && auth()->check() && auth()->user()->hasRole('admin'))
+                {{-- Admin hint when no store attribute is configured (irrelevant in per-unit mode) --}}
+                @if($product->is_serialized && !$perUnitMode && !$primaryAttr && auth()->check() && auth()->user()->hasRole('admin'))
                 <div class="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800 flex items-start gap-2">
                     <i class="fas fa-info-circle mt-0.5 shrink-0 text-amber-500"></i>
                     <span>
