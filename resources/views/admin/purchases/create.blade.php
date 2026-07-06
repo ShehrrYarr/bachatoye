@@ -1037,6 +1037,7 @@ function purchaseForm() {
                 });
             }
             this.applySharedPricing(item);   // new rows inherit shared prices in "same" mode
+            this.recalc();
         },
 
         focusNextSerial(event) {
