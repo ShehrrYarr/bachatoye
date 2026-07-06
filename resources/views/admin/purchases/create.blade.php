@@ -13,6 +13,42 @@
       @product-created.window="onProductCreated($event.detail)">
     @csrf
 
+    {{-- Same/Different attributes prompt (shown when a serialized product with attributes is added) --}}
+    <template x-if="attrPrompt">
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black/40" @click="chooseAttrMode('different')"></div>
+            <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
+                        <i class="fas fa-tags text-indigo-600"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 class="font-bold text-gray-900">Unit Attributes</h3>
+                        <p class="text-xs text-gray-500 truncate" x-text="attrPrompt.name"></p>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">
+                    Will all units of this product have the <strong>same attributes</strong>
+                    (Memory, PTA Status, etc.), or different ones per unit?
+                </p>
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" @click="chooseAttrMode('same')"
+                            class="flex flex-col items-center gap-1.5 border-2 border-indigo-200 hover:border-indigo-500 hover:bg-indigo-50 rounded-xl py-4 px-3 transition-all">
+                        <i class="fas fa-clone text-indigo-500 text-lg"></i>
+                        <span class="text-sm font-semibold text-gray-800">Same for all</span>
+                        <span class="text-[11px] text-gray-400 text-center leading-tight">Enter attributes once, applied to every unit</span>
+                    </button>
+                    <button type="button" @click="chooseAttrMode('different')"
+                            class="flex flex-col items-center gap-1.5 border-2 border-gray-200 hover:border-gray-400 hover:bg-gray-50 rounded-xl py-4 px-3 transition-all">
+                        <i class="fas fa-list-ul text-gray-500 text-lg"></i>
+                        <span class="text-sm font-semibold text-gray-800">Different per unit</span>
+                        <span class="text-[11px] text-gray-400 text-center leading-tight">Pick attributes on each unit separately</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </template>
+
     @if($errors->any())
     <div class="mb-5 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
         <strong><i class="fas fa-exclamation-circle mr-1"></i>Please fix the following:</strong>
@@ -138,8 +174,24 @@
                                 {{-- Colored: per-color qty rows --}}
                                 <template x-if="item.has_colors">
                                     <div class="mt-3">
-                                        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                                            Quantity by Color
+                                        <div class="flex items-center gap-2 mb-2 flex-wrap">
+                                            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Quantity by Color</span>
+
+                                            {{-- Same / Different attribute mode toggle --}}
+                                            <template x-if="item.is_serialized && item.attrDefs && item.attrDefs.length > 0">
+                                                <div class="flex items-center gap-1 ml-auto bg-gray-100 rounded-lg p-0.5">
+                                                    <button type="button" @click="item.attrMode = 'same'"
+                                                            :class="item.attrMode === 'same' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                                                            class="text-[11px] font-semibold px-2.5 py-1 rounded-md transition-all">
+                                                        Same attributes
+                                                    </button>
+                                                    <button type="button" @click="item.attrMode = 'different'"
+                                                            :class="item.attrMode === 'different' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                                                            class="text-[11px] font-semibold px-2.5 py-1 rounded-md transition-all">
+                                                        Per unit
+                                                    </button>
+                                                </div>
+                                            </template>
                                         </div>
                                         <div class="space-y-1">
                                             <template x-for="(clr, ci) in item.colors" :key="clr.id">
@@ -155,6 +207,32 @@
                                                             Rs. <span x-text="(item.is_serialized ? (clr.serials||[]).reduce((s,sn)=>s+(parseFloat(sn.cost_price)||0),0) : (clr.quantity||0)*item.unit_cost).toLocaleString()"></span>
                                                         </div>
                                                     </div>
+                                                    {{-- Shared attributes for this color (entered once, applied to all its units) --}}
+                                                    <template x-if="item.is_serialized && item.attrMode === 'same' && (clr.quantity || 0) > 0 && item.attrDefs && item.attrDefs.length > 0">
+                                                        <div class="pl-7 mt-2">
+                                                            <div class="border border-indigo-200 bg-indigo-50/60 rounded-xl p-3">
+                                                                <div class="text-[10px] font-bold text-indigo-700 uppercase tracking-wide mb-2">
+                                                                    <i class="fas fa-clone mr-1"></i> Attributes for all <span x-text="clr.quantity"></span> <span x-text="clr.name"></span> unit(s)
+                                                                </div>
+                                                                <div class="grid grid-cols-2 gap-2">
+                                                                    <template x-for="(ad, adi) in item.attrDefs" :key="adi">
+                                                                        <div>
+                                                                            <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide" x-text="ad.name"></label>
+                                                                            <select class="w-full border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                                                                                    @change="clr.sharedAttributes[ad.name] = $event.target.value">
+                                                                                <option value="">— Select —</option>
+                                                                                <template x-for="(opt, oi) in ad.options" :key="oi">
+                                                                                    <option :value="opt" x-text="opt"
+                                                                                            :selected="clr.sharedAttributes[ad.name] === opt"></option>
+                                                                                </template>
+                                                                            </select>
+                                                                        </div>
+                                                                    </template>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+
                                                     {{-- Serial inputs per color unit (serialized products) --}}
                                                     <template x-if="item.is_serialized && (clr.quantity || 0) > 0">
                                                         <div class="pl-7 mt-2 space-y-2">
@@ -192,8 +270,8 @@
                                                                                    class="w-full border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-indigo-400">
                                                                         </div>
                                                                     </div>
-                                                                    {{-- Per-product attribute dropdowns (colored variant) --}}
-                                                                    <template x-if="item.attrDefs && item.attrDefs.length > 0">
+                                                                    {{-- Per-product attribute dropdowns (colored variant, hidden in "same attributes" mode) --}}
+                                                                    <template x-if="item.attrDefs && item.attrDefs.length > 0 && item.attrMode !== 'same'">
                                                                         <div class="grid grid-cols-2 gap-2">
                                                                             <template x-for="(ad, adi) in item.attrDefs" :key="adi">
                                                                                 <div>
@@ -284,13 +362,53 @@
                                 {{-- Serial inputs for non-colored serialized items --}}
                                 <template x-if="item.is_serialized && !item.has_colors">
                                     <div class="mt-3 pt-3 border-t border-indigo-100">
-                                        <div class="flex items-center gap-2 mb-3">
+                                        <div class="flex items-center gap-2 mb-3 flex-wrap">
                                             <i class="fas fa-barcode text-indigo-500 text-xs"></i>
                                             <span class="text-xs font-semibold text-indigo-700">Serial / IMEI Numbers</span>
                                             <span class="text-xs text-red-500 font-bold">*</span>
                                             <span class="text-xs text-gray-400"
                                                   x-text="`(${item.serials.filter(s => s.serial && s.serial.trim()).length}/${item.quantity} entered)`"></span>
+
+                                            {{-- Same / Different attribute mode toggle --}}
+                                            <template x-if="item.attrDefs && item.attrDefs.length > 0">
+                                                <div class="flex items-center gap-1 ml-auto bg-gray-100 rounded-lg p-0.5">
+                                                    <button type="button" @click="item.attrMode = 'same'"
+                                                            :class="item.attrMode === 'same' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                                                            class="text-[11px] font-semibold px-2.5 py-1 rounded-md transition-all">
+                                                        Same attributes
+                                                    </button>
+                                                    <button type="button" @click="item.attrMode = 'different'"
+                                                            :class="item.attrMode === 'different' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                                                            class="text-[11px] font-semibold px-2.5 py-1 rounded-md transition-all">
+                                                        Per unit
+                                                    </button>
+                                                </div>
+                                            </template>
                                         </div>
+
+                                        {{-- Shared attributes (entered once, applied to all units) --}}
+                                        <template x-if="item.attrMode === 'same' && item.attrDefs && item.attrDefs.length > 0">
+                                            <div class="border border-indigo-200 bg-indigo-50/60 rounded-xl p-3 mb-3">
+                                                <div class="text-[10px] font-bold text-indigo-700 uppercase tracking-wide mb-2">
+                                                    <i class="fas fa-clone mr-1"></i> Attributes for all <span x-text="item.quantity"></span> unit(s)
+                                                </div>
+                                                <div class="grid grid-cols-2 gap-2">
+                                                    <template x-for="(ad, adi) in item.attrDefs" :key="adi">
+                                                        <div>
+                                                            <label class="text-[10px] text-gray-400 font-semibold uppercase tracking-wide" x-text="ad.name"></label>
+                                                            <select class="w-full border border-gray-300 bg-white rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                                                                    @change="item.sharedAttributes[ad.name] = $event.target.value">
+                                                                <option value="">— Select —</option>
+                                                                <template x-for="(opt, oi) in ad.options" :key="oi">
+                                                                    <option :value="opt" x-text="opt"
+                                                                            :selected="item.sharedAttributes[ad.name] === opt"></option>
+                                                                </template>
+                                                            </select>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </template>
                                         <div class="space-y-3">
                                             <template x-for="(sn, si) in item.serials" :key="si">
                                                 <div class="border border-gray-200 rounded-xl p-3 bg-gray-50 space-y-2">
@@ -332,8 +450,8 @@
                                                         </div>
                                                     </div>
 
-                                                    {{-- Custom attribute dropdowns (per-product, driven by Alpine) --}}
-                                                    <template x-if="item.attrDefs && item.attrDefs.length > 0">
+                                                    {{-- Custom attribute dropdowns (hidden in "same attributes" mode) --}}
+                                                    <template x-if="item.attrDefs && item.attrDefs.length > 0 && item.attrMode !== 'same'">
                                                         <div class="grid grid-cols-2 gap-2">
                                                             <template x-for="(ad, adi) in item.attrDefs" :key="adi">
                                                                 <div>
@@ -672,6 +790,7 @@ function purchaseForm() {
         searchQuery: '',
         searchResults: [],
         showDropdown: false,
+        attrPrompt: null,   // item awaiting the Same/Different attributes choice
         payMethod: 'cash',
         amountPaid: 0,
         partialPayVia: 'cash',
@@ -709,7 +828,7 @@ function purchaseForm() {
             const isSerial   = p.is_serialized || false;
             // Attribute defs for this product: either the subset the admin chose, or all active defs
             const attrDefs   = isSerial ? (p.serial_attr_defs || []) : [];
-            this.items.push({
+            const newItem = {
                 id:            p.id,
                 name:          p.name,
                 sku:           p.sku || '',
@@ -717,21 +836,35 @@ function purchaseForm() {
                 has_colors:    hasColors,
                 is_serialized: isSerial,
                 attrDefs:      attrDefs,
+                attrMode:      'different',      // 'same' = one attribute set for all units
+                sharedAttributes: {},
                 colors:        hasColors ? p.colors.map(c => ({
                                    id:       c.id,
                                    name:     c.name,
                                    hex_code: c.hex_code || '',
                                    quantity: 0,
                                    serials:  [],
+                                   sharedAttributes: {},
                                })) : [],
                 quantity:      hasColors ? 0 : 1,
                 serials:       (!hasColors && isSerial) ? [{ serial:'', cost_price:'', selling_price:'', attributes:{}, extraFields:[], serialError:null, serialChecking:false }] : [],
-            });
+            };
+            this.items.push(newItem);
+
+            // Ask how attributes should be entered for this batch
+            if (isSerial && attrDefs.length > 0) {
+                this.attrPrompt = this.items[this.items.length - 1];
+            }
 
             this.searchQuery  = '';
             this.searchResults = [];
             this.showDropdown = false;
             this.recalc();
+        },
+
+        chooseAttrMode(mode) {
+            if (this.attrPrompt) this.attrPrompt.attrMode = mode;
+            this.attrPrompt = null;
         },
 
         removeItem(i) {
@@ -931,6 +1064,23 @@ function purchaseForm() {
                 alert('Please fix the serial number errors highlighted in red before saving.');
                 return;
             }
+
+            // "Same attributes" mode: copy the shared attribute set onto every unit
+            const cleanAttrs = obj => Object.fromEntries(
+                Object.entries(obj || {}).filter(([k, v]) => v !== '' && v != null)
+            );
+            this.items.forEach(item => {
+                if (!item.is_serialized || item.attrMode !== 'same') return;
+                if (!item.has_colors) {
+                    const shared = cleanAttrs(item.sharedAttributes);
+                    item.serials.forEach(sn => { sn.attributes = { ...shared }; });
+                } else {
+                    item.colors.forEach(clr => {
+                        const shared = cleanAttrs(clr.sharedAttributes);
+                        (clr.serials || []).forEach(sn => { sn.attributes = { ...shared }; });
+                    });
+                }
+            });
 
             // Build hidden fields and inject into form
             const container = document.getElementById('flatItemsContainer');
