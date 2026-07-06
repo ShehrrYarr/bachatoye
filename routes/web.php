@@ -464,6 +464,50 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
     // Parameterized show must come after literal create/khata routes
     Route::get('vendors/{vendor}', [Admin\VendorController::class, 'show'])
         ->middleware('permission:vendors.view')->name('vendors.show');
+    Route::post('vendors/{vendor}/ledger', [Admin\VendorController::class, 'addLedgerEntry'])
+        ->middleware('permission:vendors.manage')->name('vendors.ledger.add');
+
+    // Section routes for salesmen
+    Route::get('sections', [Admin\SectionController::class, 'index'])
+        ->middleware('permission:sections.manage')->name('sections.index');
+    Route::get('sections/create', [Admin\SectionController::class, 'create'])
+        ->middleware('permission:sections.manage')->name('sections.create');
+    Route::post('sections', [Admin\SectionController::class, 'store'])
+        ->middleware('permission:sections.manage')->name('sections.store');
+    Route::get('sections/{section}/edit', [Admin\SectionController::class, 'edit'])
+        ->middleware('permission:sections.manage')->name('sections.edit');
+    Route::put('sections/{section}', [Admin\SectionController::class, 'update'])
+        ->middleware('permission:sections.manage')->name('sections.update');
+    Route::delete('sections/{section}', [Admin\SectionController::class, 'destroy'])
+        ->middleware('permission:sections.manage')->name('sections.destroy');
+
+    // Category routes for salesmen
+    Route::get('categories', [Admin\CategoryController::class, 'index'])
+        ->middleware('permission:categories.manage')->name('categories.index');
+    Route::get('categories/create', [Admin\CategoryController::class, 'create'])
+        ->middleware('permission:categories.manage')->name('categories.create');
+    Route::post('categories', [Admin\CategoryController::class, 'store'])
+        ->middleware('permission:categories.manage')->name('categories.store');
+    Route::get('categories/{category}/edit', [Admin\CategoryController::class, 'edit'])
+        ->middleware('permission:categories.manage')->name('categories.edit');
+    Route::put('categories/{category}', [Admin\CategoryController::class, 'update'])
+        ->middleware('permission:categories.manage')->name('categories.update');
+    Route::delete('categories/{category}', [Admin\CategoryController::class, 'destroy'])
+        ->middleware('permission:categories.manage')->name('categories.destroy');
+
+    // Brand routes for salesmen
+    Route::get('brands', [Admin\BrandController::class, 'index'])
+        ->middleware('permission:brands.manage')->name('brands.index');
+    Route::get('brands/create', [Admin\BrandController::class, 'create'])
+        ->middleware('permission:brands.manage')->name('brands.create');
+    Route::post('brands', [Admin\BrandController::class, 'store'])
+        ->middleware('permission:brands.manage')->name('brands.store');
+    Route::get('brands/{brand}/edit', [Admin\BrandController::class, 'edit'])
+        ->middleware('permission:brands.manage')->name('brands.edit');
+    Route::put('brands/{brand}', [Admin\BrandController::class, 'update'])
+        ->middleware('permission:brands.manage')->name('brands.update');
+    Route::delete('brands/{brand}', [Admin\BrandController::class, 'destroy'])
+        ->middleware('permission:brands.manage')->name('brands.destroy');
 });
 
 /*

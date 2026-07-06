@@ -2,9 +2,10 @@
 @section('title', 'Brands')
 
 @section('content')
+@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
 <div class="flex items-center justify-between mb-6">
     <h1 class="text-xl font-bold text-gray-900">Brands</h1>
-    <a href="{{ route('admin.brands.create') }}" class="btn-primary"><i class="fas fa-plus mr-2"></i> Add Brand</a>
+    <a href="{{ route("{$rPrefix}.brands.create") }}" class="btn-primary"><i class="fas fa-plus mr-2"></i> Add Brand</a>
 </div>
 
 <div class="card overflow-hidden">
@@ -44,8 +45,8 @@
                 </td>
                 <td class="text-right">
                     <div class="flex items-center justify-end gap-2">
-                        <a href="{{ route('admin.brands.edit', $brand) }}" class="btn-outline btn-sm"><i class="fas fa-edit"></i></a>
-                        <form method="POST" action="{{ route('admin.brands.destroy', $brand) }}" onsubmit="return confirm('Delete this brand?')">
+                        <a href="{{ route("{$rPrefix}.brands.edit", $brand) }}" class="btn-outline btn-sm"><i class="fas fa-edit"></i></a>
+                        <form method="POST" action="{{ route("{$rPrefix}.brands.destroy", $brand) }}" onsubmit="return confirm('Delete this brand?')">
                             @csrf @method('DELETE')
                             <button type="submit" class="btn-danger btn-sm"><i class="fas fa-trash"></i></button>
                         </form>

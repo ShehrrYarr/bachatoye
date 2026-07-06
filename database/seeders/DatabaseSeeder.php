@@ -42,6 +42,9 @@ class DatabaseSeeder extends Seeder
             'purchases.manage',
             'vendors.view',
             'vendors.manage',
+            'sections.manage',
+            'categories.manage',
+            'brands.manage',
             'reports.view',
             'deals.manage',
             'banners.manage',
@@ -63,6 +66,13 @@ class DatabaseSeeder extends Seeder
             'products.view',
             'inventory.view',
             'customers.view',
+            'accounts.view',
+            'accounts.manage',
+            'vendors.view',
+            'vendors.manage',
+            'sections.manage',
+            'categories.manage',
+            'brands.manage',
         ]);
 
         // Create admin user

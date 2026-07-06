@@ -3,12 +3,13 @@
 @section('page-title', 'Sections')
 
 @section('content')
+@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
 <div class="flex items-center justify-between mb-6">
     <div>
         <h1 class="text-xl font-bold text-gray-900">Sections</h1>
         <p class="text-sm text-gray-500 mt-0.5">Group categories into sections and restrict salesmen access per section.</p>
     </div>
-    <a href="{{ route('admin.sections.create') }}" class="btn-primary">
+    <a href="{{ route("{$rPrefix}.sections.create") }}" class="btn-primary">
         <i class="fas fa-plus mr-2"></i> Add Section
     </a>
 </div>
@@ -43,10 +44,10 @@
                 <td class="text-gray-500">{{ $section->sort_order }}</td>
                 <td class="text-right">
                     <div class="flex items-center justify-end gap-2">
-                        <a href="{{ route('admin.sections.edit', $section) }}" class="btn-outline btn-sm">
+                        <a href="{{ route("{$rPrefix}.sections.edit", $section) }}" class="btn-outline btn-sm">
                             <i class="fas fa-edit"></i>
                         </a>
-                        <form method="POST" action="{{ route('admin.sections.destroy', $section) }}"
+                        <form method="POST" action="{{ route("{$rPrefix}.sections.destroy", $section) }}"
                               onsubmit="return confirm('Delete this section? Categories will be unassigned.')">
                             @csrf @method('DELETE')
                             <button type="submit" class="btn-danger btn-sm"><i class="fas fa-trash"></i></button>

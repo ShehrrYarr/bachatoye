@@ -96,12 +96,12 @@
         </div>
     </div>
 
-    {{-- Add entry form (admin only — ledger.add route not available to salesmen) --}}
-    @hasrole('admin')
+    {{-- Add entry form --}}
+    @can('vendors.manage')
     <div>
         <div class="card p-5 sticky top-6">
             <h2 class="font-semibold text-gray-800 mb-4">Add Manual Entry</h2>
-            <form method="POST" action="{{ route('admin.vendors.ledger.add', $vendor) }}"
+            <form method="POST" action="{{ route("{$rPrefix}.vendors.ledger.add", $vendor) }}"
                   x-data="{ entryType: 'debit', payMethod: '' }">
                 @csrf
                 <div class="space-y-4">
@@ -189,6 +189,6 @@
             </div>
         </div>
     </div>
-    @endrole
+    @endcan
 </div>
 @endsection

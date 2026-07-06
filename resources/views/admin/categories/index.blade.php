@@ -2,9 +2,10 @@
 @section('title', 'Categories')
 
 @section('content')
+@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
 <div class="flex items-center justify-between mb-6">
     <h1 class="text-xl font-bold text-gray-900">Categories</h1>
-    <a href="{{ route('admin.categories.create') }}" class="btn-primary">
+    <a href="{{ route("{$rPrefix}.categories.create") }}" class="btn-primary">
         <i class="fas fa-plus mr-2"></i> Add Category
     </a>
 </div>
@@ -52,15 +53,15 @@
                     </td>
                     <td class="text-right">
                         <div class="flex items-center justify-end gap-2">
-                            <a href="{{ route('admin.categories.create', ['parent_id' => $cat->id]) }}"
+                            <a href="{{ route("{$rPrefix}.categories.create", ['parent_id' => $cat->id]) }}"
                                class="btn-outline btn-sm text-indigo-600 border-indigo-200 hover:bg-indigo-50"
                                title="Add sub category">
                                 <i class="fas fa-plus text-xs"></i> Sub
                             </a>
-                            <a href="{{ route('admin.categories.edit', $cat) }}" class="btn-outline btn-sm">
+                            <a href="{{ route("{$rPrefix}.categories.edit", $cat) }}" class="btn-outline btn-sm">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <form method="POST" action="{{ route('admin.categories.destroy', $cat) }}"
+                            <form method="POST" action="{{ route("{$rPrefix}.categories.destroy", $cat) }}"
                                   onsubmit="return confirm('Delete this category and all its sub categories?')">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="btn-danger btn-sm"><i class="fas fa-trash"></i></button>
@@ -94,10 +95,10 @@
                     </td>
                     <td class="text-right">
                         <div class="flex items-center justify-end gap-2">
-                            <a href="{{ route('admin.categories.edit', $sub) }}" class="btn-outline btn-sm">
+                            <a href="{{ route("{$rPrefix}.categories.edit", $sub) }}" class="btn-outline btn-sm">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <form method="POST" action="{{ route('admin.categories.destroy', $sub) }}"
+                            <form method="POST" action="{{ route("{$rPrefix}.categories.destroy", $sub) }}"
                                   onsubmit="return confirm('Delete this sub category?')">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="btn-danger btn-sm"><i class="fas fa-trash"></i></button>

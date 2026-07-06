@@ -28,6 +28,24 @@
 </a>
 @endcan
 
+@can('sections.manage')
+<a href="{{ route('salesman.sections.index') }}" class="sidebar-link {{ $is('salesman.sections') ? 'active' : '' }}">
+    <i class="fas fa-layer-group"></i> Sections
+</a>
+@endcan
+
+@can('categories.manage')
+<a href="{{ route('salesman.categories.index') }}" class="sidebar-link {{ $is('salesman.categories') ? 'active' : '' }}">
+    <i class="fas fa-sitemap"></i> Categories
+</a>
+@endcan
+
+@can('brands.manage')
+<a href="{{ route('salesman.brands.index') }}" class="sidebar-link {{ $is('salesman.brands') ? 'active' : '' }}">
+    <i class="fas fa-tag"></i> Brands
+</a>
+@endcan
+
 @can('customers.view')
 <a href="{{ route('salesman.customers.index') }}" class="sidebar-link {{ $is('salesman.customers') ? 'active' : '' }}">
     <i class="fas fa-users"></i> Customers

@@ -2,13 +2,14 @@
 @section('title', 'Add Category')
 
 @section('content')
+@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
 <div class="flex items-center gap-3 mb-6">
-    <a href="{{ route('admin.categories.index') }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
+    <a href="{{ route("{$rPrefix}.categories.index") }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
     <h1 class="text-xl font-bold text-gray-900">Add Category</h1>
 </div>
 
 <div class="max-w-xl">
-    <form method="POST" action="{{ route('admin.categories.store') }}" enctype="multipart/form-data">
+    <form method="POST" action="{{ route("{$rPrefix}.categories.store") }}" enctype="multipart/form-data">
         @csrf
         <div class="card p-6 space-y-4">
             <div>
@@ -64,7 +65,7 @@
             </div>
             <div class="flex gap-3 pt-2">
                 <button type="submit" class="btn-primary">Save Category</button>
-                <a href="{{ route('admin.categories.index') }}" class="btn-outline">Cancel</a>
+                <a href="{{ route("{$rPrefix}.categories.index") }}" class="btn-outline">Cancel</a>
             </div>
         </div>
     </form>

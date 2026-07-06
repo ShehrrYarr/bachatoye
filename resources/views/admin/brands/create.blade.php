@@ -2,13 +2,14 @@
 @section('title', 'Add Brand')
 
 @section('content')
+@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
 <div class="flex items-center gap-3 mb-6">
-    <a href="{{ route('admin.brands.index') }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
+    <a href="{{ route("{$rPrefix}.brands.index") }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
     <h1 class="text-xl font-bold text-gray-900">Add Brand</h1>
 </div>
 
 <div class="max-w-xl">
-    <form method="POST" action="{{ route('admin.brands.store') }}" enctype="multipart/form-data">
+    <form method="POST" action="{{ route("{$rPrefix}.brands.store") }}" enctype="multipart/form-data">
         @csrf
         <div class="card p-6 space-y-4">
             <div>
@@ -30,7 +31,7 @@
             </div>
             <div class="flex gap-3 pt-2">
                 <button type="submit" class="btn-primary">Save Brand</button>
-                <a href="{{ route('admin.brands.index') }}" class="btn-outline">Cancel</a>
+                <a href="{{ route("{$rPrefix}.brands.index") }}" class="btn-outline">Cancel</a>
             </div>
         </div>
     </form>

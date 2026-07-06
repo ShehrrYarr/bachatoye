@@ -3,13 +3,14 @@
 @section('page-title', 'Add Section')
 
 @section('content')
+@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
 <div class="flex items-center gap-3 mb-6">
-    <a href="{{ route('admin.sections.index') }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
+    <a href="{{ route("{$rPrefix}.sections.index") }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
     <h1 class="text-xl font-bold text-gray-900">Add Section</h1>
 </div>
 
 <div class="max-w-lg">
-    <form method="POST" action="{{ route('admin.sections.store') }}">
+    <form method="POST" action="{{ route("{$rPrefix}.sections.store") }}">
         @csrf
         <div class="card p-6 space-y-4">
             <div>
@@ -37,7 +38,7 @@
             </div>
             <div class="flex gap-3 pt-2">
                 <button type="submit" class="btn-primary">Create Section</button>
-                <a href="{{ route('admin.sections.index') }}" class="btn-outline">Cancel</a>
+                <a href="{{ route("{$rPrefix}.sections.index") }}" class="btn-outline">Cancel</a>
             </div>
         </div>
     </form>
