@@ -57,7 +57,8 @@
     </form>
 </div>
 
-<div class="card overflow-hidden">
+<div class="card">
+    <div class="overflow-x-auto">
     <table class="data-table">
         <thead>
             <tr>
@@ -116,6 +117,7 @@
             @endforelse
         </tbody>
     </table>
+    </div>
     <div class="p-4 border-t border-gray-200">{{ $expenses->withQueryString()->links() }}</div>
 </div>
 @endsection

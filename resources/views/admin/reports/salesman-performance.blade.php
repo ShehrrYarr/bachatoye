@@ -80,8 +80,9 @@
 
 {{-- Comparison table --}}
 @if($salesmen->count() > 1)
-<div class="card overflow-hidden">
+<div class="card">
     <div class="card-header"><h2 class="font-semibold text-gray-800">Comparison: {{ $periodLabel ?? 'This Month' }}</h2></div>
+    <div class="overflow-x-auto">
     <table class="data-table">
         <thead>
             <tr>
@@ -120,12 +121,14 @@
             @endforeach
         </tbody>
     </table>
+    </div>
 </div>
 @endif
 
 {{-- Login log section --}}
 <div class="card mt-6">
     <div class="card-header"><h2 class="font-semibold text-gray-800">Login Activity (Recent)</h2></div>
+    <div class="overflow-x-auto">
     <table class="data-table text-sm">
         <thead>
             <tr><th>Salesman</th><th>Date</th><th>Login</th><th>Logout</th><th>Duration</th><th>IP</th></tr>
@@ -145,5 +148,6 @@
             @endforelse
         </tbody>
     </table>
+    </div>
 </div>
 @endsection

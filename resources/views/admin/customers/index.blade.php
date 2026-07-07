@@ -34,7 +34,8 @@
         <span class="badge bg-blue-100 text-blue-700 ml-1">Khata Enabled</span>
     </div>
 
-    <div class="card overflow-hidden">
+    <div class="card">
+        <div class="overflow-x-auto">
         <table class="data-table">
             <thead>
                 <tr>
@@ -90,6 +91,7 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
         @if($posCustomers->hasPages())
         <div class="p-4 border-t border-gray-200">{{ $posCustomers->withQueryString()->links() }}</div>
         @endif
@@ -105,7 +107,8 @@
         <span class="badge bg-gray-100 text-gray-500 ml-1">Ecommerce Orders Only</span>
     </div>
 
-    <div class="card overflow-hidden">
+    <div class="card">
+        <div class="overflow-x-auto">
         <table class="data-table">
             <thead>
                 <tr>
@@ -160,6 +163,7 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
         @if($onlineCustomers->hasPages())
         <div class="p-4 border-t border-gray-200">{{ $onlineCustomers->withQueryString()->links() }}</div>
         @endif

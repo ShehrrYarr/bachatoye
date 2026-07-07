@@ -7,7 +7,8 @@
     <a href="{{ route('admin.salesmen.create') }}" class="btn-primary"><i class="fas fa-plus mr-2"></i> Add Salesman</a>
 </div>
 
-<div class="card overflow-hidden">
+<div class="card">
+    <div class="overflow-x-auto">
     <table class="data-table">
         <thead>
             <tr>
@@ -82,5 +83,6 @@
             @endforelse
         </tbody>
     </table>
+    </div>
 </div>
 @endsection
