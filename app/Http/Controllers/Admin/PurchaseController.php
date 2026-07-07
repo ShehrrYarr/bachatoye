@@ -55,7 +55,8 @@ class PurchaseController extends Controller
         $brands       = Brand::orderBy('name')->get(['id', 'name']);
         $bankAccounts      = BankAccount::active()->orderBy('sort_order')->get();
         $serialAttributeDefs = SerialAttributeDefinition::activeOrdered();
-        return view('admin.purchases.create', compact('vendors', 'products', 'categories', 'brands', 'bankAccounts', 'serialAttributeDefs'));
+        $draft = session('purchase_draft'); // pending review draft — restores the form state
+        return view('admin.purchases.create', compact('vendors', 'products', 'categories', 'brands', 'bankAccounts', 'serialAttributeDefs', 'draft'));
     }
 
     public function quickCreateProduct(Request $request)
@@ -160,9 +161,12 @@ class PurchaseController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    /**
+     * Validation rules shared by store() (direct save) and review() (draft).
+     */
+    private function purchaseValidationRules(): array
     {
-        $request->validate([
+        return [
             'purchase_date'           => 'required|date',
             'vendor_id'               => 'required|exists:vendors,id',
             'reference'               => 'nullable|string|max:100',
@@ -185,12 +189,18 @@ class PurchaseController extends Controller
             'items.*.serials.*.attributes'      => 'nullable|array',
             'items.*.serials.*.attributes.*'    => 'nullable|string|max:200',
             'items.*.serials.*.image_path'      => 'nullable|string|max:500',
-        ]);
+        ];
+    }
 
-        // Server-side serial validation for serialized products
+    /**
+     * Server-side serial validation for serialized products.
+     * Returns an error message, or null when everything is fine.
+     */
+    private function serialConflictError(array $items): ?string
+    {
         // Pass 1: collect all serials across all items and check for cross-item duplicates
         $allSerialMap = []; // uppercase → original value
-        foreach ($request->items as $row) {
+        foreach ($items as $row) {
             $product = Product::find($row['product_id']);
             if (!$product || !$product->is_serialized) continue;
 
@@ -201,17 +211,13 @@ class PurchaseController extends Controller
 
             // Quantity check
             if (count($serials) < (int) $row['quantity']) {
-                return back()
-                    ->withErrors(['items' => "Please enter all {$row['quantity']} serial number(s) for: {$product->name}."])
-                    ->withInput();
+                return "Please enter all {$row['quantity']} serial number(s) for: {$product->name}.";
             }
 
             foreach ($serials as $sn) {
                 $upper = strtoupper($sn);
                 if (isset($allSerialMap[$upper])) {
-                    return back()
-                        ->withErrors(['items' => "Serial number '{$sn}' appears more than once in this purchase."])
-                        ->withInput();
+                    return "Serial number '{$sn}' appears more than once in this purchase.";
                 }
                 $allSerialMap[$upper] = $sn;
             }
@@ -221,41 +227,51 @@ class PurchaseController extends Controller
         if (!empty($allSerialMap)) {
             $existing = SerialNumber::whereIn('serial_number', array_values($allSerialMap))->pluck('serial_number');
             if ($existing->isNotEmpty()) {
-                return back()
-                    ->withErrors(['items' => "Serial number(s) already registered in the system: " . $existing->implode(', ')])
-                    ->withInput();
+                return "Serial number(s) already registered in the system: " . $existing->implode(', ');
             }
         }
 
-        $purchase = DB::transaction(function () use ($request) {
-            $items   = $request->items;
+        return null;
+    }
 
-            // Effective line cost: serialized products take the sum of their per-unit serial
-            // cost prices (the top-level unit cost field is hidden for them); everyone else
-            // uses quantity × unit_cost.
-            $lineCostFor = function ($row) {
-                $product = Product::find($row['product_id']);
-                if ($product && $product->is_serialized) {
-                    return (float) collect($row['serials'] ?? [])
-                        ->sum(fn($s) => is_numeric($s['cost_price'] ?? null) ? (float) $s['cost_price'] : 0.0);
-                }
-                return (float) $row['quantity'] * (float) $row['unit_cost'];
-            };
+    /**
+     * Effective line cost: serialized products take the sum of their per-unit serial
+     * cost prices (the top-level unit cost field is hidden for them); everyone else
+     * uses quantity × unit_cost.
+     */
+    private function lineCost(array $row): float
+    {
+        $product = Product::find($row['product_id']);
+        if ($product && $product->is_serialized) {
+            return (float) collect($row['serials'] ?? [])
+                ->sum(fn($s) => is_numeric($s['cost_price'] ?? null) ? (float) $s['cost_price'] : 0.0);
+        }
+        return (float) $row['quantity'] * (float) $row['unit_cost'];
+    }
 
-            $subtotal = collect($items)->sum($lineCostFor);
+    /**
+     * Record the purchase: purchase row, items, serials, stock, khata.
+     * $data holds the same keys as the validated store() payload.
+     */
+    private function persistPurchase(array $data): Purchase
+    {
+        return DB::transaction(function () use ($data) {
+            $items = $data['items'];
+
+            $subtotal = collect($items)->sum(fn($row) => $this->lineCost($row));
             $total    = $subtotal;
 
-            $payMethod    = $request->payment_method;
+            $payMethod    = $data['payment_method'];
             $bankAccountId = $payMethod === 'bank_transfer'
-                ? ($request->bank_account_id ?: null)
-                : ($payMethod === 'partial' && $request->partial_pay_via === 'bank'
-                    ? ($request->partial_bank_account_id ?: null)
+                ? (($data['bank_account_id'] ?? null) ?: null)
+                : ($payMethod === 'partial' && ($data['partial_pay_via'] ?? null) === 'bank'
+                    ? (($data['partial_bank_account_id'] ?? null) ?: null)
                     : null);
             $amountPaid = match ($payMethod) {
                 'cash'          => $total,
                 'bank_transfer' => $total,
                 'credit'        => 0,
-                'partial'       => min((float) ($request->amount_paid ?? 0), $total),
+                'partial'       => min((float) ($data['amount_paid'] ?? 0), $total),
             };
             $payStatus = match (true) {
                 $amountPaid >= $total => 'paid',
@@ -264,22 +280,22 @@ class PurchaseController extends Controller
             };
 
             $purchase = Purchase::create([
-                'reference'      => $request->reference,
-                'vendor_id'      => $request->vendor_id,
-                'purchase_date'  => $request->purchase_date,
+                'reference'      => $data['reference'] ?? null,
+                'vendor_id'      => $data['vendor_id'],
+                'purchase_date'  => $data['purchase_date'],
                 'subtotal'       => $subtotal,
                 'total'          => $total,
                 'payment_method'  => $payMethod,
                 'bank_account_id' => $bankAccountId,
                 'amount_paid'     => $amountPaid,
                 'payment_status' => $payStatus,
-                'notes'          => $request->notes,
+                'notes'          => $data['notes'] ?? null,
                 'created_by'     => auth()->id(),
             ]);
 
             foreach ($items as $row) {
                 $product = Product::find($row['product_id']);
-                $lineTotal = $lineCostFor($row);
+                $lineTotal = $this->lineCost($row);
                 // For serialized products derive the per-unit cost from the line total (the
                 // top-level unit cost field is hidden, so $row['unit_cost'] is 0 for them).
                 $unitCost  = ($product->is_serialized && (int) $row['quantity'] > 0)
@@ -350,8 +366,8 @@ class PurchaseController extends Controller
             }
 
             // Update vendor ledger if payment is credit or partial
-            if ($request->vendor_id && $payStatus !== 'paid') {
-                $vendor    = Vendor::find($request->vendor_id);
+            if ($data['vendor_id'] && $payStatus !== 'paid') {
+                $vendor    = Vendor::find($data['vendor_id']);
                 $owed      = $total - $amountPaid;
                 $newBal    = $vendor->balance + $owed;
 
@@ -372,10 +388,151 @@ class PurchaseController extends Controller
 
             return $purchase;
         });
+    }
+
+    /**
+     * Direct save (legacy route) — kept as a thin wrapper around the shared pieces.
+     */
+    public function store(Request $request)
+    {
+        $request->validate($this->purchaseValidationRules());
+
+        if ($err = $this->serialConflictError($request->items)) {
+            return back()->withErrors(['items' => $err])->withInput();
+        }
+
+        $purchase = $this->persistPurchase($request->all());
 
         $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
         return redirect()->route("{$rPrefix}.purchases.show", $purchase)
             ->with('success', 'Purchase recorded — stock and serial numbers updated.');
+    }
+
+    /**
+     * Step 1 — validate the submitted purchase and stash it in the session
+     * as a draft. Nothing is written to the database yet.
+     */
+    public function review(Request $request)
+    {
+        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+
+        $request->validate($this->purchaseValidationRules() + [
+            'ui_state' => 'nullable|string', // raw Alpine items JSON, used to rebuild the form
+        ]);
+
+        // Stash first so the create page can restore state even when a serial conflicts
+        session(['purchase_draft' => $request->only([
+            'purchase_date', 'vendor_id', 'reference', 'payment_method', 'bank_account_id',
+            'partial_pay_via', 'partial_bank_account_id', 'amount_paid', 'notes', 'items', 'ui_state',
+        ])]);
+
+        if ($err = $this->serialConflictError($request->items)) {
+            return redirect()->route("{$rPrefix}.purchases.create")
+                ->withErrors(['items' => $err]);
+        }
+
+        return redirect()->route("{$rPrefix}.purchases.review.show");
+    }
+
+    /**
+     * Step 2 — show the draft for review against the vendor's invoice.
+     */
+    public function reviewShow()
+    {
+        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+
+        $draft = session('purchase_draft');
+        if (!$draft) {
+            return redirect()->route("{$rPrefix}.purchases.create");
+        }
+
+        $vendor = Vendor::find($draft['vendor_id']);
+
+        // Per-line display data using the exact same cost math as persistPurchase()
+        $lines = collect($draft['items'])->map(function ($row) {
+            $product   = Product::find($row['product_id']);
+            $lineTotal = $this->lineCost($row);
+            $qty       = (int) $row['quantity'];
+            $serials   = collect($row['serials'] ?? [])
+                ->filter(fn($s) => trim($s['serial'] ?? '') !== '')
+                ->values();
+            return [
+                'product'      => $product,
+                'product_name' => $product?->name ?? '(deleted product)',
+                'color_name'   => $row['color_name'] ?? null,
+                'quantity'     => $qty,
+                'unit_cost'    => $product?->is_serialized && $qty > 0
+                                  ? round($lineTotal / $qty, 2)
+                                  : (float) $row['unit_cost'],
+                'line_total'   => $lineTotal,
+                'is_serialized' => (bool) $product?->is_serialized,
+                'serials'      => $serials,
+            ];
+        });
+
+        $total      = $lines->sum('line_total');
+        $payMethod  = $draft['payment_method'];
+        $amountPaid = match ($payMethod) {
+            'cash'          => $total,
+            'bank_transfer' => $total,
+            'credit'        => 0,
+            default         => min((float) ($draft['amount_paid'] ?? 0), $total),
+        };
+        $owed = max(0, $total - $amountPaid);
+
+        $bankAccountId = $payMethod === 'bank_transfer'
+            ? ($draft['bank_account_id'] ?? null)
+            : ($payMethod === 'partial' && ($draft['partial_pay_via'] ?? null) === 'bank'
+                ? ($draft['partial_bank_account_id'] ?? null)
+                : null);
+        $bankAccount = $bankAccountId ? BankAccount::find($bankAccountId) : null;
+
+        return view('admin.purchases.review', [
+            'draft'       => $draft,
+            'vendor'      => $vendor,
+            'lines'       => $lines,
+            'total'       => $total,
+            'amountPaid'  => $amountPaid,
+            'owed'        => $owed,
+            'payMethod'   => $payMethod,
+            'bankAccount' => $bankAccount,
+        ]);
+    }
+
+    /**
+     * Step 3 — the user confirmed: actually record the draft.
+     */
+    public function confirm()
+    {
+        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+
+        $draft = session('purchase_draft');
+        if (!$draft) {
+            return redirect()->route("{$rPrefix}.purchases.create");
+        }
+
+        // Re-check: a serial could have been registered elsewhere since the review started
+        if ($err = $this->serialConflictError($draft['items'])) {
+            return redirect()->route("{$rPrefix}.purchases.create")
+                ->withErrors(['items' => $err]);
+        }
+
+        $purchase = $this->persistPurchase($draft);
+        session()->forget('purchase_draft');
+
+        return redirect()->route("{$rPrefix}.purchases.show", $purchase)
+            ->with('success', 'Purchase recorded — stock and serial numbers updated.');
+    }
+
+    /**
+     * Throw away the pending draft.
+     */
+    public function discardReview()
+    {
+        session()->forget('purchase_draft');
+        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        return redirect()->route("{$rPrefix}.purchases.create")
+            ->with('info', 'Draft purchase discarded.');
     }
 
     public function show(Purchase $purchase)

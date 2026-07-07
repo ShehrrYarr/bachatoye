@@ -8,7 +8,7 @@
     <h1 class="text-xl font-bold text-gray-900">Record Purchase</h1>
 </div>
 
-<form method="POST" action="{{ route("{$rPrefix}.purchases.store") }}"
+<form method="POST" action="{{ route("{$rPrefix}.purchases.review") }}"
       x-data="purchaseForm()" @submit.prevent="submitForm"
       @product-created.window="onProductCreated($event.detail)">
     @csrf
@@ -582,7 +582,7 @@
             <div class="card">
                 <div class="card-header"><h2 class="font-semibold text-gray-800">Notes</h2></div>
                 <div class="card-body">
-                    <textarea name="notes" rows="2" class="form-textarea" placeholder="Optional notes about this purchase..."></textarea>
+                    <textarea name="notes" rows="2" class="form-textarea" placeholder="Optional notes about this purchase...">{{ $draft['notes'] ?? '' }}</textarea>
                 </div>
             </div>
         </div>
@@ -609,14 +609,14 @@
                 </div>
                 <div class="mt-3">
                     <label class="form-label text-sm">Reference / Invoice #</label>
-                    <input type="text" name="reference" class="form-input" placeholder="Bill number from vendor">
+                    <input type="text" name="reference" value="{{ $draft['reference'] ?? '' }}" class="form-input" placeholder="Bill number from vendor">
                 </div>
             </div>
 
             {{-- Purchase date --}}
             <div class="card p-5">
                 <label class="form-label">Purchase Date *</label>
-                <input type="date" name="purchase_date" value="{{ date('Y-m-d') }}" class="form-input" required>
+                <input type="date" name="purchase_date" value="{{ $draft['purchase_date'] ?? date('Y-m-d') }}" class="form-input" required>
             </div>
 
             {{-- Payment --}}
@@ -655,7 +655,7 @@
                     <select name="bank_account_id" class="form-select text-sm">
                         <option value="">— Choose bank account —</option>
                         @foreach($bankAccounts as $bank)
-                        <option value="{{ $bank->id }}">
+                        <option value="{{ $bank->id }}" {{ ($draft['bank_account_id'] ?? '') == $bank->id ? 'selected' : '' }}>
                             {{ $bank->label }} — {{ $bank->bank_name }}{{ $bank->account_number ? ' · '.$bank->account_number : '' }}
                         </option>
                         @endforeach
@@ -749,9 +749,9 @@
                 <button type="submit" :disabled="items.length === 0"
                         class="btn-primary w-full justify-center mt-4 btn-lg"
                         :class="items.length === 0 ? 'opacity-50 cursor-not-allowed' : ''">
-                    <i class="fas fa-save mr-2"></i> Save Purchase
+                    <i class="fas fa-arrow-right mr-2"></i> Review Purchase
                 </button>
-                <p class="text-xs text-gray-400 text-center mt-2">Stock will be updated automatically</p>
+                <p class="text-xs text-gray-400 text-center mt-2">Nothing is recorded until you confirm on the next page</p>
             </div>
         </div>
     </div>
@@ -776,6 +776,7 @@
     const _serialAttrDefs         = {!! json_encode($serialAttributeDefs->map(fn($d) => ['name' => $d->name, 'options' => $d->options])->values()) !!};
     const _serialCheckUrl         = '/{{ auth()->user()->hasRole('admin') ? 'admin' : 'salesman' }}/api/serials/check';
     const _serialImageUploadUrl   = '/{{ auth()->user()->hasRole('admin') ? 'admin' : 'salesman' }}/purchases/temp-serial-image';
+    const _purchaseDraft          = {!! json_encode($draft ?? null) !!};
 </script>
 
 <div x-data="purchaseCreateModal()"
@@ -838,6 +839,25 @@ function purchaseForm() {
         total: 0,
         vendorId: '{{ request('vendor_id', '') }}',
         vendorBalance: null,
+
+        init() {
+            // Restore a pending review draft ("Add More Items" from the review page)
+            if (typeof _purchaseDraft !== 'undefined' && _purchaseDraft) {
+                try {
+                    if (_purchaseDraft.ui_state) {
+                        this.items = JSON.parse(_purchaseDraft.ui_state);
+                        this.itemUid = this.items.reduce((m, i) => Math.max(m, i._uid || 0), 0);
+                    }
+                    if (_purchaseDraft.vendor_id)      this.vendorId      = String(_purchaseDraft.vendor_id);
+                    if (_purchaseDraft.payment_method) this.payMethod     = _purchaseDraft.payment_method;
+                    if (_purchaseDraft.amount_paid)    this.amountPaid    = parseFloat(_purchaseDraft.amount_paid) || 0;
+                    if (_purchaseDraft.partial_pay_via) this.partialPayVia = _purchaseDraft.partial_pay_via;
+                    if (_purchaseDraft.partial_bank_account_id) this.partialBankId = String(_purchaseDraft.partial_bank_account_id);
+                    if (this.vendorId) this.loadVendor();
+                    this.recalc();
+                } catch (e) { /* corrupt draft — start fresh */ }
+            }
+        },
 
         async searchProducts() {
             if (this.searchQuery.length < 2) { this.searchResults = []; return; }
@@ -1211,6 +1231,13 @@ function purchaseForm() {
                     flatIdx++;
                 }
             });
+
+            // Raw Alpine state so "Add More Items" on the review page can rebuild the form
+            const stateInput = document.createElement('input');
+            stateInput.type  = 'hidden';
+            stateInput.name  = 'ui_state';
+            stateInput.value = JSON.stringify(this.items);
+            container.appendChild(stateInput);
 
             this.$el.submit();
         }
