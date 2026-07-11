@@ -20,14 +20,15 @@ return new class extends Migration
         $admin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         $admin->givePermissionTo($new);
 
+        // Ensure these exist (they're normally seeded, but may not yet during migrate:fresh)
+        $extra = ['accounts.view', 'accounts.manage', 'vendors.view', 'vendors.manage'];
+        foreach ($extra as $name) {
+            Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
+        }
+
         // Grant all 5 catalogue+khata permissions to salesman
         $salesman = Role::firstOrCreate(['name' => 'salesman', 'guard_name' => 'web']);
-        $salesman->givePermissionTo(array_merge($new, [
-            'accounts.view',
-            'accounts.manage',
-            'vendors.view',
-            'vendors.manage',
-        ]));
+        $salesman->givePermissionTo(array_merge($new, $extra));
     }
 
     public function down(): void
