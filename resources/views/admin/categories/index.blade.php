@@ -10,6 +10,17 @@
     </a>
 </div>
 
+<div class="card p-4 mb-5">
+    <form method="GET" action="{{ route("{$rPrefix}.categories.index") }}" class="flex flex-wrap gap-3 items-end">
+        <input type="text" name="q" value="{{ request('q') }}" placeholder="Search categories..."
+               class="form-input text-sm flex-1 min-w-48" autofocus>
+        <button type="submit" class="btn-primary btn-sm">Search</button>
+        @if(request('q'))
+        <a href="{{ route("{$rPrefix}.categories.index") }}" class="btn-outline btn-sm">Clear</a>
+        @endif
+    </form>
+</div>
+
 <div class="card">
     <div class="overflow-x-auto">
     <table class="data-table">

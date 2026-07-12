@@ -10,7 +10,12 @@ class BrandController extends Controller
 {
     public function index()
     {
-        $brands = Brand::withCount('products')->latest()->paginate(20);
+        $search = request('q');
+        $brands = Brand::withCount('products')
+            ->when($search, fn($q) => $q->where('name', 'like', "%{$search}%"))
+            ->latest()
+            ->paginate(20)
+            ->withQueryString();
         return view('admin.brands.index', compact('brands'));
     }
 

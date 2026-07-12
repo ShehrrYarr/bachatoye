@@ -11,7 +11,12 @@ class CategoryController extends Controller
 {
     public function index()
     {
+        $search = request('q');
         $categories = Category::whereNull('parent_id')
+            ->when($search, fn($query) => $query->where(fn($sub) =>
+                $sub->where('name', 'like', "%{$search}%")
+                    ->orWhereHas('children', fn($child) => $child->where('name', 'like', "%{$search}%"))
+            ))
             ->with(['children' => fn($q) => $q->withCount('subcategoryProducts')])
             ->withCount(['products', 'children'])
             ->orderBy('sort_order')

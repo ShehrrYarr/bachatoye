@@ -8,6 +8,17 @@
     <a href="{{ route("{$rPrefix}.brands.create") }}" class="btn-primary"><i class="fas fa-plus mr-2"></i> Add Brand</a>
 </div>
 
+<div class="card p-4 mb-5">
+    <form method="GET" action="{{ route("{$rPrefix}.brands.index") }}" class="flex flex-wrap gap-3 items-end">
+        <input type="text" name="q" value="{{ request('q') }}" placeholder="Search brands..."
+               class="form-input text-sm flex-1 min-w-48" autofocus>
+        <button type="submit" class="btn-primary btn-sm">Search</button>
+        @if(request('q'))
+        <a href="{{ route("{$rPrefix}.brands.index") }}" class="btn-outline btn-sm">Clear</a>
+        @endif
+    </form>
+</div>
+
 <div class="card">
     <div class="overflow-x-auto">
     <table class="data-table">
