@@ -22,6 +22,8 @@ return new class extends Migration
         'accounts.manage',
         'expenses.view',
         'expenses.manage',
+        'expenses.edit',
+        'expenses.delete',
         'inventory.view',
     ];
 

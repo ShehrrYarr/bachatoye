@@ -16,9 +16,19 @@ use Illuminate\Support\Str;
 
 class CustomerController extends Controller
 {
+    /** Sub shop logins may only touch their own shop's customers. */
+    private function guardShop(Customer $customer): void
+    {
+        $user = Auth::user();
+        abort_if($user->isSubshop() && $customer->shop_id !== $user->shopId(), 404);
+    }
+
     public function index(Request $request)
     {
-        $base = Customer::query();
+        $shopId = Auth::user()->shopId();
+        $base   = Customer::query()
+            // Sub shop sees only its own customers; admin/salesman see all shops
+            ->when(Auth::user()->isSubshop(), fn($q) => $q->forShop($shopId));
 
         if ($request->filled('q')) {
             $s = $request->q;
@@ -62,9 +72,16 @@ class CustomerController extends Controller
 
     public function store(Request $request)
     {
+        $shopId = Auth::user()->shopId();
+
         $data = $request->validate([
             'name'    => 'required|string|max:100',
-            'phone'   => 'required|string|max:20|unique:customers',
+            'phone'   => [
+                'required', 'string', 'max:20',
+                \Illuminate\Validation\Rule::unique('customers', 'phone')->where(
+                    fn($q) => $shopId ? $q->where('shop_id', $shopId) : $q->whereNull('shop_id')
+                ),
+            ],
             'email'   => 'nullable|email',
             'address' => 'nullable|string',
             'city'    => 'nullable|string|max:100',
@@ -75,6 +92,7 @@ class CustomerController extends Controller
             $data['photo'] = $request->file('photo')->store('customers', 'public');
         }
 
+        $data['shop_id']       = $shopId;
         $data['created_by']   = Auth::id();
         $data['source']        = 'pos';
         $data['khata_enabled'] = $request->boolean('khata_enabled');
@@ -91,11 +109,12 @@ class CustomerController extends Controller
             'is_active'      => true,
         ]);
 
-        return redirect()->route(Auth::user()->hasRole('admin') ? 'admin.customers.index' : 'salesman.customers.index')->with('success', 'Customer added.');
+        return redirect()->route(Auth::user()->panelPrefix() . '.customers.index')->with('success', 'Customer added.');
     }
 
     public function show(Customer $customer)
     {
+        $this->guardShop($customer);
         $customer->load([
             'orders.items',
             'returns.items',
@@ -110,14 +129,21 @@ class CustomerController extends Controller
 
     public function edit(Customer $customer)
     {
+        $this->guardShop($customer);
         return view('admin.customers.edit', compact('customer'));
     }
 
     public function update(Request $request, Customer $customer)
     {
+        $this->guardShop($customer);
         $data = $request->validate([
             'name'         => 'required|string|max:100',
-            'phone'        => 'required|string|max:20|unique:customers,phone,' . $customer->id,
+            'phone'        => [
+                'required', 'string', 'max:20',
+                \Illuminate\Validation\Rule::unique('customers', 'phone')->ignore($customer->id)->where(
+                    fn($q) => $customer->shop_id ? $q->where('shop_id', $customer->shop_id) : $q->whereNull('shop_id')
+                ),
+            ],
             'email'        => 'nullable|email',
             'address'      => 'nullable|string',
             'city'         => 'nullable|string|max:100',
@@ -137,25 +163,28 @@ class CustomerController extends Controller
         $data['is_active']    = $request->boolean('is_active');
         $data['khata_enabled'] = $request->boolean('khata_enabled');
         $customer->update($data);
-        return redirect()->route(Auth::user()->hasRole('admin') ? 'admin.customers.index' : 'salesman.customers.index')->with('success', 'Customer updated.');
+        return redirect()->route(Auth::user()->panelPrefix() . '.customers.index')->with('success', 'Customer updated.');
     }
 
     public function destroy(Customer $customer)
     {
+        $this->guardShop($customer);
         if ($customer->photo) Storage::disk('public')->delete($customer->photo);
         $customer->delete();
-        return redirect()->route(Auth::user()->hasRole('admin') ? 'admin.customers.index' : 'salesman.customers.index')->with('success', 'Customer removed.');
+        return redirect()->route(Auth::user()->panelPrefix() . '.customers.index')->with('success', 'Customer removed.');
     }
 
     public function ledger(Customer $customer)
     {
+        $this->guardShop($customer);
         $entries      = $customer->ledgerEntries()->with(['user', 'bankAccount'])->latest()->paginate(30);
-        $bankAccounts = BankAccount::active()->orderBy('sort_order')->get();
+        $bankAccounts = BankAccount::active()->forShop($customer->shop_id)->orderBy('sort_order')->get();
         return view('admin.customers.ledger', compact('customer', 'entries', 'bankAccounts'));
     }
 
     public function ledgerPrint(Request $request, Customer $customer)
     {
+        $this->guardShop($customer);
         $dateFrom = $request->input('date_from');
         $dateTo   = $request->input('date_to');
 
@@ -164,9 +193,10 @@ class CustomerController extends Controller
         if ($dateTo)   $query->whereDate('created_at', '<=', $dateTo);
 
         $entries      = $query->get();
-        $storeName    = \App\Models\Setting::get('shop_name', config('app.name'));
-        $storePhone   = \App\Models\Setting::get('shop_phone', '');
-        $storeAddress = \App\Models\Setting::get('shop_address', '');
+        $shop         = $customer->shop;
+        $storeName    = $shop?->name ?? \App\Models\Setting::get('shop_name', config('app.name'));
+        $storePhone   = $shop?->phone ?? \App\Models\Setting::get('shop_phone', '');
+        $storeAddress = $shop?->address ?? \App\Models\Setting::get('shop_address', '');
         return view('admin.customers.ledger-print', compact(
             'customer', 'entries', 'storeName', 'storePhone', 'storeAddress', 'dateFrom', 'dateTo'
         ));
@@ -174,10 +204,16 @@ class CustomerController extends Controller
 
     public function addLedgerEntry(Request $request, Customer $customer)
     {
+        $this->guardShop($customer);
         $data = $request->validate([
             'type'            => 'required|in:debit,credit',
             'payment_method'  => 'required_if:type,credit|in:cash,bank_transfer',
-            'bank_account_id' => 'nullable|exists:bank_accounts,id',
+            'bank_account_id' => [
+                'nullable',
+                \Illuminate\Validation\Rule::exists('bank_accounts', 'id')->where(
+                    fn($q) => $customer->shop_id ? $q->where('shop_id', $customer->shop_id) : $q->whereNull('shop_id')
+                ),
+            ],
             'amount'          => 'required|numeric|min:0.01',
             'description'     => 'required|string|max:255',
             'reference'       => 'nullable|string|max:100',
@@ -213,6 +249,9 @@ class CustomerController extends Controller
 
     public function dismissPromise(AccountLedger $entry)
     {
+        $user = Auth::user();
+        abort_if($user->isSubshop() && $entry->customer?->shop_id !== $user->shopId(), 404);
+
         $entry->update(['promise_date' => null]);
         return response()->json(['success' => true]);
     }

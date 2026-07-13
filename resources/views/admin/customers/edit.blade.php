@@ -3,12 +3,12 @@
 
 @section('content')
 <div class="flex items-center gap-3 mb-6">
-    <a href="{{ route('admin.customers.show', $customer) }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
+    <a href="{{ route(auth()->user()->panelPrefix() . '.customers.show', $customer) }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
     <h1 class="text-xl font-bold text-gray-900">Edit: {{ $customer->name }}</h1>
 </div>
 
 <div class="max-w-xl">
-    <form method="POST" action="{{ route('admin.customers.update', $customer) }}" enctype="multipart/form-data">
+    <form method="POST" action="{{ route(auth()->user()->panelPrefix() . '.customers.update', $customer) }}" enctype="multipart/form-data">
         @csrf @method('PUT')
         <div class="card p-6 space-y-4">
 
@@ -91,7 +91,7 @@
             </div>
             <div class="flex gap-3 pt-2">
                 <button type="submit" class="btn-primary">Update Customer</button>
-                <a href="{{ route('admin.customers.show', $customer) }}" class="btn-outline">Cancel</a>
+                <a href="{{ route(auth()->user()->panelPrefix() . '.customers.show', $customer) }}" class="btn-outline">Cancel</a>
             </div>
         </div>
     </form>

@@ -2,15 +2,21 @@
 @section('title', 'Customers')
 
 @section('content')
-@php $isAdmin = auth()->user()->hasRole('admin'); @endphp
+@php
+    $isAdmin = auth()->user()->hasRole('admin');
+    $prefix  = auth()->user()->panelPrefix();
+    $canManageCustomers = $isAdmin || auth()->user()->isSubshop();
+@endphp
 <div class="flex items-center justify-between mb-6">
     <h1 class="text-xl font-bold text-gray-900">Customers</h1>
-    <a href="{{ route('admin.customers.create') }}" class="btn-primary"><i class="fas fa-plus mr-2"></i> Add Customer</a>
+    @if($canManageCustomers)
+    <a href="{{ route("{$prefix}.customers.create") }}" class="btn-primary"><i class="fas fa-plus mr-2"></i> Add Customer</a>
+    @endif
 </div>
 
 {{-- Search / Filter --}}
 <div class="card p-4 mb-6">
-    <form method="GET" action="{{ route('admin.customers.index') }}" class="flex flex-wrap gap-3 items-end">
+    <form method="GET" action="{{ route("{$prefix}.customers.index") }}" class="flex flex-wrap gap-3 items-end">
         <input type="text" name="q" value="{{ request('q') }}" placeholder="Name, phone, email..."
                class="form-input text-sm flex-1 min-w-48">
         <select name="balance" class="form-select text-sm">
@@ -20,7 +26,7 @@
         </select>
         <button type="submit" class="btn-primary btn-sm">Filter</button>
         @if(request()->hasAny(['q', 'balance']))
-            <a href="{{ route('admin.customers.index') }}" class="btn-outline btn-sm">Clear</a>
+            <a href="{{ route("{$prefix}.customers.index") }}" class="btn-outline btn-sm">Clear</a>
         @endif
     </form>
 </div>
@@ -76,9 +82,9 @@
                     </td>
                     <td class="text-right">
                         <div class="flex items-center justify-end gap-2">
-                            <a href="{{ $isAdmin ? route('admin.customers.show', $customer) : route('salesman.customers.show', $customer) }}" class="btn-outline btn-sm" title="View"><i class="fas fa-eye"></i></a>
-                            <a href="{{ $isAdmin ? route('admin.customers.ledger', $customer) : route('salesman.customers.ledger', $customer) }}" class="btn-outline btn-sm" title="Khata Ledger"><i class="fas fa-book"></i></a>
-                            @if($isAdmin)<a href="{{ route('admin.customers.edit', $customer) }}" class="btn-outline btn-sm" title="Edit"><i class="fas fa-edit"></i></a>@endif
+                            <a href="{{ route(auth()->user()->panelPrefix() . '.customers.show', $customer) }}" class="btn-outline btn-sm" title="View"><i class="fas fa-eye"></i></a>
+                            <a href="{{ route(auth()->user()->panelPrefix() . '.customers.ledger', $customer) }}" class="btn-outline btn-sm" title="Khata Ledger"><i class="fas fa-book"></i></a>
+                            @if($canManageCustomers)<a href="{{ route("{$prefix}.customers.edit", $customer) }}" class="btn-outline btn-sm" title="Edit"><i class="fas fa-edit"></i></a>@endif
                         </div>
                     </td>
                 </tr>
@@ -149,8 +155,8 @@
                     </td>
                     <td class="text-right">
                         <div class="flex items-center justify-end gap-2">
-                            <a href="{{ $isAdmin ? route('admin.customers.show', $customer) : route('salesman.customers.show', $customer) }}" class="btn-outline btn-sm" title="View"><i class="fas fa-eye"></i></a>
-                            @if($isAdmin)<a href="{{ route('admin.customers.edit', $customer) }}" class="btn-outline btn-sm" title="Edit"><i class="fas fa-edit"></i></a>@endif
+                            <a href="{{ route(auth()->user()->panelPrefix() . '.customers.show', $customer) }}" class="btn-outline btn-sm" title="View"><i class="fas fa-eye"></i></a>
+                            @if($canManageCustomers)<a href="{{ route("{$prefix}.customers.edit", $customer) }}" class="btn-outline btn-sm" title="Edit"><i class="fas fa-edit"></i></a>@endif
                         </div>
                     </td>
                 </tr>

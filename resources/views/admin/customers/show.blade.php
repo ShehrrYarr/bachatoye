@@ -5,7 +5,7 @@
 @php $isAdmin = auth()->user()->hasRole('admin'); @endphp
 <div class="flex items-center justify-between mb-6">
     <div class="flex items-center gap-3">
-        <a href="{{ $isAdmin ? route('admin.customers.index') : route('salesman.customers.index') }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
+        <a href="{{ route(auth()->user()->panelPrefix() . '.customers.index') }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
         <h1 class="text-xl font-bold text-gray-900">{{ $customer->name }}</h1>
         @if(!$customer->is_active)
         <span class="badge bg-gray-100 text-gray-500">Inactive</span>
@@ -13,12 +13,12 @@
     </div>
     <div class="flex gap-2">
         @if($hasPosActivity)
-        <a href="{{ $isAdmin ? route('admin.customers.ledger', $customer) : route('salesman.customers.ledger', $customer) }}" class="btn-outline btn-sm">
+        <a href="{{ route(auth()->user()->panelPrefix() . '.customers.ledger', $customer) }}" class="btn-outline btn-sm">
             <i class="fas fa-book mr-1"></i> Khata Ledger
         </a>
         @endif
         @if($isAdmin)
-        <a href="{{ route('admin.customers.edit', $customer) }}" class="btn-primary btn-sm">
+        <a href="{{ route(auth()->user()->panelPrefix() . '.customers.edit', $customer) }}" class="btn-primary btn-sm">
             <i class="fas fa-edit mr-1"></i> Edit
         </a>
         @endif
@@ -169,7 +169,7 @@
         <div class="card">
             <div class="card-header">
                 <h2 class="font-semibold text-gray-800">Khata Ledger</h2>
-                <a href="{{ $isAdmin ? route('admin.customers.ledger', $customer) : route('salesman.customers.ledger', $customer) }}" class="text-sm text-primary-600 hover:underline">View All</a>
+                <a href="{{ route(auth()->user()->panelPrefix() . '.customers.ledger', $customer) }}" class="text-sm text-primary-600 hover:underline">View All</a>
             </div>
             <div class="overflow-x-auto">
                 <table class="data-table">
@@ -226,7 +226,7 @@
             <div class="text-sm text-gray-500 mt-1">
                 {{ $customer->credit_balance < 0 ? 'Customer owes this amount' : ($customer->credit_balance > 0 ? 'Credit available' : 'Settled') }}
             </div>
-            <a href="{{ $isAdmin ? route('admin.customers.ledger', $customer) : route('salesman.customers.ledger', $customer) }}" class="btn-outline btn-sm mt-3 w-full justify-center">
+            <a href="{{ route(auth()->user()->panelPrefix() . '.customers.ledger', $customer) }}" class="btn-outline btn-sm mt-3 w-full justify-center">
                 <i class="fas fa-plus mr-1"></i> Add Ledger Entry
             </a>
         </div>

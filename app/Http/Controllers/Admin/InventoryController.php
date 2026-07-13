@@ -16,6 +16,11 @@ class InventoryController extends Controller
 {
     public function index(Request $request)
     {
+        // Sub shop login gets its own location-scoped stock view
+        if (Auth::user()->isSubshop()) {
+            return $this->subshopStock($request, false);
+        }
+
         $groupBy = $request->input('group_by'); // 'category' | 'brand' | null
         $groupId = $request->input('group_id'); // integer | null
 
@@ -236,8 +241,12 @@ class InventoryController extends Controller
         return view('admin.inventory.print-labels', compact('products', 'categories'));
     }
 
-    public function lowStock()
+    public function lowStock(Request $request)
     {
+        if (Auth::user()->isSubshop()) {
+            return $this->subshopStock($request, true);
+        }
+
         $products = Product::active()
                             ->where('track_inventory', true)
                             ->where('low_stock_dismissed', false)
@@ -247,6 +256,44 @@ class InventoryController extends Controller
                             ->paginate(30);
 
         return view('admin.inventory.low-stock', compact('products'));
+    }
+
+    /** Read-only stock listing for the sub shop's own location. */
+    private function subshopStock(Request $request, bool $lowOnly)
+    {
+        $shopId = Auth::user()->shopId();
+
+        $query = Product::active()
+            ->with([
+                'category', 'brand',
+                'shopStocks'    => fn($s) => $s->where('shop_id', $shopId),
+                'serialNumbers' => fn($s) => $s->where('shop_id', $shopId)->where('status', 'in_stock'),
+            ]);
+
+        if ($lowOnly) {
+            $query->where('track_inventory', true)
+                ->whereHas('shopStocks', fn($s) => $s->where('shop_id', $shopId)
+                    ->whereColumn('quantity', '<=', 'products.low_stock_threshold')
+                    ->where('quantity', '>', 0));
+        } else {
+            $query->where(fn($q) => $q
+                ->whereHas('shopStocks', fn($s) => $s->where('shop_id', $shopId)->where('quantity', '>', 0))
+                ->orWhereHas('serialNumbers', fn($s) => $s->where('shop_id', $shopId)->where('status', 'in_stock')));
+        }
+
+        if ($request->filled('q')) {
+            $s = $request->q;
+            $query->where(fn($q) => $q->where('name', 'like', "%{$s}%")
+                                      ->orWhere('barcode', 'like', "%{$s}%")
+                                      ->orWhere('sku', 'like', "%{$s}%"));
+        }
+
+        $products = $query->orderBy('name')->paginate(30)->withQueryString();
+
+        $totalUnits = \App\Models\ShopStock::where('shop_id', $shopId)->sum('quantity')
+            + \App\Models\SerialNumber::where('shop_id', $shopId)->where('status', 'in_stock')->count();
+
+        return view('shop.inventory', compact('products', 'totalUnits', 'lowOnly'));
     }
 
     public function dismissLowStock(Product $product)

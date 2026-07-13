@@ -3,12 +3,12 @@
 
 @section('content')
 <div class="flex items-center gap-3 mb-6">
-    <a href="{{ route('admin.customers.index') }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
+    <a href="{{ route(auth()->user()->panelPrefix() . '.customers.index') }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
     <h1 class="text-xl font-bold text-gray-900">Add Customer</h1>
 </div>
 
 <div class="max-w-xl">
-    <form method="POST" action="{{ route('admin.customers.store') }}" enctype="multipart/form-data">
+    <form method="POST" action="{{ route(auth()->user()->panelPrefix() . '.customers.store') }}" enctype="multipart/form-data">
         @csrf
         <div class="card p-6 space-y-4">
 
@@ -78,7 +78,7 @@
             </div>
             <div class="flex gap-3 pt-2">
                 <button type="submit" class="btn-primary">Save Customer</button>
-                <a href="{{ route('admin.customers.index') }}" class="btn-outline">Cancel</a>
+                <a href="{{ route(auth()->user()->panelPrefix() . '.customers.index') }}" class="btn-outline">Cancel</a>
             </div>
         </div>
     </form>

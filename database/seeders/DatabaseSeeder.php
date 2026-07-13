@@ -88,6 +88,8 @@ class DatabaseSeeder extends Seeder
             'accounts.manage',
             'expenses.view',
             'expenses.manage',
+            'expenses.edit',
+            'expenses.delete',
             'inventory.view',
         ]);
 

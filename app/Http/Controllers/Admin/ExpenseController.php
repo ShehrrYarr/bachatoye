@@ -8,13 +8,43 @@ use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class ExpenseController extends Controller
 {
+    /** Sub shop logins may only touch their own shop's expenses. */
+    private function guardShop(Expense $expense): void
+    {
+        $user = Auth::user();
+        abort_if($user->isSubshop() && $expense->shop_id !== $user->shopId(), 404);
+    }
+
+    /** Bank dropdown + validation are scoped to the user's own location. */
+    private function bankRule(): array
+    {
+        $shopId = Auth::user()->shopId();
+
+        return [
+            'required_if:payment_method,bank_transfer', 'nullable',
+            Rule::exists('bank_accounts', 'id')->where(
+                fn($q) => $shopId ? $q->where('shop_id', $shopId) : $q->whereNull('shop_id')
+            ),
+        ];
+    }
+
     public function index(Request $request)
     {
-        $query = Expense::with(['category', 'user', 'bankAccount'])->latest();
+        $user   = Auth::user();
+        $shopId = $user->shopId();
 
+        // Sub shop sees only its own expenses; admin/salesman see all for now
+        $scope = fn($q) => $user->isSubshop() ? $q->forShop($shopId) : $q;
+
+        $query = $scope(Expense::query())->with(['category', 'user', 'bankAccount'])->latest();
+
+        if ($request->filled('q')) {
+            $query->where('description', 'like', '%' . $request->q . '%');
+        }
         if ($request->filled('category')) {
             $query->where('expense_category_id', $request->category);
         }
@@ -27,9 +57,9 @@ class ExpenseController extends Controller
 
         $expenses   = $query->paginate(25)->withQueryString();
         $categories = ExpenseCategory::orderBy('name')->get();
-        $todayTotal = Expense::whereDate('expense_date', today())->sum('amount');
-        $monthTotal = Expense::whereYear('expense_date', now()->year)->whereMonth('expense_date', now()->month)->sum('amount');
-        $yearTotal  = Expense::whereYear('expense_date', now()->year)->sum('amount');
+        $todayTotal = $scope(Expense::query())->whereDate('expense_date', today())->sum('amount');
+        $monthTotal = $scope(Expense::query())->whereYear('expense_date', now()->year)->whereMonth('expense_date', now()->month)->sum('amount');
+        $yearTotal  = $scope(Expense::query())->whereYear('expense_date', now()->year)->sum('amount');
 
         return view('admin.expenses.index', compact('expenses', 'categories', 'todayTotal', 'monthTotal', 'yearTotal'));
     }
@@ -37,7 +67,7 @@ class ExpenseController extends Controller
     public function create()
     {
         $categories = ExpenseCategory::all();
-        $banks      = BankAccount::active()->orderBy('sort_order')->get();
+        $banks      = BankAccount::active()->forShop(Auth::user()->shopId())->orderBy('sort_order')->get();
         return view('admin.expenses.create', compact('categories', 'banks'));
     }
 
@@ -50,7 +80,7 @@ class ExpenseController extends Controller
             'notes'               => 'nullable|string|max:1000',
             'expense_date'        => 'required|date',
             'payment_method'      => 'required|in:cash,bank_transfer',
-            'bank_account_id'     => 'required_if:payment_method,bank_transfer|nullable|exists:bank_accounts,id',
+            'bank_account_id'     => $this->bankRule(),
             'receipt_image'       => 'nullable|image|max:5120',
         ]);
 
@@ -62,6 +92,7 @@ class ExpenseController extends Controller
             $data['bank_account_id'] = null;
         }
 
+        $data['shop_id'] = Auth::user()->shopId();
         $data['user_id'] = Auth::id();
         Expense::create($data);
 
@@ -71,13 +102,15 @@ class ExpenseController extends Controller
 
     public function edit(Expense $expense)
     {
+        $this->guardShop($expense);
         $categories = ExpenseCategory::all();
-        $banks      = BankAccount::active()->orderBy('sort_order')->get();
+        $banks      = BankAccount::active()->forShop($expense->shop_id)->orderBy('sort_order')->get();
         return view('admin.expenses.edit', compact('expense', 'categories', 'banks'));
     }
 
     public function update(Request $request, Expense $expense)
     {
+        $this->guardShop($expense);
         $data = $request->validate([
             'expense_category_id' => 'nullable|exists:expense_categories,id',
             'amount'              => 'required|numeric|min:0.01',
@@ -85,7 +118,12 @@ class ExpenseController extends Controller
             'notes'               => 'nullable|string|max:1000',
             'expense_date'        => 'required|date',
             'payment_method'      => 'required|in:cash,bank_transfer',
-            'bank_account_id'     => 'required_if:payment_method,bank_transfer|nullable|exists:bank_accounts,id',
+            'bank_account_id'     => [
+                'required_if:payment_method,bank_transfer', 'nullable',
+                Rule::exists('bank_accounts', 'id')->where(
+                    fn($q) => $expense->shop_id ? $q->where('shop_id', $expense->shop_id) : $q->whereNull('shop_id')
+                ),
+            ],
         ]);
 
         if ($data['payment_method'] !== 'bank_transfer') {
@@ -99,6 +137,7 @@ class ExpenseController extends Controller
 
     public function destroy(Expense $expense)
     {
+        $this->guardShop($expense);
         $expense->delete();
         return back()->with('success', 'Expense deleted.');
     }

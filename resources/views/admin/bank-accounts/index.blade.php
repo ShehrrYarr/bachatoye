@@ -2,9 +2,10 @@
 @section('title', 'Cash & Bank Balances')
 
 @section('content')
+@php $rPrefix = auth()->user()->panelPrefix(); @endphp
 <div class="flex items-center justify-between mb-6">
     <div>
-        <h1 class="text-xl font-bold text-gray-900">Cash & Bank Balances</h1>
+        <h1 class="text-xl font-bold text-gray-900">{{ ($currentShop ?? null) ? $currentShop->name . ' — ' : '' }}Cash & Bank Balances</h1>
         <p class="text-sm text-gray-500 mt-0.5">Live balances computed from all recorded transactions.</p>
     </div>
 </div>
@@ -90,7 +91,7 @@
                 @endif
             </div>
             {{-- Edit opening balance --}}
-            <form method="POST" action="{{ route('admin.bank-accounts.cash-opening') }}"
+            <form method="POST" action="{{ route("{$rPrefix}.bank-accounts.cash-opening") }}"
                   class="px-5 pb-4 pt-1 border-t border-gray-100 flex items-end gap-2">
                 @csrf
                 <div class="flex-1">
@@ -166,7 +167,7 @@
             <div class="px-5 pb-4 pt-1 border-t border-gray-100">
                 <button onclick="openEdit({{ $bank->id }}, {{ json_encode($bank) }})"
                         class="btn-outline btn-sm w-full"><i class="fas fa-pencil-alt mr-1.5"></i>Edit Account</button>
-                <form method="POST" action="{{ route('admin.bank-accounts.destroy', $bank) }}"
+                <form method="POST" action="{{ route("{$rPrefix}.bank-accounts.destroy", $bank) }}"
                       onsubmit="return confirm('Delete this bank account?')" class="mt-2">
                     @csrf @method('DELETE')
                     <button type="submit" class="btn-danger btn-sm w-full"><i class="fas fa-trash mr-1.5"></i>Delete</button>
@@ -230,7 +231,7 @@
                 <div class="flex items-center gap-2 shrink-0">
                     <button onclick="openEdit({{ $bank->id }}, {{ json_encode($bank) }})"
                             class="btn-outline btn-sm"><i class="fas fa-pencil-alt"></i></button>
-                    <form method="POST" action="{{ route('admin.bank-accounts.destroy', $bank) }}"
+                    <form method="POST" action="{{ route("{$rPrefix}.bank-accounts.destroy", $bank) }}"
                           onsubmit="return confirm('Delete this bank account?')">
                         @csrf @method('DELETE')
                         <button type="submit" class="btn-danger btn-sm"><i class="fas fa-trash"></i></button>
@@ -251,7 +252,7 @@
         <div class="card p-5" id="form-card">
             <h2 class="font-semibold text-gray-800 mb-4" id="form-title">Add Bank Account</h2>
 
-            <form method="POST" id="bank-form" action="{{ route('admin.bank-accounts.store') }}" class="space-y-3">
+            <form method="POST" id="bank-form" action="{{ route("{$rPrefix}.bank-accounts.store") }}" class="space-y-3">
                 @csrf
                 <div id="method-field"></div>
 
@@ -316,7 +317,7 @@
 function openEdit(id, bank) {
     document.getElementById('form-title').textContent = 'Edit Bank Account';
     document.getElementById('btn-label').textContent  = 'Update Account';
-    document.getElementById('bank-form').action       = '/admin/bank-accounts/' + id;
+    document.getElementById('bank-form').action       = '/{{ $rPrefix === 'shop' ? 'shop' : 'admin' }}/bank-accounts/' + id;
     document.getElementById('method-field').innerHTML = '<input type="hidden" name="_method" value="PUT">';
 
     document.getElementById('f-label').value            = bank.label;
@@ -334,7 +335,7 @@ function openEdit(id, bank) {
 function resetForm() {
     document.getElementById('form-title').textContent = 'Add Bank Account';
     document.getElementById('btn-label').textContent  = 'Save Account';
-    document.getElementById('bank-form').action       = '{{ route('admin.bank-accounts.store') }}';
+    document.getElementById('bank-form').action       = '{{ route("{$rPrefix}.bank-accounts.store") }}';
     document.getElementById('method-field').innerHTML = '';
     document.getElementById('bank-form').reset();
     document.getElementById('f-is-active').checked    = true;

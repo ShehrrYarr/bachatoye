@@ -4,9 +4,10 @@
 @section('content')
 @php
     $isAdmin    = auth()->user()->hasRole('admin');
-    $backRoute  = $isAdmin ? route('admin.customers.show', $customer) : route('salesman.customers.index');
-    $printRoute = $isAdmin ? route('admin.customers.ledger.print', $customer) : route('salesman.customers.ledger.print', $customer);
-    $addRoute   = $isAdmin ? route('admin.customers.ledger.add', $customer) : route('salesman.customers.ledger.add', $customer);
+    $prefix     = auth()->user()->panelPrefix();
+    $backRoute  = $prefix === 'salesman' ? route('salesman.customers.index') : route("{$prefix}.customers.show", $customer);
+    $printRoute = route("{$prefix}.customers.ledger.print", $customer);
+    $addRoute   = route("{$prefix}.customers.ledger.add", $customer);
 @endphp
 <div class="flex items-center justify-between mb-6">
     <div class="flex items-center gap-3">
