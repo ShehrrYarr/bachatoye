@@ -22,7 +22,7 @@ class PosReturnController extends Controller
 {
     public function index()
     {
-        $bankAccounts  = BankAccount::active()->orderBy('sort_order')->get();
+        $bankAccounts  = BankAccount::active()->forShop(Auth::user()->shopId())->orderBy('sort_order')->get();
         $subcategories = Category::active()->whereNotNull('parent_id')->orderBy('name')->get(['id', 'name']);
         return view('pos.return', compact('bankAccounts', 'subcategories'));
     }
@@ -34,7 +34,11 @@ class PosReturnController extends Controller
             return response()->json(['error' => 'Please enter a SKU or barcode.'], 422);
         }
 
-        $orders = Order::whereHas('items', function ($query) use ($q) {
+        // Sub shop can only return its own shop's orders (admin may return any)
+        $shopId = Auth::user()->shopId();
+
+        $orders = Order::when($shopId, fn($query) => $query->forShop($shopId))
+            ->whereHas('items', function ($query) use ($q) {
                 $query->where('product_barcode', $q)
                       ->orWhere('product_name', 'like', "%{$q}%")
                       ->orWhereHas('product', fn($pq) => $pq->where('sku', $q)->orWhere('barcode', $q));
@@ -73,7 +77,10 @@ class PosReturnController extends Controller
 
     public function findOrder(string $orderNumber)
     {
+        $shopId = Auth::user()->shopId();
+
         $order = Order::where('order_number', $orderNumber)
+                      ->when($shopId, fn($q) => $q->forShop($shopId))
                       ->with(['items.product', 'items.serialNumber'])
                       ->first();
 
@@ -144,6 +151,20 @@ class PosReturnController extends Controller
         DB::beginTransaction();
         try {
             $order = Order::with('items')->find($request->order_id);
+
+            // Sub shop can only process returns for its own shop's orders
+            $userShopId = Auth::user()->shopId();
+            if ($userShopId && $order->shop_id !== $userShopId) {
+                DB::rollBack();
+                return response()->json(['error' => 'Order not found.'], 404);
+            }
+
+            // Refund bank account must belong to the order's shop
+            if ($request->refund_method === 'bank_transfer' && $request->filled('bank_account_id')
+                && !BankAccount::forShop($order->shop_id)->where('id', $request->bank_account_id)->exists()) {
+                DB::rollBack();
+                return response()->json(['error' => 'The selected bank account belongs to a different shop.'], 422);
+            }
 
             if ($order->source === 'ecommerce' && $order->status !== 'delivered') {
                 DB::rollBack();
@@ -242,32 +263,16 @@ class PosReturnController extends Controller
             foreach ($items as $item) {
                 ReturnItem::create(array_merge($item, ['return_id' => $returnOrder->id]));
 
-                // Restock
+                // Restock at the shop the order was sold from
                 if ($item['product_id']) {
                     $shouldRestock = $request->boolean('restock', true);
                     $product       = \App\Models\Product::find($item['product_id']);
 
                     if ($shouldRestock && $product) {
-                        $before = $product->stock_quantity;
-                        $product->increment('stock_quantity', $item['quantity']);
-
-                        // Restore color stock if the order item was for a specific color
-                        if (!empty($item['color_id'])) {
-                            $color = \App\Models\ProductColor::find($item['color_id']);
-                            if ($color) {
-                                $color->increment('stock_quantity', $item['quantity']);
-                            }
-                        }
-
-                        StockMovement::create([
-                            'product_id'      => $product->id,
-                            'type'            => 'return',
-                            'quantity'        => $item['quantity'],
-                            'before_quantity' => $before,
-                            'after_quantity'  => $before + $item['quantity'],
-                            'reference'       => $returnOrder->return_number,
-                            'user_id'         => Auth::id(),
-                        ]);
+                        app(\App\Services\ShopStockService::class)->adjust(
+                            $order->shop_id, $product, $item['color_id'] ?: null, $item['quantity'],
+                            'return', $returnOrder->return_number
+                        );
                     }
 
                     // Update serial number status
@@ -339,6 +344,9 @@ class PosReturnController extends Controller
 
             DB::commit();
             return response()->json(['success' => true, 'return_id' => $returnOrder->id, 'return_number' => $returnOrder->return_number]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            return response()->json(['error' => collect($e->errors())->flatten()->first()], 422);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['error' => $e->getMessage()], 500);
@@ -347,12 +355,17 @@ class PosReturnController extends Controller
 
     public function receipt(ReturnOrder $return)
     {
-        $return->load(['items', 'order', 'processedBy']);
+        $return->load(['items', 'order.shop', 'processedBy']);
+
+        $user = Auth::user();
+        abort_if($user->isSubshop() && $return->order?->shop_id !== $user->shopId(), 404);
+
+        $shop     = $return->order?->shop;
         $settings = [
-            'shop_name'    => Setting::get('shop_name', 'MobileHub'),
-            'shop_phone'   => Setting::get('shop_phone'),
-            'shop_address' => Setting::get('shop_address'),
-            'footer'       => Setting::get('receipt_footer'),
+            'shop_name'    => $shop?->name ?? Setting::get('shop_name', 'MobileHub'),
+            'shop_phone'   => $shop?->phone ?? Setting::get('shop_phone'),
+            'shop_address' => $shop?->address ?? Setting::get('shop_address'),
+            'footer'       => $shop?->receipt_footer ?? Setting::get('receipt_footer'),
         ];
         return view('pos.return-receipt', compact('return', 'settings'));
     }

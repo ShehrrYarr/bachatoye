@@ -21,14 +21,17 @@ class PosExchangeController extends Controller
 {
     public function index()
     {
-        $bankAccounts = BankAccount::active()->orderBy('sort_order')->get();
+        $bankAccounts = BankAccount::active()->forShop(Auth::user()->shopId())->orderBy('sort_order')->get();
         return view('pos.exchange', compact('bankAccounts'));
     }
 
     public function findOrder(string $orderNumber)
     {
+        $shopId = Auth::user()->shopId();
+
         $order = Order::where('order_number', $orderNumber)
                       ->where('source', 'pos')
+                      ->when($shopId, fn($q) => $q->forShop($shopId))
                       ->where('status', '!=', 'cancelled')
                       ->with(['items.product', 'items.returnItems'])
                       ->first();
@@ -74,6 +77,21 @@ class PosExchangeController extends Controller
             $originalOrder  = Order::with('items')->find($request->original_order_id);
             $returnOrderItem = OrderItem::find($request->return_item_id);
 
+            // Sub shop can only exchange its own shop's orders; the new order
+            // is created at the same shop the original was sold from.
+            $userShopId = Auth::user()->shopId();
+            if ($userShopId && $originalOrder->shop_id !== $userShopId) {
+                DB::rollBack();
+                return response()->json(['error' => 'Order not found.'], 404);
+            }
+            $orderShopId = $originalOrder->shop_id;
+
+            if ($request->filled('bank_account_id')
+                && !BankAccount::forShop($orderShopId)->where('id', $request->bank_account_id)->exists()) {
+                DB::rollBack();
+                return response()->json(['error' => 'The selected bank account belongs to a different shop.'], 422);
+            }
+
             if (!$returnOrderItem || (int)$returnOrderItem->order_id !== (int)$originalOrder->id) {
                 DB::rollBack();
                 return response()->json(['error' => 'Invalid order item for this order.'], 422);
@@ -104,21 +122,13 @@ class PosExchangeController extends Controller
                 'line_total'    => $returnOrderItem->unit_price * $returnQty,
             ]);
 
-            // Restock the returned product
+            // Restock the returned product at the order's own shop
             $returnProduct = Product::lockForUpdate()->find($returnOrderItem->product_id);
             if ($returnProduct) {
-                $before = $returnProduct->stock_quantity;
-                $returnProduct->increment('stock_quantity', $returnQty);
-
-                StockMovement::create([
-                    'product_id'      => $returnProduct->id,
-                    'type'            => 'return',
-                    'quantity'        => $returnQty,
-                    'before_quantity' => $before,
-                    'after_quantity'  => $before + $returnQty,
-                    'reference'       => $returnOrder->return_number,
-                    'user_id'         => Auth::id(),
-                ]);
+                app(\App\Services\ShopStockService::class)->adjust(
+                    $orderShopId, $returnProduct, $returnOrderItem->color_id ?? null, $returnQty,
+                    'return', $returnOrder->return_number
+                );
             }
 
             // ─── Step 2: Build new order items ─────────────────────────────────
@@ -134,12 +144,16 @@ class PosExchangeController extends Controller
                     $color = ProductColor::lockForUpdate()->find($item['color_id']);
                     if ($color) {
                         $colorName = $color->name;
-                        if ($color->stock_quantity < $item['quantity']) {
+                        $colorStock = $orderShopId
+                            ? $product->stockForShop($orderShopId, $color->id)
+                            : $color->stock_quantity;
+                        if ($colorStock < $item['quantity']) {
                             DB::rollBack();
                             return response()->json(['error' => "Insufficient stock for {$product->name} ({$color->name})."], 422);
                         }
                     }
-                } elseif ($product->track_inventory && $product->stock_quantity < $item['quantity']) {
+                } elseif ($product->track_inventory
+                    && ($orderShopId ? $product->stockForShop($orderShopId) : $product->stock_quantity) < $item['quantity']) {
                     DB::rollBack();
                     return response()->json(['error' => "Insufficient stock for {$product->name}."], 422);
                 }
@@ -182,6 +196,7 @@ class PosExchangeController extends Controller
             // ─── Step 3: Create new POS Order ──────────────────────────────────
             $newOrder = Order::create([
                 'source'             => 'pos',
+                'shop_id'            => $orderShopId,
                 'customer_id'        => $originalOrder->customer_id,
                 'customer_name'      => $originalOrder->customer_name,
                 'customer_phone'     => $originalOrder->customer_phone,
@@ -214,22 +229,10 @@ class PosExchangeController extends Controller
                     'line_total'      => $item['line_total'],
                 ]);
 
-                if ($item['color']) {
-                    $item['color']->decrement('stock_quantity', $item['qty']);
-                }
-
-                $before = $item['product']->stock_quantity;
-                $item['product']->decrement('stock_quantity', $item['qty']);
-
-                StockMovement::create([
-                    'product_id'      => $item['product']->id,
-                    'type'            => 'sale',
-                    'quantity'        => -$item['qty'],
-                    'before_quantity' => $before,
-                    'after_quantity'  => $before - $item['qty'],
-                    'reference'       => $newOrder->order_number,
-                    'user_id'         => Auth::id(),
-                ]);
+                app(\App\Services\ShopStockService::class)->adjust(
+                    $orderShopId, $item['product'], $item['color']?->id, -$item['qty'],
+                    'sale', $newOrder->order_number
+                );
             }
 
             // ─── Update POS session ─────────────────────────────────────────────
@@ -249,6 +252,9 @@ class PosExchangeController extends Controller
                 'cashback'      => max(0, $exchangeValue - $subtotal),
             ]);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            return response()->json(['error' => collect($e->errors())->flatten()->first()], 422);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['error' => 'Exchange failed: ' . $e->getMessage()], 500);

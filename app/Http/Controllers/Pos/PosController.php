@@ -27,12 +27,13 @@ class PosController extends Controller
     public function index()
     {
         $user    = Auth::user();
+        $shopId  = $user->shopId();
         $session = PosSession::where('user_id', $user->id)->whereNull('closed_at')->latest()->first();
 
         // Section-based filtering: admins see everything; salesmen see only their sections
         $allowedCategoryIds = $user->allowedCategoryIds();
 
-        $prodQuery = Product::active()->inStock()->with('images');
+        $prodQuery = Product::active()->inStockForShop($shopId)->with('images');
 
         $catQuery = \App\Models\Category::active()
             ->whereNull('parent_id')
@@ -59,18 +60,20 @@ class PosController extends Controller
 
         $isAdmin = $user->hasRole('admin');
 
-        // Daily sales orders with items (salesman sees only their own)
+        // Daily sales orders with items (location-scoped; salesman sees only their own)
         $todaySalesOrders = Order::where('source', 'pos')
+            ->forShop($shopId)
             ->whereDate('created_at', today())
             ->where('status', 'delivered')
-            ->when(!$isAdmin, fn($q) => $q->where('served_by', $user->id))
+            ->when(!$isAdmin && !$shopId, fn($q) => $q->where('served_by', $user->id))
             ->with(['items', 'customer'])
             ->latest()
             ->get();
 
         // Daily returns with items (salesman sees only returns they processed)
         $todayReturnsList = \App\Models\ReturnOrder::whereDate('created_at', today())
-            ->when(!$isAdmin, fn($q) => $q->where('processed_by', $user->id))
+            ->whereHas('order', fn($q) => $q->forShop($shopId))
+            ->when(!$isAdmin && !$shopId, fn($q) => $q->where('processed_by', $user->id))
             ->with(['items', 'order'])
             ->latest()
             ->get();
@@ -79,7 +82,8 @@ class PosController extends Controller
         $todayPaymentsList = \App\Models\AccountLedger::whereDate('created_at', today())
             ->where('type', 'credit')
             ->whereNull('return_id')
-            ->when(!$isAdmin, fn($q) => $q->where('user_id', $user->id))
+            ->whereHas('customer', fn($q) => $q->forShop($shopId))
+            ->when(!$isAdmin && !$shopId, fn($q) => $q->where('user_id', $user->id))
             ->with(['customer', 'user'])
             ->latest()
             ->get();
@@ -134,14 +138,15 @@ class PosController extends Controller
             'vendor_pay_bank'  => (float) $todayVendorPayList->where('payment_method', 'bank_transfer')->sum('amount'),
         ];
 
-        $bankAccounts = BankAccount::active()->orderBy('sort_order')->orderBy('id')->get();
+        $bankAccounts = BankAccount::active()->forShop($shopId)->orderBy('sort_order')->orderBy('id')->get();
         $canViewCost  = $user->can('products.view_cost');
+        $currentShop  = $shopId ? $user->shop : null;
 
         return view('pos.index', compact(
             'session', 'categories', 'featuredProducts',
             'todaySales', 'todayReturns', 'todayPayments', 'todayVendorPayments',
             'todaySalesOrders', 'todayReturnsList', 'todayPaymentsList', 'todayVendorPayList',
-            'bankAccounts', 'canViewCost'
+            'bankAccounts', 'canViewCost', 'currentShop'
         ));
     }
 
@@ -149,11 +154,13 @@ class PosController extends Controller
     {
         $user    = Auth::user();
         $isAdmin = $user->hasRole('admin');
+        $shopId  = $user->shopId();
 
         $todaySalesOrders = Order::where('source', 'pos')
+            ->forShop($shopId)
             ->whereDate('created_at', today())
             ->where('status', 'delivered')
-            ->when(!$isAdmin, fn($q) => $q->where('served_by', $user->id))
+            ->when(!$isAdmin && !$shopId, fn($q) => $q->where('served_by', $user->id))
             ->get(['payment_method', 'total', 'cash_amount', 'bank_amount', 'amount_paid', 'bank_account_id']);
 
         $cashTotal = $todaySalesOrders->sum(function ($o) {
@@ -174,13 +181,15 @@ class PosController extends Controller
         });
 
         $todayReturnsList = \App\Models\ReturnOrder::whereDate('created_at', today())
-            ->when(!$isAdmin, fn($q) => $q->where('processed_by', $user->id))
+            ->whereHas('order', fn($q) => $q->forShop($shopId))
+            ->when(!$isAdmin && !$shopId, fn($q) => $q->where('processed_by', $user->id))
             ->get(['refund_amount']);
 
         $todayPaymentsList = \App\Models\AccountLedger::whereDate('created_at', today())
             ->where('type', 'credit')
             ->whereNull('return_id')
-            ->when(!$isAdmin, fn($q) => $q->where('user_id', $user->id))
+            ->whereHas('customer', fn($q) => $q->forShop($shopId))
+            ->when(!$isAdmin && !$shopId, fn($q) => $q->where('user_id', $user->id))
             ->get(['amount']);
 
         $vendorPayData = $isAdmin
@@ -209,11 +218,13 @@ class PosController extends Controller
     {
         $user    = Auth::user();
         $isAdmin = $user->hasRole('admin');
+        $shopId  = $user->shopId();
 
         $orders = Order::where('source', 'pos')
+            ->forShop($shopId)
             ->whereDate('created_at', today())
             ->where('status', 'delivered')
-            ->when(!$isAdmin, fn($q) => $q->where('served_by', $user->id))
+            ->when(!$isAdmin && !$shopId, fn($q) => $q->where('served_by', $user->id))
             ->latest()
             ->with(['items'])
             ->get()
@@ -236,7 +247,8 @@ class PosController extends Controller
             ])->values();
 
         $returns = \App\Models\ReturnOrder::whereDate('created_at', today())
-            ->when(!$isAdmin, fn($q) => $q->where('processed_by', $user->id))
+            ->whereHas('order', fn($q) => $q->forShop($shopId))
+            ->when(!$isAdmin && !$shopId, fn($q) => $q->where('processed_by', $user->id))
             ->latest()
             ->with(['order', 'items'])
             ->get()
@@ -258,7 +270,8 @@ class PosController extends Controller
         $payments = \App\Models\AccountLedger::whereDate('created_at', today())
             ->where('type', 'credit')
             ->whereNull('return_id')
-            ->when(!$isAdmin, fn($q) => $q->where('user_id', $user->id))
+            ->whereHas('customer', fn($q) => $q->forShop($shopId))
+            ->when(!$isAdmin && !$shopId, fn($q) => $q->where('user_id', $user->id))
             ->latest()
             ->with(['customer', 'user'])
             ->get()
@@ -298,6 +311,7 @@ class PosController extends Controller
 
         PosSession::create([
             'user_id'      => Auth::id(),
+            'shop_id'      => Auth::user()->shopId(),
             'opening_cash' => $data['opening_cash'],
             'opened_at'    => now(),
         ]);
@@ -331,13 +345,14 @@ class PosController extends Controller
     {
         $q                  = $request->input('q', '');
         $categoryId         = $request->input('category');
+        $shopId             = Auth::user()->shopId();
         $allowedCategoryIds = Auth::user()->allowedCategoryIds();
 
         // Resolve the selected category: a subcategory filters by subcategory_id,
         // a top-level (or "All [Parent]") category filters by category_id.
         $selectedCat = $categoryId ? \App\Models\Category::find($categoryId) : null;
 
-        $products = Product::active()->inStock()
+        $products = Product::active()->inStockForShop($shopId)
             ->when($allowedCategoryIds !== null, fn($query) => $query->whereIn('category_id', $allowedCategoryIds))
             ->when($selectedCat, function ($query) use ($selectedCat) {
                 if ($selectedCat->parent_id) {
@@ -352,6 +367,7 @@ class PosController extends Controller
                 ->orWhere('sku', 'like', "%{$q}%")
             )
             ->with(['images', 'colors', 'category.section'])
+            ->when($shopId, fn($query) => $query->with(['shopStocks' => fn($s) => $s->where('shop_id', $shopId)]))
             ->limit($q ? 15 : 60)
             ->get()
             ->map(fn($p) => [
@@ -361,9 +377,11 @@ class PosController extends Controller
                 'barcode'          => $p->barcode,
                 'price'            => $p->getDiscountedPrice(),
                 'cost_price'       => $p->cost_price,
-                'stock'            => $p->colors->count() > 0
-                                        ? $p->colors->sum('stock_quantity')
-                                        : $p->stock_quantity,
+                'stock'            => $shopId
+                                        ? (int) $p->shopStocks->sum('quantity')
+                                        : ($p->colors->count() > 0
+                                            ? $p->colors->sum('stock_quantity')
+                                            : $p->stock_quantity),
                 'image'            => $p->primary_image_url,
                 'exchange_eligible' => (bool)($p->category?->section?->exchange_enabled),
                 'is_serialized'    => (bool) $p->is_serialized,
@@ -374,7 +392,9 @@ class PosController extends Controller
                     'id'             => $c->id,
                     'name'           => $c->name,
                     'hex_code'       => $c->hex_code,
-                    'stock_quantity' => $c->stock_quantity,
+                    'stock_quantity' => $shopId
+                        ? (int) ($p->shopStocks->firstWhere('product_color_id', $c->id)?->quantity ?? 0)
+                        : $c->stock_quantity,
                 ])->values(),
             ]);
 
@@ -383,6 +403,7 @@ class PosController extends Controller
         if ($q) {
             $serialResults = SerialNumber::where('serial_number', 'like', "%{$q}%")
                 ->where('status', 'in_stock')
+                ->forShop($shopId)
                 ->with(['product.images', 'product.category.section'])
                 ->limit(10)
                 ->get()
@@ -425,16 +446,18 @@ class PosController extends Controller
      */
     public function catalog()
     {
+        $shopId             = Auth::user()->shopId();
         $allowedCategoryIds = Auth::user()->allowedCategoryIds();
 
-        $products = Product::active()->inStock()
+        $products = Product::active()->inStockForShop($shopId)
             ->when($allowedCategoryIds !== null, fn($q) => $q->whereIn('category_id', $allowedCategoryIds))
             ->with([
                 'images',
                 'colors',
                 'category.section',
-                'serialNumbers' => fn($q) => $q->where('status', 'in_stock')->orderBy('serial_number'),
+                'serialNumbers' => fn($q) => $q->where('status', 'in_stock')->forShop($shopId)->orderBy('serial_number'),
             ])
+            ->when($shopId, fn($q) => $q->with(['shopStocks' => fn($s) => $s->where('shop_id', $shopId)]))
             ->get()
             ->map(fn($p) => [
                 '_key'              => 'p_' . $p->id,
@@ -444,9 +467,11 @@ class PosController extends Controller
                 'barcode'           => $p->barcode,
                 'price'             => $p->getDiscountedPrice(),
                 'cost_price'        => $p->cost_price,
-                'stock'             => $p->colors->count() > 0
-                                        ? $p->colors->sum('stock_quantity')
-                                        : $p->stock_quantity,
+                'stock'             => $shopId
+                                        ? (int) $p->shopStocks->sum('quantity')
+                                        : ($p->colors->count() > 0
+                                            ? $p->colors->sum('stock_quantity')
+                                            : $p->stock_quantity),
                 'image'             => $p->primary_image_url,
                 'exchange_eligible' => (bool)($p->category?->section?->exchange_enabled),
                 'is_serialized'     => (bool) $p->is_serialized,
@@ -459,7 +484,9 @@ class PosController extends Controller
                     'id'             => $c->id,
                     'name'           => $c->name,
                     'hex_code'       => $c->hex_code,
-                    'stock_quantity' => $c->stock_quantity,
+                    'stock_quantity' => $shopId
+                        ? (int) ($p->shopStocks->firstWhere('product_color_id', $c->id)?->quantity ?? 0)
+                        : $c->stock_quantity,
                 ])->values(),
                 'serials'           => $p->is_serialized
                     ? $p->serialNumbers->map(fn($s) => [
@@ -481,7 +508,9 @@ class PosController extends Controller
      */
     public function offlineCustomers()
     {
-        $customers = Customer::orderBy('name')
+        $shopId = Auth::user()->shopId();
+
+        $customers = Customer::forShop($shopId)->orderBy('name')
             ->get(['id', 'name', 'phone', 'credit_balance'])
             ->map(fn($c) => [
                 'id'             => $c->id,
@@ -491,21 +520,25 @@ class PosController extends Controller
                 'type'           => 'customer',
             ]);
 
-        $vendors = Vendor::orderBy('name')
-            ->get(['id', 'name', 'phone', 'balance'])
-            ->map(fn($v) => [
-                'id'             => $v->id,
-                'name'           => $v->name,
-                'phone'          => $v->phone ?? '',
-                'credit_balance' => (float) ($v->balance * -1),
-                'type'           => 'vendor',
-            ]);
+        // Vendors are a main-shop concern — sub shops never sell to vendors
+        $vendors = $shopId
+            ? collect()
+            : Vendor::orderBy('name')
+                ->get(['id', 'name', 'phone', 'balance'])
+                ->map(fn($v) => [
+                    'id'             => $v->id,
+                    'name'           => $v->name,
+                    'phone'          => $v->phone ?? '',
+                    'credit_balance' => (float) ($v->balance * -1),
+                    'type'           => 'vendor',
+                ]);
 
         return response()->json($customers->concat($vendors)->values());
     }
 
     public function getByBarcode(string $barcode)
     {
+        $shopId             = Auth::user()->shopId();
         $allowedCategoryIds = Auth::user()->allowedCategoryIds();
 
         // ── 1. Check product barcode first ────────────────────────────────────
@@ -513,6 +546,7 @@ class PosController extends Controller
             ->when($allowedCategoryIds !== null, fn($q) => $q->whereIn('category_id', $allowedCategoryIds))
             ->where('barcode', $barcode)
             ->with(['images', 'colors', 'category.section'])
+            ->when($shopId, fn($q) => $q->with(['shopStocks' => fn($s) => $s->where('shop_id', $shopId)]))
             ->first();
 
         if ($product) {
@@ -522,7 +556,9 @@ class PosController extends Controller
                 'barcode'          => $product->barcode,
                 'price'            => $product->getDiscountedPrice(),
                 'cost_price'       => $product->cost_price,
-                'stock'            => $product->stock_quantity,
+                'stock'            => $shopId
+                                        ? (int) $product->shopStocks->sum('quantity')
+                                        : $product->stock_quantity,
                 'image'            => $product->primary_image_url,
                 'exchange_eligible' => (bool)($product->category?->section?->exchange_enabled),
                 'is_serialized'    => false,
@@ -532,7 +568,9 @@ class PosController extends Controller
                     'id'             => $c->id,
                     'name'           => $c->name,
                     'hex_code'       => $c->hex_code,
-                    'stock_quantity' => $c->stock_quantity,
+                    'stock_quantity' => $shopId
+                        ? (int) ($product->shopStocks->firstWhere('product_color_id', $c->id)?->quantity ?? 0)
+                        : $c->stock_quantity,
                 ])->values(),
             ]);
         }
@@ -540,6 +578,7 @@ class PosController extends Controller
         // ── 2. Check serial number (IMEI) ─────────────────────────────────────
         $serial = SerialNumber::where('serial_number', $barcode)
             ->where('status', 'in_stock')
+            ->forShop($shopId)
             ->with(['product.images', 'product.category.section'])
             ->first();
 
@@ -593,6 +632,7 @@ class PosController extends Controller
 
         $serials = SerialNumber::where('product_id', $product->id)
             ->where('status', 'in_stock')
+            ->forShop(Auth::user()->shopId())
             ->orderBy('serial_number')
             ->get()
             ->map(fn($s) => [
@@ -614,9 +654,11 @@ class PosController extends Controller
 
     public function searchCustomer(Request $request)
     {
-        $q = $request->input('q', '');
+        $q      = $request->input('q', '');
+        $shopId = Auth::user()->shopId();
 
         $customers = Customer::where('source', '!=', 'online')
+            ->forShop($shopId)
             ->where(fn($q2) => $q2->where('name', 'like', "%{$q}%")
                                   ->orWhere('phone', 'like', "%{$q}%"))
             ->limit(8)
@@ -630,32 +672,44 @@ class PosController extends Controller
                 'type'           => 'customer',
             ]);
 
-        $vendors = Vendor::where(fn($q2) => $q2->where('name', 'like', "%{$q}%")
-                                               ->orWhere('phone', 'like', "%{$q}%"))
-            ->limit(5)
-            ->get(['id', 'name', 'phone', 'balance', 'khata_enabled'])
-            ->map(fn($v) => [
-                'id'             => $v->id,
-                'name'           => $v->name,
-                'phone'          => $v->phone ?? '',
-                // Negative vendor balance = vendor owes us; matches customer credit_balance semantics
-                'credit_balance' => (float) ($v->balance * -1),
-                'khata_enabled'  => (bool) $v->khata_enabled,
-                'type'           => 'vendor',
-            ]);
+        // Vendors are a main-shop concern — sub shops never sell to vendors
+        $vendors = $shopId
+            ? collect()
+            : Vendor::where(fn($q2) => $q2->where('name', 'like', "%{$q}%")
+                                          ->orWhere('phone', 'like', "%{$q}%"))
+                ->limit(5)
+                ->get(['id', 'name', 'phone', 'balance', 'khata_enabled'])
+                ->map(fn($v) => [
+                    'id'             => $v->id,
+                    'name'           => $v->name,
+                    'phone'          => $v->phone ?? '',
+                    // Negative vendor balance = vendor owes us; matches customer credit_balance semantics
+                    'credit_balance' => (float) ($v->balance * -1),
+                    'khata_enabled'  => (bool) $v->khata_enabled,
+                    'type'           => 'vendor',
+                ]);
 
         return response()->json($customers->concat($vendors)->values());
     }
 
     public function createCustomer(Request $request)
     {
+        $shopId = Auth::user()->shopId();
+
         $data = $request->validate([
             'name'  => 'required|string|max:100',
-            'phone' => 'required|string|max:20|unique:customers',
+            'phone' => [
+                'required', 'string', 'max:20',
+                // Phone is unique per shop (NULL shop_id = main shop)
+                \Illuminate\Validation\Rule::unique('customers', 'phone')->where(
+                    fn($q) => $shopId ? $q->where('shop_id', $shopId) : $q->whereNull('shop_id')
+                ),
+            ],
         ]);
 
         $khataEnabled = $request->boolean('khata_enabled');
         $customer = Customer::create(array_merge($data, [
+            'shop_id'       => $shopId,
             'source'        => 'pos',
             'khata_enabled' => $khataEnabled,
             'created_by'    => Auth::id(),
@@ -673,6 +727,8 @@ class PosController extends Controller
 
     public function createOrder(Request $request)
     {
+        $shopId = Auth::user()->shopId();
+
         $request->validate([
             'items'                 => 'required|array|min:1',
             'items.*.product_id'    => 'required|exists:products,id',
@@ -712,6 +768,25 @@ class PosController extends Controller
             }
         }
 
+        // Sub shop guards: no vendor sales; customers and banks must belong to this shop
+        if ($shopId) {
+            if ($request->filled('vendor_id')) {
+                return response()->json(['error' => 'Vendor sales are only available at the main shop.'], 422);
+            }
+        }
+        if ($request->filled('customer_id')) {
+            $custShop = Customer::find($request->customer_id)?->shop_id;
+            if ($custShop !== $shopId) {
+                return response()->json(['error' => 'This customer belongs to a different shop.'], 422);
+            }
+        }
+        foreach (['bank_account_id', 'partial_bank_account_id'] as $bankField) {
+            if ($request->filled($bankField)
+                && !BankAccount::forShop($shopId)->where('id', $request->$bankField)->exists()) {
+                return response()->json(['error' => 'The selected bank account belongs to a different shop.'], 422);
+            }
+        }
+
         DB::beginTransaction();
         try {
             $customer = $request->customer_id ? Customer::find($request->customer_id) : null;
@@ -745,30 +820,35 @@ class PosController extends Controller
                     $serial = SerialNumber::where('serial_number', $sn)
                         ->where('product_id', $product->id)
                         ->where('status', 'in_stock')
+                        ->forShop($shopId)
                         ->lockForUpdate()
                         ->first();
                     if (!$serial) {
                         DB::rollBack();
                         return response()->json([
-                            'error' => "Serial {$sn} is not in stock for product: {$product->name}. It may have already been sold or not been registered.",
+                            'error' => "Serial {$sn} is not in stock at this shop for product: {$product->name}. It may have already been sold, transferred, or not been registered.",
                         ], 422);
                     }
                     $usedSerials[$sn] = true;
                 }
 
-                // Resolve color (if specified)
+                // Resolve color (if specified) and check stock at this location
                 $color     = null;
                 $colorName = null;
                 if (!empty($item['color_id'])) {
                     $color = ProductColor::lockForUpdate()->find($item['color_id']);
                     if ($color) {
                         $colorName = $color->name;
-                        if ($color->stock_quantity < $item['quantity']) {
+                        $colorStock = $shopId
+                            ? $product->stockForShop($shopId, $color->id)
+                            : $color->stock_quantity;
+                        if ($colorStock < $item['quantity']) {
                             DB::rollBack();
                             return response()->json(['error' => "Insufficient stock for: {$product->name} ({$color->name})"], 422);
                         }
                     }
-                } elseif ($product->track_inventory && $product->stock_quantity < $item['quantity']) {
+                } elseif ($product->track_inventory
+                    && ($shopId ? $product->stockForShop($shopId) : $product->stock_quantity) < $item['quantity']) {
                     DB::rollBack();
                     return response()->json(['error' => "Insufficient stock for: {$product->name}"], 422);
                 }
@@ -821,6 +901,7 @@ class PosController extends Controller
 
             $order = Order::create([
                 'source'          => 'pos',
+                'shop_id'         => $shopId,
                 'offline_ref'     => $request->offline_ref ?: null,
                 'customer_id'     => $customer?->id,
                 'vendor_id'       => $vendor?->id,
@@ -878,22 +959,11 @@ class PosController extends Controller
                     ]);
                 }
 
-                // Decrement color stock (if applicable) and product total stock
-                if ($item['color']) {
-                    $item['color']->decrement('stock_quantity', $item['qty']);
-                }
-                $before = $item['product']->stock_quantity;
-                $item['product']->decrement('stock_quantity', $item['qty']);
-
-                StockMovement::create([
-                    'product_id'      => $item['product']->id,
-                    'type'            => 'sale',
-                    'quantity'        => -$item['qty'],
-                    'before_quantity' => $before,
-                    'after_quantity'  => $before - $item['qty'],
-                    'reference'       => $order->order_number,
-                    'user_id'         => Auth::id(),
-                ]);
+                // Decrement stock at this location (main columns or shop_stocks)
+                app(\App\Services\ShopStockService::class)->adjust(
+                    $shopId, $item['product'], $item['color']?->id, -$item['qty'],
+                    'sale', $order->order_number
+                );
             }
 
             // Build items summary for ledger description
@@ -987,6 +1057,9 @@ class PosController extends Controller
 
             return response()->json(['success' => true, 'order_id' => $order->id, 'order_number' => $order->order_number]);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            return response()->json(['error' => collect($e->errors())->flatten()->first()], 422);
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('POS store() failed: ' . $e->getMessage(), [
@@ -999,13 +1072,19 @@ class PosController extends Controller
 
     public function receipt(Order $order)
     {
-        $order->load(['items.product', 'servedBy', 'bankAccount']);
+        $user = Auth::user();
+        abort_if($user->isSubshop() && $order->shop_id !== $user->shopId(), 404);
+
+        $order->load(['items.product', 'servedBy', 'bankAccount', 'shop']);
+
+        // Sub shop sales print the sub shop's identity (fall back to global settings)
+        $shop     = $order->shop;
         $settings = [
-            'shop_name'    => Setting::get('shop_name', 'MobileHub'),
-            'shop_phone'   => Setting::get('shop_phone'),
-            'shop_address' => Setting::get('shop_address'),
-            'header'       => Setting::get('receipt_header'),
-            'footer'       => Setting::get('receipt_footer'),
+            'shop_name'    => $shop?->name ?? Setting::get('shop_name', 'MobileHub'),
+            'shop_phone'   => $shop?->phone ?? Setting::get('shop_phone'),
+            'shop_address' => $shop?->address ?? Setting::get('shop_address'),
+            'header'       => $shop?->receipt_header ?? Setting::get('receipt_header'),
+            'footer'       => $shop?->receipt_footer ?? Setting::get('receipt_footer'),
         ];
         return view('pos.receipt', compact('order', 'settings'));
     }
@@ -1015,6 +1094,7 @@ class PosController extends Controller
     public function deleteOrder(Order $order)
     {
         abort_if($order->source !== 'pos', 404);
+        abort_if(Auth::user()->isSubshop() && $order->shop_id !== Auth::user()->shopId(), 404);
         abort_if(in_array($order->status, ['returned', 'cancelled']), 403, 'This order cannot be deleted.');
 
         // Block deletion if returns are linked to this order
@@ -1035,33 +1115,17 @@ class PosController extends Controller
                 ? Vendor::find($order->vendor_id)
                 : null;
 
-            // ── 1. Restore stock ──────────────────────────────────────────
+            // ── 1. Restore stock at the order's own shop ───────────────────
             $items = $order->items()->get();
 
             foreach ($items as $item) {
                 $product = Product::lockForUpdate()->find($item->product_id);
                 if (! $product) continue;
 
-                if ($item->color_id) {
-                    $color = ProductColor::lockForUpdate()->find($item->color_id);
-                    if ($color) {
-                        $color->increment('stock_quantity', $item->quantity);
-                    }
-                }
-
-                $before = $product->stock_quantity;
-                $product->increment('stock_quantity', $item->quantity);
-
-                StockMovement::create([
-                    'product_id'      => $product->id,
-                    'type'            => 'adjustment',
-                    'quantity'        => $item->quantity,
-                    'before_quantity' => $before,
-                    'after_quantity'  => $before + $item->quantity,
-                    'reference'       => $order->order_number,
-                    'note'            => 'Sale deleted — stock restored',
-                    'user_id'         => Auth::id(),
-                ]);
+                app(\App\Services\ShopStockService::class)->adjust(
+                    $order->shop_id, $product, $item->color_id, $item->quantity,
+                    'adjustment', $order->order_number, 'Sale deleted — stock restored'
+                );
             }
 
             // ── 2. Reverse khata ledger entries ───────────────────────────
@@ -1116,10 +1180,11 @@ class PosController extends Controller
     public function editOrder(Order $order)
     {
         abort_if($order->source !== 'pos', 404);
+        abort_if(Auth::user()->isSubshop() && $order->shop_id !== Auth::user()->shopId(), 404);
         abort_if(in_array($order->status, ['returned', 'cancelled']), 403, 'This order cannot be edited.');
 
         $order->load(['items.product', 'customer', 'bankAccount', 'servedBy']);
-        $bankAccounts = BankAccount::active()->orderBy('sort_order')->orderBy('id')->get();
+        $bankAccounts = BankAccount::active()->forShop($order->shop_id)->orderBy('sort_order')->orderBy('id')->get();
 
         $orderData = [
             'id'             => $order->id,
@@ -1155,7 +1220,10 @@ class PosController extends Controller
     public function updateOrder(Request $request, Order $order)
     {
         abort_if($order->source !== 'pos', 404);
+        abort_if(Auth::user()->isSubshop() && $order->shop_id !== Auth::user()->shopId(), 404);
         abort_if(in_array($order->status, ['returned', 'cancelled']), 403);
+
+        $orderShopId = $order->shop_id;
 
         $request->validate([
             'items'               => 'required|array|min:1',
@@ -1177,6 +1245,21 @@ class PosController extends Controller
             'promise_date'        => 'nullable|date',
         ]);
 
+        // Shop guards: no vendors on sub shop orders; customer/banks must match the order's shop
+        if ($orderShopId && $request->filled('vendor_id')) {
+            return response()->json(['error' => 'Vendor sales are only available at the main shop.'], 422);
+        }
+        if ($request->filled('customer_id')
+            && Customer::find($request->customer_id)?->shop_id !== $orderShopId) {
+            return response()->json(['error' => 'This customer belongs to a different shop.'], 422);
+        }
+        foreach (['bank_account_id', 'partial_bank_account_id'] as $bankField) {
+            if ($request->filled($bankField)
+                && !BankAccount::forShop($orderShopId)->where('id', $request->$bankField)->exists()) {
+                return response()->json(['error' => 'The selected bank account belongs to a different shop.'], 422);
+            }
+        }
+
         DB::beginTransaction();
         try {
             $oldTotal    = (float) $order->total;
@@ -1188,33 +1271,17 @@ class PosController extends Controller
                 ? Vendor::find($order->vendor_id)
                 : null;
 
-            // ── 1. Restore stock from old items ───────────────────────────
+            // ── 1. Restore stock from old items (at the order's own shop) ──
             $oldItems = $order->items()->get();
 
             foreach ($oldItems as $oldItem) {
                 $product = Product::lockForUpdate()->find($oldItem->product_id);
                 if (! $product) continue;
 
-                if ($oldItem->color_id) {
-                    $color = ProductColor::lockForUpdate()->find($oldItem->color_id);
-                    if ($color) {
-                        $color->increment('stock_quantity', $oldItem->quantity);
-                    }
-                }
-
-                $before = $product->stock_quantity;
-                $product->increment('stock_quantity', $oldItem->quantity);
-
-                StockMovement::create([
-                    'product_id'      => $product->id,
-                    'type'            => 'adjustment',
-                    'quantity'        => $oldItem->quantity,
-                    'before_quantity' => $before,
-                    'after_quantity'  => $before + $oldItem->quantity,
-                    'reference'       => $order->order_number,
-                    'note'            => 'Sale edit — stock restored',
-                    'user_id'         => Auth::id(),
-                ]);
+                app(\App\Services\ShopStockService::class)->adjust(
+                    $orderShopId, $product, $oldItem->color_id, $oldItem->quantity,
+                    'adjustment', $order->order_number, 'Sale edit — stock restored'
+                );
             }
 
             // ── 2. Reverse khata ledger entries ───────────────────────────
@@ -1265,14 +1332,18 @@ class PosController extends Controller
                     $color = ProductColor::lockForUpdate()->find($item['color_id']);
                     if ($color) {
                         $colorName = $color->name;
-                        if ($color->stock_quantity < $item['quantity']) {
+                        $colorStock = $orderShopId
+                            ? $product->stockForShop($orderShopId, $color->id)
+                            : $color->stock_quantity;
+                        if ($colorStock < $item['quantity']) {
                             DB::rollBack();
                             return response()->json([
                                 'error' => "Insufficient stock for: {$product->name} ({$color->name})",
                             ], 422);
                         }
                     }
-                } elseif ($product->track_inventory && $product->stock_quantity < $item['quantity']) {
+                } elseif ($product->track_inventory
+                    && ($orderShopId ? $product->stockForShop($orderShopId) : $product->stock_quantity) < $item['quantity']) {
                     DB::rollBack();
                     return response()->json([
                         'error' => "Insufficient stock for: {$product->name}",
@@ -1339,22 +1410,10 @@ class PosController extends Controller
                     'line_total'      => $item['line_total'],
                 ]);
 
-                if ($item['color']) {
-                    $item['color']->decrement('stock_quantity', $item['qty']);
-                }
-                $before = $item['product']->stock_quantity;
-                $item['product']->decrement('stock_quantity', $item['qty']);
-
-                StockMovement::create([
-                    'product_id'      => $item['product']->id,
-                    'type'            => 'sale',
-                    'quantity'        => -$item['qty'],
-                    'before_quantity' => $before,
-                    'after_quantity'  => $before - $item['qty'],
-                    'reference'       => $order->order_number,
-                    'note'            => 'Sale edit',
-                    'user_id'         => Auth::id(),
-                ]);
+                app(\App\Services\ShopStockService::class)->adjust(
+                    $orderShopId, $item['product'], $item['color']?->id, -$item['qty'],
+                    'sale', $order->order_number, 'Sale edit'
+                );
             }
 
             // ── 6. New khata ledger entry ─────────────────────────────────
@@ -1469,6 +1528,9 @@ class PosController extends Controller
                 'order_number' => $order->order_number,
             ]);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            return response()->json(['error' => collect($e->errors())->flatten()->first()], 422);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
@@ -1481,10 +1543,12 @@ class PosController extends Controller
     {
         $user    = Auth::user();
         $isAdmin = $user->hasRole('admin');
+        $shopId  = $user->shopId();
 
-        $query = HeldOrder::with('creator:id,name')->latest();
+        // Holds are location-scoped: main POS never sees a sub shop's holds and vice versa
+        $query = HeldOrder::forShop($shopId)->with('creator:id,name')->latest();
 
-        if (!$isAdmin) {
+        if (!$isAdmin && !$shopId) {
             $sectionIds = $user->sections->pluck('id')->map(fn($id) => (int) $id)->toArray();
             $query->where(function ($q) use ($user, $sectionIds) {
                 $q->where('created_by', $user->id);
@@ -1538,6 +1602,7 @@ class PosController extends Controller
 
         $hold = HeldOrder::create([
             'label'          => $request->label,
+            'shop_id'        => Auth::user()->shopId(),
             'created_by'     => Auth::id(),
             'cart_data'      => $request->cart,
             'customer_data'  => $request->customer,
@@ -1573,7 +1638,9 @@ class PosController extends Controller
         $user    = Auth::user();
         $isAdmin = $user->hasRole('admin');
 
-        if (!$isAdmin) {
+        if ($user->isSubshop()) {
+            abort_unless($hold->shop_id === $user->shopId(), 403, 'You do not have permission to delete this held order.');
+        } elseif (!$isAdmin) {
             $canDelete = (int) $hold->created_by === (int) $user->id;
             if (!$canDelete) {
                 $sectionIds  = $user->sections->pluck('id')->toArray();

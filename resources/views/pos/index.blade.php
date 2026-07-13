@@ -1927,12 +1927,15 @@ $_posCategories = $categories->map(fn($c) => [
 @endphp
 @push('scripts')
 <script>
-// Shop details for the client-side offline receipt
+// Shop details for the client-side offline receipt (sub shop identity when applicable)
 window.__posShop = {
-    name:    @json(\App\Models\Setting::get('shop_name', 'MobileHub')),
-    phone:   @json(\App\Models\Setting::get('shop_phone')),
-    address: @json(\App\Models\Setting::get('shop_address')),
+    name:    @json($currentShop?->name ?? \App\Models\Setting::get('shop_name', 'MobileHub')),
+    phone:   @json($currentShop?->phone ?? \App\Models\Setting::get('shop_phone')),
+    address: @json($currentShop?->address ?? \App\Models\Setting::get('shop_address')),
 };
+// Offline caches are keyed per shop so one browser can't sell from the wrong shop's cache
+const POS_CACHE_KEY = @json($currentShop?->code ?? 'main');
+const posCacheKey = (name) => `${name}_${POS_CACHE_KEY}`;
 function posApp() {
     return {
         // State
@@ -2026,13 +2029,13 @@ function posApp() {
             this._fetchHolds();
             this.$watch('showHeldOrders', v => { if (v) this._fetchHolds(); });
             // Load any offline orders pending sync
-            try { this.offlineOrders = JSON.parse(localStorage.getItem('pos_offline_orders') || '[]'); } catch(e) { this.offlineOrders = []; }
+            try { this.offlineOrders = JSON.parse(localStorage.getItem(posCacheKey('pos_offline_orders')) || '[]'); } catch(e) { this.offlineOrders = []; }
             // Load the cached product catalog + customers (for offline browsing)
-            try { this.catalog = JSON.parse(localStorage.getItem('pos_catalog') || '[]'); } catch(e) { this.catalog = []; }
-            try { this.offlineCustomers = JSON.parse(localStorage.getItem('pos_offline_customers') || '[]'); } catch(e) { this.offlineCustomers = []; }
+            try { this.catalog = JSON.parse(localStorage.getItem(posCacheKey('pos_catalog')) || '[]'); } catch(e) { this.catalog = []; }
+            try { this.offlineCustomers = JSON.parse(localStorage.getItem(posCacheKey('pos_offline_customers')) || '[]'); } catch(e) { this.offlineCustomers = []; }
             this.catalogReady = this.catalog.length > 0;
             // Restore manual offline mode so a refresh keeps the POS offline
-            try { this.offlineMode = localStorage.getItem('pos_offline_mode') === '1'; } catch(e) { this.offlineMode = false; }
+            try { this.offlineMode = localStorage.getItem(posCacheKey('pos_offline_mode')) === '1'; } catch(e) { this.offlineMode = false; }
             // Restore last-used product view — skip the picker if already chosen
             const savedView = localStorage.getItem('pos_view');
             if (savedView === 'category' || savedView === 'product') {
@@ -2110,7 +2113,7 @@ function posApp() {
                     this.catalog = data;
                     this.catalogReady = data.length > 0;
                     this.catalogError = '';
-                    try { localStorage.setItem('pos_catalog', JSON.stringify(data)); } catch(e) { this.catalogError = 'Browser storage is full — could not save catalog.'; return false; }
+                    try { localStorage.setItem(posCacheKey('pos_catalog'), JSON.stringify(data)); } catch(e) { this.catalogError = 'Browser storage is full — could not save catalog.'; return false; }
                     return true;
                 }
                 this.catalogError = 'Unexpected catalog response.';
@@ -2129,7 +2132,7 @@ function posApp() {
                 const data = await res.json();
                 if (Array.isArray(data)) {
                     this.offlineCustomers = data;
-                    try { localStorage.setItem('pos_offline_customers', JSON.stringify(data)); } catch(e) {}
+                    try { localStorage.setItem(posCacheKey('pos_offline_customers'), JSON.stringify(data)); } catch(e) {}
                     return true;
                 }
                 return false;
@@ -2200,7 +2203,7 @@ function posApp() {
         },
 
         _saveOfflineMode() {
-            try { localStorage.setItem('pos_offline_mode', this.offlineMode ? '1' : '0'); } catch(e) {}
+            try { localStorage.setItem(posCacheKey('pos_offline_mode'), this.offlineMode ? '1' : '0'); } catch(e) {}
         },
 
         // True only if the cached catalog actually carries category info. A
@@ -2916,7 +2919,7 @@ function posApp() {
         },
 
         _saveOfflineOrders() {
-            try { localStorage.setItem('pos_offline_orders', JSON.stringify(this.offlineOrders)); } catch(e) {}
+            try { localStorage.setItem(posCacheKey('pos_offline_orders'), JSON.stringify(this.offlineOrders)); } catch(e) {}
         },
 
         // Minimal client-side receipt printed at the time of an offline sale
