@@ -14,8 +14,7 @@ class AuthController extends Controller
     public function showLogin()
     {
         if (Auth::check()) {
-            $user = Auth::user();
-            return redirect()->route($user->isAdmin() ? 'admin.dashboard' : 'salesman.dashboard');
+            return redirect()->route(Auth::user()->panelPrefix() . '.dashboard');
         }
 
         return view('auth.login');
@@ -39,6 +38,11 @@ class AuthController extends Controller
             return back()->withErrors(['email' => 'Your account has been disabled. Contact admin.']);
         }
 
+        if ($user->isSubshop() && !$user->shop?->is_active) {
+            Auth::logout();
+            return back()->withErrors(['email' => 'This shop has been deactivated. Contact admin.']);
+        }
+
         // Log login
         LoginLog::create([
             'user_id'      => $user->id,
@@ -49,7 +53,7 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended($user->isAdmin() ? route('admin.dashboard') : route('salesman.dashboard'));
+        return redirect()->intended(route($user->panelPrefix() . '.dashboard'));
     }
 
     public function logout(Request $request)

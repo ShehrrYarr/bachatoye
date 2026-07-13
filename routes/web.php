@@ -272,6 +272,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::patch('salesmen/{user}/toggle', [Admin\SalesmanController::class, 'toggleActive'])->name('salesmen.toggle');
     Route::get('salesmen/{user}/login-log', [Admin\SalesmanController::class, 'loginLog'])->name('salesmen.login_log');
 
+    // Sub Shops
+    Route::patch('shops/{shop}/toggle', [Admin\ShopController::class, 'toggleActive'])->name('shops.toggle');
+    Route::resource('shops', Admin\ShopController::class)->except(['destroy']);
+
     // Reports
     Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/sales', [Admin\ReportController::class, 'sales'])->name('sales');
@@ -520,6 +524,34 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
         ->middleware('permission:brands.manage')->name('brands.update');
     Route::delete('brands/{brand}', [Admin\BrandController::class, 'destroy'])
         ->middleware('permission:brands.manage')->name('brands.destroy');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Sub Shop Panel Routes (single shop login, role:subshop)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('shop')->name('shop.')->middleware(['auth', 'role:subshop'])->group(function () {
+    Route::get('/dashboard', [Admin\DashboardController::class, 'subshopDashboard'])->name('dashboard');
+    Route::get('/dashboard/today-report', [Admin\DashboardController::class, 'subshopTodayReportPrint'])->name('dashboard.today-report');
+
+    // Customers & khata (scoped to this shop inside the controller)
+    Route::resource('customers', Admin\CustomerController::class);
+    Route::get('customers/{customer}/ledger', [Admin\CustomerController::class, 'ledger'])->name('customers.ledger');
+    Route::get('customers/{customer}/ledger/print', [Admin\CustomerController::class, 'ledgerPrint'])->name('customers.ledger.print');
+    Route::post('customers/{customer}/ledger', [Admin\CustomerController::class, 'addLedgerEntry'])->name('customers.ledger.add');
+    Route::patch('ledger/{entry}/dismiss-promise', [Admin\CustomerController::class, 'dismissPromise'])->name('ledger.dismiss_promise');
+
+    // Banks & cash
+    Route::post('bank-accounts/cash-opening', [Admin\BankAccountController::class, 'updateCashOpening'])->name('bank-accounts.cash-opening');
+    Route::resource('bank-accounts', Admin\BankAccountController::class)->except(['create', 'edit', 'show']);
+
+    // Expenses
+    Route::resource('expenses', Admin\ExpenseController::class)->except(['show']);
+
+    // Stock (read-only)
+    Route::get('inventory', [Admin\InventoryController::class, 'index'])->name('inventory.index');
+    Route::get('inventory/low-stock', [Admin\InventoryController::class, 'lowStock'])->name('inventory.low_stock');
 });
 
 /*

@@ -2,7 +2,7 @@
 @section('title', 'Record Purchase')
 
 @section('content')
-@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
+@php $rPrefix = auth()->user()->panelPrefix(); @endphp
 <div class="flex items-center gap-3 mb-6">
     <a href="{{ route("{$rPrefix}.purchases.index") }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
     <h1 class="text-xl font-bold text-gray-900">Record Purchase</h1>
@@ -774,8 +774,8 @@
 <script>
     const _categoriesData    = {!! $categoriesJson !!};
     const _serialAttrDefs         = {!! json_encode($serialAttributeDefs->map(fn($d) => ['name' => $d->name, 'options' => $d->options])->values()) !!};
-    const _serialCheckUrl         = '/{{ auth()->user()->hasRole('admin') ? 'admin' : 'salesman' }}/api/serials/check';
-    const _serialImageUploadUrl   = '/{{ auth()->user()->hasRole('admin') ? 'admin' : 'salesman' }}/purchases/temp-serial-image';
+    const _serialCheckUrl         = '/{{ auth()->user()->panelPrefix() }}/api/serials/check';
+    const _serialImageUploadUrl   = '/{{ auth()->user()->panelPrefix() }}/purchases/temp-serial-image';
     const _purchaseDraft          = {!! json_encode($draft ?? null) !!};
 </script>
 
@@ -861,7 +861,7 @@ function purchaseForm() {
 
         async searchProducts() {
             if (this.searchQuery.length < 2) { this.searchResults = []; return; }
-            const res = await fetch(`/{{ auth()->user()->hasRole('admin') ? 'admin' : 'salesman' }}/api/products/search?q=${encodeURIComponent(this.searchQuery)}`);
+            const res = await fetch(`/{{ auth()->user()->panelPrefix() }}/api/products/search?q=${encodeURIComponent(this.searchQuery)}`);
             this.searchResults = await res.json();
             this.showDropdown = true;
         },

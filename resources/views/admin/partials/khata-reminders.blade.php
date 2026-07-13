@@ -3,7 +3,7 @@
     $overdue  = $khataReminders->filter(fn($r) => $r->promise_date->lt(today()));
     $dueToday = $khataReminders->filter(fn($r) => $r->promise_date->isToday());
     $upcoming = $khataReminders->filter(fn($r) => $r->promise_date->gt(today()));
-    $rPrefix  = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+    $rPrefix  = auth()->user()->panelPrefix();
 @endphp
 <div class="card overflow-hidden mb-4">
     <div class="card-header">

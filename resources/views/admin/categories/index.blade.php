@@ -2,7 +2,7 @@
 @section('title', 'Categories')
 
 @section('content')
-@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
+@php $rPrefix = auth()->user()->panelPrefix(); @endphp
 <div class="flex items-center justify-between mb-6">
     <h1 class="text-xl font-bold text-gray-900">Categories</h1>
     <a href="{{ route("{$rPrefix}.categories.create") }}" class="btn-primary">

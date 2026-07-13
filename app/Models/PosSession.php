@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 
 class PosSession extends Model
 {
+    use BelongsToShop;
+
     protected $fillable = [
-        'user_id', 'opening_cash', 'closing_cash',
+        'shop_id', 'user_id', 'opening_cash', 'closing_cash',
         'total_sales', 'total_orders', 'opened_at', 'closed_at', 'notes',
     ];
 

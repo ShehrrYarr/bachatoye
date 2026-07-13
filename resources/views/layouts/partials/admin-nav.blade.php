@@ -105,6 +105,9 @@
 <a href="{{ route('admin.salesmen.index') }}" class="sidebar-link {{ $is('admin.salesmen') ? 'active' : '' }}">
     <i class="fas fa-user-tie"></i> Salesmen
 </a>
+<a href="{{ route('admin.shops.index') }}" class="sidebar-link {{ $is('admin.shops') ? 'active' : '' }}">
+    <i class="fas fa-store"></i> Sub Shops
+</a>
 <a href="{{ route('admin.bank-accounts.index') }}" class="sidebar-link {{ $is('admin.bank-accounts') ? 'active' : '' }}">
     <i class="fas fa-university"></i> Bank Accounts
 </a>

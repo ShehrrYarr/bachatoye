@@ -3,7 +3,7 @@
 
 @section('content')
 @php
-    $rPrefix       = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+    $rPrefix       = auth()->user()->panelPrefix();
     $toggleCatUrl  = route("{$rPrefix}.products.index");
     $toggleListUrl = route("{$rPrefix}.products.index") . '?view=list';
 @endphp

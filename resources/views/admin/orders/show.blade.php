@@ -2,7 +2,7 @@
 @section('title', 'Order: ' . $order->order_number)
 
 @section('content')
-@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
+@php $rPrefix = auth()->user()->panelPrefix(); @endphp
 <div class="flex items-center justify-between mb-6">
     <div class="flex items-center gap-3">
         <a href="{{ route("{$rPrefix}.orders.index") }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>

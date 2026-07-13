@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 
 class SerialNumber extends Model
 {
+    use BelongsToShop;
+
     protected $fillable = [
         'product_id',
+        'shop_id',
         'subcategory_id',
         'serial_number',
         'cost_price',

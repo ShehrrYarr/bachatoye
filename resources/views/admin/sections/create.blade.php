@@ -3,7 +3,7 @@
 @section('page-title', 'Add Section')
 
 @section('content')
-@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
+@php $rPrefix = auth()->user()->panelPrefix(); @endphp
 <div class="flex items-center gap-3 mb-6">
     <a href="{{ route("{$rPrefix}.sections.index") }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
     <h1 class="text-xl font-bold text-gray-900">Add Section</h1>

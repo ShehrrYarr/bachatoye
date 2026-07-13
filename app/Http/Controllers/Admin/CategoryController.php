@@ -52,7 +52,7 @@ class CategoryController extends Controller
         $data['free_delivery'] = $request->boolean('free_delivery');
         Category::create($data);
 
-        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        $rPrefix = auth()->user()->panelPrefix();
         return redirect()->route("{$rPrefix}.categories.index")->with('success', 'Category created.');
     }
 
@@ -82,14 +82,14 @@ class CategoryController extends Controller
         $data['free_delivery'] = $request->boolean('free_delivery');
         $category->update($data);
 
-        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        $rPrefix = auth()->user()->panelPrefix();
         return redirect()->route("{$rPrefix}.categories.index")->with('success', 'Category updated.');
     }
 
     public function destroy(Category $category)
     {
         $category->delete();
-        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        $rPrefix = auth()->user()->panelPrefix();
         return redirect()->route("{$rPrefix}.categories.index")->with('success', 'Category deleted.');
     }
 }

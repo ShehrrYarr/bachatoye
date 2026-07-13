@@ -222,7 +222,7 @@ class ProductController extends Controller
         $this->saveSocialLinks($product, $request);
         $this->saveColors($product, $request);
 
-        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        $rPrefix = auth()->user()->panelPrefix();
         return redirect()->route("{$rPrefix}.products.show", $product)->with('success', 'Product created successfully.');
     }
 
@@ -361,14 +361,14 @@ class ProductController extends Controller
         $this->saveSocialLinks($product, $request);
         $this->saveColors($product, $request);
 
-        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        $rPrefix = auth()->user()->panelPrefix();
         return redirect()->route("{$rPrefix}.products.show", $product)->with('success', 'Product updated.');
     }
 
     public function destroy(Product $product)
     {
         $product->delete();
-        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        $rPrefix = auth()->user()->panelPrefix();
         return redirect()->route("{$rPrefix}.products.index")->with('success', 'Product deleted.');
     }
 

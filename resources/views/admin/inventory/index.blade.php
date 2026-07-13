@@ -2,7 +2,7 @@
 @section('title', 'Inventory')
 
 @section('content')
-@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
+@php $rPrefix = auth()->user()->panelPrefix(); @endphp
 
 {{-- ═══════════════════════════════════════════════════════════════════
      STAGE 1 — PICKER

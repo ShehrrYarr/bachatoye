@@ -26,7 +26,7 @@ class SerialController extends Controller
             ->values();
 
         if ($serializedItems->isEmpty()) {
-            $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+            $rPrefix = auth()->user()->panelPrefix();
             return redirect()->route("{$rPrefix}.purchases.show", $purchase)
                 ->with('info', 'No serialized products in this purchase.');
         }
@@ -63,7 +63,7 @@ class SerialController extends Controller
 
         // Nothing was submitted (e.g. all units are sold/locked)
         if (empty($request->input('serials'))) {
-            $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+            $rPrefix = auth()->user()->panelPrefix();
             return redirect()->route("{$rPrefix}.purchases.show", $purchase)
                 ->with('info', 'No serial numbers to save (all units are sold or were left blank).');
         }
@@ -225,7 +225,7 @@ class SerialController extends Controller
             return $newTotal;
         });
 
-        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        $rPrefix = auth()->user()->panelPrefix();
         $count   = count($toInsert);
 
         $message = "{$count} serial number(s) registered successfully.";

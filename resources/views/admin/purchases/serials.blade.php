@@ -3,7 +3,7 @@
 
 @section('content')
 @php
-    $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+    $rPrefix = auth()->user()->panelPrefix();
 
     // Build JS-friendly initial state per item
     $itemsData = $serializedItems->map(function ($item) use ($registeredSerials) {

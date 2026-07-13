@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
         // Roles
         $admin    = Role::firstOrCreate(['name' => 'admin']);
         $salesman = Role::firstOrCreate(['name' => 'salesman']);
+        $subshop  = Role::firstOrCreate(['name' => 'subshop']);
 
         // Permissions
         $permissions = [
@@ -73,6 +74,21 @@ class DatabaseSeeder extends Seeder
             'sections.manage',
             'categories.manage',
             'brands.manage',
+        ]);
+
+        // Sub shop login: POS (incl. own-shop edit/delete) + mini back-office
+        $subshop->syncPermissions([
+            'pos.access',
+            'pos.edit_sale',
+            'pos.delete_sale',
+            'pos.process_returns',
+            'customers.view',
+            'customers.manage',
+            'accounts.view',
+            'accounts.manage',
+            'expenses.view',
+            'expenses.manage',
+            'inventory.view',
         ]);
 
         // Create admin user

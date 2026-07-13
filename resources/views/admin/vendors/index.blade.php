@@ -2,7 +2,7 @@
 @section('title', 'Vendors')
 
 @section('content')
-@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
+@php $rPrefix = auth()->user()->panelPrefix(); @endphp
 <div class="flex items-center justify-between mb-6">
     <h1 class="text-xl font-bold text-gray-900">Vendors</h1>
     @can('vendors.manage')

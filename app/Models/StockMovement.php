@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 
 class StockMovement extends Model
 {
+    use BelongsToShop;
+
     protected $fillable = [
-        'product_id', 'type', 'quantity', 'before_quantity',
+        'product_id', 'shop_id', 'type', 'quantity', 'before_quantity',
         'after_quantity', 'reference', 'note', 'user_id',
     ];
 

@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 
 class Expense extends Model
 {
+    use BelongsToShop;
+
     protected $fillable = [
-        'expense_category_id', 'amount', 'description', 'notes',
+        'shop_id', 'expense_category_id', 'amount', 'description', 'notes',
         'receipt_image', 'expense_date', 'user_id', 'payment_method', 'bank_account_id',
     ];
 

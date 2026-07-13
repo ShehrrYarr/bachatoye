@@ -43,8 +43,13 @@
                 </div>
             @endif
             <div>
-                <div class="font-bold text-white text-sm leading-tight">{{ \App\Models\Setting::get('shop_name', 'MobileHub') }}</div>
-                <div class="text-xs text-white/60">{{ auth()->user()->isAdmin() ? 'Admin Panel' : 'Salesman Panel' }}</div>
+                @if(auth()->user()->isSubshop())
+                    <div class="font-bold text-white text-sm leading-tight">{{ auth()->user()->shop?->name ?? 'Shop' }}</div>
+                    <div class="text-xs text-white/60">Shop Panel</div>
+                @else
+                    <div class="font-bold text-white text-sm leading-tight">{{ \App\Models\Setting::get('shop_name', 'MobileHub') }}</div>
+                    <div class="text-xs text-white/60">{{ auth()->user()->isAdmin() ? 'Admin Panel' : 'Salesman Panel' }}</div>
+                @endif
             </div>
         </div>
 
@@ -52,6 +57,8 @@
         <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
             @if(auth()->user()->isAdmin())
                 @include('layouts.partials.admin-nav')
+            @elseif(auth()->user()->isSubshop())
+                @include('layouts.partials.subshop-nav')
             @else
                 @include('layouts.partials.salesman-nav')
             @endif
@@ -90,7 +97,7 @@
             </div>
             <div class="flex items-center gap-2 md:gap-3 shrink-0">
                 <span class="hidden sm:block text-sm text-gray-500">{{ now()->format('D, d M Y') }}</span>
-                @if(auth()->user()->isAdmin())
+                @if(auth()->user()->isAdmin() || auth()->user()->isSubshop())
                     <a href="{{ route('pos.index') }}" class="btn-primary btn-sm">
                         <i class="fas fa-cash-register"></i> <span class="hidden sm:inline">POS</span>
                     </a>

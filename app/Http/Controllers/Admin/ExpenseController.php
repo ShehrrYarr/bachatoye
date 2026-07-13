@@ -65,7 +65,7 @@ class ExpenseController extends Controller
         $data['user_id'] = Auth::id();
         Expense::create($data);
 
-        $rPrefix = Auth::user()->hasRole('admin') ? 'admin' : 'salesman';
+        $rPrefix = Auth::user()->panelPrefix();
         return redirect()->route("{$rPrefix}.expenses.index")->with('success', 'Expense recorded.');
     }
 
@@ -93,7 +93,7 @@ class ExpenseController extends Controller
         }
 
         $expense->update($data);
-        $rPrefix = Auth::user()->hasRole('admin') ? 'admin' : 'salesman';
+        $rPrefix = Auth::user()->panelPrefix();
         return redirect()->route("{$rPrefix}.expenses.index")->with('success', 'Expense updated.');
     }
 

@@ -3,7 +3,7 @@
 
 @section('content')
 @php
-    $rPrefix        = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+    $rPrefix        = auth()->user()->panelPrefix();
     $categoriesJson = json_encode($categories->map(function($c) {
         return [
             'id'       => $c->id,

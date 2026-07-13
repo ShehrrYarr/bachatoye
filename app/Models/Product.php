@@ -97,6 +97,31 @@ class Product extends Model
         return $this->hasMany(SerialNumber::class);
     }
 
+    public function shopStocks()
+    {
+        return $this->hasMany(ShopStock::class);
+    }
+
+    /**
+     * Stock quantity at a location. NULL shop = main shop
+     * (products/product_colors columns); sub shop = shop_stocks rows.
+     */
+    public function stockForShop(?int $shopId, ?int $colorId = null): int
+    {
+        if ($shopId === null) {
+            if ($colorId !== null) {
+                return (int) $this->colors->firstWhere('id', $colorId)?->stock_quantity;
+            }
+            return (int) $this->stock_quantity;
+        }
+
+        $query = $this->shopStocks()->where('shop_id', $shopId);
+
+        return (int) ($colorId !== null
+            ? $query->where('product_color_id', $colorId)->value('quantity')
+            : $query->sum('quantity'));
+    }
+
     /** The attribute definition chosen as the primary selector on the store page. */
     public function primarySerialAttribute()
     {
@@ -158,5 +183,20 @@ class Product extends Model
     public function scopeInStock($query)
     {
         return $query->where(fn($q) => $q->where('track_inventory', false)->orWhere('stock_quantity', '>', 0));
+    }
+
+    /**
+     * In-stock at a location. NULL shop = main shop (existing inStock behavior).
+     */
+    public function scopeInStockForShop($query, ?int $shopId)
+    {
+        if ($shopId === null) {
+            return $query->inStock();
+        }
+
+        return $query->where(fn($q) => $q
+            ->whereHas('shopStocks', fn($s) => $s->where('shop_id', $shopId)->where('quantity', '>', 0))
+            ->orWhereHas('serialNumbers', fn($s) => $s->where('shop_id', $shopId)->where('status', 'in_stock'))
+        );
     }
 }

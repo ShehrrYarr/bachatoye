@@ -3,7 +3,7 @@
 @section('page-title', 'Sections')
 
 @section('content')
-@php $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman'; @endphp
+@php $rPrefix = auth()->user()->panelPrefix(); @endphp
 <div class="flex items-center justify-between mb-6">
     <div>
         <h1 class="text-xl font-bold text-gray-900">Sections</h1>

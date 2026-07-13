@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 
 class HeldOrder extends Model
 {
+    use BelongsToShop;
+
     protected $fillable = [
-        'label', 'created_by', 'cart_data', 'customer_data',
+        'shop_id', 'label', 'created_by', 'cart_data', 'customer_data',
         'discount_type', 'discount_value', 'payment_method',
         'order_notes', 'total', 'section_ids',
     ];

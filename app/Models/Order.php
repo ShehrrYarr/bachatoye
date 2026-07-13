@@ -2,15 +2,16 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Order extends Model
 {
-    use SoftDeletes;
+    use BelongsToShop, SoftDeletes;
 
     protected $fillable = [
-        'order_number', 'offline_ref', 'source', 'customer_id', 'vendor_id', 'delivery_platform_id', 'cod_status', 'customer_name', 'customer_phone',
+        'order_number', 'offline_ref', 'source', 'shop_id', 'customer_id', 'vendor_id', 'delivery_platform_id', 'cod_status', 'customer_name', 'customer_phone',
         'customer_email', 'delivery_address', 'city', 'delivery_notes',
         'subtotal', 'discount_amount', 'delivery_charge', 'total', 'amount_paid',
         'cash_amount', 'bank_amount', 'bank_account_id',

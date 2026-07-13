@@ -403,7 +403,7 @@ class PurchaseController extends Controller
 
         $purchase = $this->persistPurchase($request->all());
 
-        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        $rPrefix = auth()->user()->panelPrefix();
         return redirect()->route("{$rPrefix}.purchases.show", $purchase)
             ->with('success', 'Purchase recorded — stock and serial numbers updated.');
     }
@@ -414,7 +414,7 @@ class PurchaseController extends Controller
      */
     public function review(Request $request)
     {
-        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        $rPrefix = auth()->user()->panelPrefix();
 
         $request->validate($this->purchaseValidationRules() + [
             'ui_state' => 'nullable|string', // raw Alpine items JSON, used to rebuild the form
@@ -439,7 +439,7 @@ class PurchaseController extends Controller
      */
     public function reviewShow()
     {
-        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        $rPrefix = auth()->user()->panelPrefix();
 
         $draft = session('purchase_draft');
         if (!$draft) {
@@ -504,7 +504,7 @@ class PurchaseController extends Controller
      */
     public function confirm()
     {
-        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        $rPrefix = auth()->user()->panelPrefix();
 
         $draft = session('purchase_draft');
         if (!$draft) {
@@ -530,7 +530,7 @@ class PurchaseController extends Controller
     public function discardReview()
     {
         session()->forget('purchase_draft');
-        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        $rPrefix = auth()->user()->panelPrefix();
         return redirect()->route("{$rPrefix}.purchases.create")
             ->with('info', 'Draft purchase discarded.');
     }

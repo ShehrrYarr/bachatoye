@@ -39,7 +39,7 @@ class BrandController extends Controller
         $data['is_active'] = $request->boolean('is_active', true);
         Brand::create($data);
 
-        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        $rPrefix = auth()->user()->panelPrefix();
         return redirect()->route("{$rPrefix}.brands.index")->with('success', 'Brand created.');
     }
 
@@ -62,14 +62,14 @@ class BrandController extends Controller
         $data['is_active'] = $request->boolean('is_active', true);
         $brand->update($data);
 
-        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        $rPrefix = auth()->user()->panelPrefix();
         return redirect()->route("{$rPrefix}.brands.index")->with('success', 'Brand updated.');
     }
 
     public function destroy(Brand $brand)
     {
         $brand->delete();
-        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        $rPrefix = auth()->user()->panelPrefix();
         return redirect()->route("{$rPrefix}.brands.index")->with('success', 'Brand deleted.');
     }
 }

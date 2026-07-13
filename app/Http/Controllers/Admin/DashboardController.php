@@ -10,7 +10,9 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\ReturnOrder;
+use App\Models\SerialNumber;
 use App\Models\Setting;
+use App\Models\ShopStock;
 use App\Models\VendorLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -612,5 +614,126 @@ class DashboardController extends Controller
             'todayReport', 'todayPosOrders', 'todayReturnsList',
             'todayKhataEntries', 'todayPurchasesList', 'khataReminders'
         ));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Sub shop panel
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function subshopDashboard()
+    {
+        $user   = Auth::user();
+        $shopId = $user->shopId();
+        $shop   = $user->shop;
+
+        $todaySales  = Order::forShop($shopId)->whereDate('created_at', today())
+                            ->where('status', 'delivered')->sum('total');
+        $todayOrders = Order::forShop($shopId)->whereDate('created_at', today())->count();
+        $monthSales  = Order::forShop($shopId)
+                            ->whereMonth('created_at', now()->month)
+                            ->whereYear('created_at', now()->year)
+                            ->where('status', 'delivered')
+                            ->sum('total');
+
+        $customersCount   = Customer::forShop($shopId)->count();
+        $outstandingKhata = abs((float) Customer::forShop($shopId)->where('credit_balance', '<', 0)->sum('credit_balance'));
+
+        $stockUnits = (int) ShopStock::where('shop_id', $shopId)->sum('quantity')
+            + SerialNumber::forShop($shopId)->where('status', 'in_stock')->count();
+
+        $recentOrders = Order::forShop($shopId)->with('customer')->latest()->take(8)->get();
+
+        $todayReport = $this->buildShopTodayReport($shopId);
+
+        // Khata payment reminders for this shop's customers
+        $khataReminders = AccountLedger::where('type', 'debit')
+            ->whereNotNull('promise_date')
+            ->where('promise_date', '<=', today()->addDays(5))
+            ->whereHas('customer', fn($q) => $q->forShop($shopId)->where('credit_balance', '<', 0))
+            ->with('customer')
+            ->orderBy('promise_date')
+            ->get();
+
+        return view('shop.dashboard', compact(
+            'shop', 'todaySales', 'todayOrders', 'monthSales',
+            'customersCount', 'outstandingKhata', 'stockUnits',
+            'recentOrders', 'todayReport', 'khataReminders'
+        ));
+    }
+
+    public function subshopTodayReportPrint()
+    {
+        $user   = Auth::user();
+        $shopId = $user->shopId();
+
+        $todayReport = $this->buildShopTodayReport($shopId) + [
+            'store_name'    => $user->shop?->name ?? Setting::get('shop_name', config('app.name')),
+            'store_phone'   => $user->shop?->phone ?? '',
+            'salesman_name' => $user->name,
+        ];
+
+        return view('salesman.today-report-print', compact('todayReport'));
+    }
+
+    /**
+     * Same daily cash reconciliation as the salesman report, but scoped by
+     * shop instead of user. Sub shops never purchase, so purchase keys are 0.
+     */
+    private function buildShopTodayReport(?int $shopId): array
+    {
+        $posOrders = Order::forShop($shopId)
+            ->whereDate('created_at', today())
+            ->where('source', 'pos')->where('status', 'delivered')
+            ->get(['payment_method', 'total', 'cash_amount', 'bank_amount', 'amount_paid', 'bank_account_id']);
+
+        $posCash = $posOrders->sum(fn($o) => match($o->payment_method) {
+            'cash'    => (float) $o->total, 'split' => (float) $o->cash_amount,
+            'partial' => $o->bank_account_id ? 0 : (float) $o->amount_paid, default => 0,
+        });
+        $posBank = $posOrders->sum(fn($o) => match($o->payment_method) {
+            'bank_transfer' => (float) $o->total, 'split' => (float) $o->bank_amount,
+            'partial'       => $o->bank_account_id ? (float) $o->amount_paid : 0, default => 0,
+        });
+
+        $returnOrders = ReturnOrder::whereHas('order', fn($q) => $q->forShop($shopId))
+            ->whereDate('created_at', today())->whereIn('status', ['approved', 'completed'])
+            ->get(['refund_method', 'refund_amount']);
+        $returnTotal = (float) $returnOrders->sum('refund_amount');
+        $returnCash  = (float) $returnOrders->where('refund_method', 'cash')->sum('refund_amount');
+        $returnBank  = (float) $returnOrders->where('refund_method', 'bank_transfer')->sum('refund_amount');
+
+        $khataEntries = AccountLedger::whereHas('customer', fn($q) => $q->forShop($shopId))
+            ->whereDate('created_at', today())->where('type', 'credit')
+            ->whereNull('return_id')
+            ->get(['payment_method', 'amount']);
+        $khataTotal = (float) $khataEntries->sum('amount');
+        $khataCash  = (float) $khataEntries->where('payment_method', 'cash')->sum('amount');
+        $khataBank  = (float) $khataEntries->where('payment_method', 'bank_transfer')->sum('amount');
+
+        $expenses     = Expense::forShop($shopId)->whereDate('expense_date', today())->get(['payment_method', 'amount']);
+        $expenseTotal = (float) $expenses->sum('amount');
+        $expenseCash  = (float) $expenses->where('payment_method', 'cash')->sum('amount');
+        $expenseBank  = (float) $expenses->where('payment_method', 'bank_transfer')->sum('amount');
+
+        return [
+            'pos_total'    => (float) $posOrders->sum('total'),
+            'pos_cash'     => $posCash,
+            'pos_bank'     => $posBank,
+            'return_total' => $returnTotal,
+            'return_cash'  => $returnCash,
+            'return_bank'  => $returnBank,
+            'khata_total'  => $khataTotal,
+            'khata_cash'   => $khataCash,
+            'khata_bank'   => $khataBank,
+            'expenses'     => $expenseTotal,
+            'expense_cash' => $expenseCash,
+            'expense_bank' => $expenseBank,
+            'total_cash'   => $posCash + $khataCash - $returnCash - $expenseCash,
+            'total_bank'   => $posBank + $khataBank - $returnBank - $expenseBank,
+            'grand_total'  => (float) $posOrders->sum('total') + $khataTotal - $returnTotal - $expenseTotal,
+            'purchases_total' => 0, 'purchases_paid' => 0, 'purchases_due' => 0,
+            'purchases_cash'  => 0, 'purchases_bank' => 0,
+            'date'         => today()->format('d M Y'),
+        ];
     }
 }

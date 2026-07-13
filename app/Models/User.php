@@ -18,6 +18,7 @@ class User extends Authenticatable
         'password',
         'password_plain',
         'is_active',
+        'shop_id',
     ];
 
     protected $hidden = [
@@ -42,6 +43,36 @@ class User extends Authenticatable
     public function isSalesman(): bool
     {
         return $this->hasRole('salesman');
+    }
+
+    public function isSubshop(): bool
+    {
+        return $this->hasRole('subshop');
+    }
+
+    /**
+     * The shop this user operates. NULL = main shop (admin/salesman).
+     */
+    public function shopId(): ?int
+    {
+        return $this->isSubshop() ? $this->shop_id : null;
+    }
+
+    public function shop()
+    {
+        return $this->belongsTo(Shop::class);
+    }
+
+    /**
+     * Route-name prefix of this user's panel: admin / shop / salesman.
+     */
+    public function panelPrefix(): string
+    {
+        if ($this->hasRole('admin')) {
+            return 'admin';
+        }
+
+        return $this->isSubshop() ? 'shop' : 'salesman';
     }
 
     public function loginLogs()

@@ -33,7 +33,7 @@ class SectionController extends Controller
 
         Section::create($data);
 
-        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        $rPrefix = auth()->user()->panelPrefix();
         return redirect()->route("{$rPrefix}.sections.index")->with('success', 'Section created.');
     }
 
@@ -56,7 +56,7 @@ class SectionController extends Controller
 
         $section->update($data);
 
-        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        $rPrefix = auth()->user()->panelPrefix();
         return redirect()->route("{$rPrefix}.sections.index")->with('success', 'Section updated.');
     }
 
@@ -66,7 +66,7 @@ class SectionController extends Controller
         $section->categories()->update(['section_id' => null]);
         $section->delete();
 
-        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        $rPrefix = auth()->user()->panelPrefix();
         return redirect()->route("{$rPrefix}.sections.index")->with('success', 'Section deleted.');
     }
 }

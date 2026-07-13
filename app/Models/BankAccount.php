@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 
 class BankAccount extends Model
 {
+    use BelongsToShop;
+
     protected $fillable = [
-        'label', 'bank_name', 'account_title', 'account_number', 'iban',
+        'shop_id', 'label', 'bank_name', 'account_title', 'account_number', 'iban',
         'is_active', 'sort_order',
     ];
 

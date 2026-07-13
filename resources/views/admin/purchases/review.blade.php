@@ -3,7 +3,7 @@
 
 @section('content')
 @php
-    $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+    $rPrefix = auth()->user()->panelPrefix();
     $pmLabels = [
         'cash'          => 'Cash',
         'bank_transfer' => 'Bank Transfer',

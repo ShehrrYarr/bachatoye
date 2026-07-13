@@ -50,7 +50,7 @@ class VendorController extends Controller
         $data['khata_enabled'] = $request->boolean('khata_enabled');
 
         $vendor = Vendor::create($data);
-        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        $rPrefix = auth()->user()->panelPrefix();
         return redirect()->route("{$rPrefix}.vendors.show", $vendor)->with('success', 'Vendor created.');
     }
 
@@ -104,7 +104,7 @@ class VendorController extends Controller
 
         $data['khata_enabled'] = $request->boolean('khata_enabled');
         $vendor->update($data);
-        $rPrefix = auth()->user()->hasRole('admin') ? 'admin' : 'salesman';
+        $rPrefix = auth()->user()->panelPrefix();
         return redirect()->route("{$rPrefix}.vendors.show", $vendor)->with('success', 'Vendor updated.');
     }
 
