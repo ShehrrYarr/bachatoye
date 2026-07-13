@@ -50,13 +50,14 @@
                             <p class="form-hint" x-show="subcategories.length === 0 && categoryId">No sub categories for this category.</p>
                         </div>
                         <div>
-                            <label class="form-label">Brand</label>
-                            <select name="brand_id" class="form-select">
-                                <option value="">— None —</option>
+                            <label class="form-label">Brand <span class="text-red-500">*</span></label>
+                            <select name="brand_id" class="form-select @error('brand_id') border-red-500 @enderror" required>
+                                <option value="">Select brand...</option>
                                 @foreach($brands as $brand)
                                 <option value="{{ $brand->id }}" {{ old('brand_id', $product->brand_id) == $brand->id ? 'selected' : '' }}>{{ $brand->name }}</option>
                                 @endforeach
                             </select>
+                            @error('brand_id') <p class="form-error">{{ $message }}</p> @enderror
                         </div>
                     </div>
                     <div>

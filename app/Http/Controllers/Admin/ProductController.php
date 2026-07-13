@@ -136,7 +136,7 @@ class ProductController extends Controller
             'low_stock_threshold' => 'required|integer|min:0',
             'category_id'         => 'nullable|exists:categories,id',
             'subcategory_id'      => 'nullable|exists:categories,id',
-            'brand_id'            => 'nullable|exists:brands,id',
+            'brand_id'            => 'required|exists:brands,id',
             'barcode'             => 'nullable|string|max:50|unique:products',
             'sku'                 => 'nullable|string|max:100|unique:products',
             'is_active'           => 'boolean',
@@ -155,6 +155,8 @@ class ProductController extends Controller
             'images.*'                     => 'image|max:5120',
             'video_embed_url'              => 'nullable|string',
             'video_file'                   => 'nullable|file|mimetypes:video/mp4,video/webm|max:102400',
+        ], [
+            'brand_id.required' => 'Please select a brand for this product.',
         ]);
 
         $data['is_active']                    = $request->boolean('is_active');
@@ -277,7 +279,7 @@ class ProductController extends Controller
             'low_stock_threshold' => 'required|integer|min:0',
             'category_id'         => 'nullable|exists:categories,id',
             'subcategory_id'      => 'nullable|exists:categories,id',
-            'brand_id'            => 'nullable|exists:brands,id',
+            'brand_id'            => 'required|exists:brands,id',
             'barcode'             => 'nullable|string|max:50|unique:products,barcode,' . $product->id,
             'sku'                 => 'nullable|string|max:100|unique:products,sku,' . $product->id,
             'is_active'           => 'boolean',
@@ -296,6 +298,8 @@ class ProductController extends Controller
             'images.*'                     => 'image|max:5120',
             'video_embed_url'              => 'nullable|string',
             'video_file'                   => 'nullable|file|mimetypes:video/mp4,video/webm|max:102400',
+        ], [
+            'brand_id.required' => 'Please select a brand for this product.',
         ]);
 
         $data['is_active']                   = $request->boolean('is_active');
