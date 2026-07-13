@@ -116,7 +116,7 @@
                    class="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg font-medium transition-colors">
                     <i class="fas fa-sync-alt mr-1"></i>Exchange
                 </a>
-                <a href="{{ auth()->user()->hasRole('admin') ? route('admin.dashboard') : route('salesman.dashboard') }}"
+                <a href="{{ route(auth()->user()->panelPrefix() . '.dashboard') }}"
                    class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg font-medium transition-colors">
                     <i class="fas fa-th-large mr-1"></i>Dashboard
                 </a>
@@ -190,7 +190,7 @@
                        class="block px-4 py-2.5 text-sm text-indigo-700 hover:bg-indigo-50 flex items-center gap-2.5">
                         <i class="fas fa-sync-alt w-4 text-center"></i> Exchange
                     </a>
-                    <a href="{{ auth()->user()->hasRole('admin') ? route('admin.dashboard') : route('salesman.dashboard') }}"
+                    <a href="{{ route(auth()->user()->panelPrefix() . '.dashboard') }}"
                        class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 border-t border-gray-100">
                         <i class="fas fa-th-large w-4 text-center"></i> Dashboard
                     </a>
