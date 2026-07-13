@@ -47,8 +47,9 @@
                 <div class="flex-1 min-w-0">
                     <div class="relative rounded-2xl bg-gray-50 border border-gray-100 overflow-hidden w-full"
                          style="padding-bottom:100%;"
-                         @mouseenter="zooming = true; paused = true"
-                         @mouseleave="zooming = false; paused = false">
+                         @mouseenter="zoomStart()"
+                         @mousemove="zoomMove($event)"
+                         @mouseleave="zoomEnd()">
 
                         @foreach($product->images as $i => $img)
                         <img src="{{ $img->url }}"
@@ -58,8 +59,9 @@
                              x-transition:enter-start="opacity-0"
                              x-transition:enter-end="opacity-100"
                              @if($i > 0) style="display:none" @endif
-                             :class="zooming ? 'scale-[1.35] cursor-zoom-out' : 'scale-100 cursor-zoom-in'"
-                             class="absolute inset-0 w-full h-full object-contain p-4 transition-transform duration-500 ease-out select-none">
+                             :style="zoomStyle()"
+                             :class="zooming ? 'cursor-zoom-out' : 'cursor-zoom-in'"
+                             class="absolute inset-0 w-full h-full object-contain p-4 select-none will-change-transform">
                         @endforeach
 
                         {{-- Serial-specific image overlay (attribute option photo or selected unit photo) --}}
@@ -67,7 +69,9 @@
                         <div :class="{ 'hidden': !$store.serialImg.url }"
                              class="absolute inset-0 z-20 bg-white rounded-2xl overflow-hidden hidden">
                             <img :src="$store.serialImg.url" alt="{{ $product->name }}"
-                                 class="absolute inset-0 w-full h-full object-contain p-4">
+                                 :style="zoomStyle()"
+                                 :class="zooming ? 'cursor-zoom-out' : 'cursor-zoom-in'"
+                                 class="absolute inset-0 w-full h-full object-contain p-4 select-none will-change-transform">
                         </div>
                         @endif
 
@@ -558,6 +562,10 @@ function productGallery(total, intervalMs) {
         activeImg: 0,
         total,
         zooming: false,
+        zoomX: 50,
+        zoomY: 50,
+        // Cursor-following zoom only makes sense with a real pointer
+        canHover: window.matchMedia('(hover: hover) and (pointer: fine)').matches,
         paused: false,
         _timer: null,
         _resumeTimer: null,
@@ -575,6 +583,42 @@ function productGallery(total, intervalMs) {
         destroy() {
             clearInterval(this._timer);
             clearTimeout(this._resumeTimer);
+        },
+
+        zoomStart() {
+            if (!this.canHover) return;
+            this.zooming = true;
+            this.paused = true;
+        },
+
+        zoomEnd() {
+            this.zooming = false;
+            this.paused = false;
+            this.zoomX = 50;
+            this.zoomY = 50;
+        },
+
+        // The magnified image pans so the point under the cursor stays in view
+        zoomMove(e) {
+            if (!this.zooming) return;
+            const r = e.currentTarget.getBoundingClientRect();
+            this.zoomX = Math.min(100, Math.max(0, ((e.clientX - r.left) / r.width) * 100));
+            this.zoomY = Math.min(100, Math.max(0, ((e.clientY - r.top) / r.height) * 100));
+        },
+
+        // Object syntax so Alpine merges with the display style x-show manages
+        zoomStyle() {
+            return this.zooming
+                ? {
+                    transform: 'scale(2.5)',
+                    transformOrigin: `${this.zoomX}% ${this.zoomY}%`,
+                    transition: 'transform-origin 0.08s linear, transform 0.25s ease-out',
+                  }
+                : {
+                    transform: 'scale(1)',
+                    transformOrigin: '50% 50%',
+                    transition: 'transform 0.3s ease-out',
+                  };
         },
 
         // Manual navigation — pause briefly then resume auto-slide
