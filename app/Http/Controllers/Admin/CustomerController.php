@@ -26,9 +26,12 @@ class CustomerController extends Controller
     public function index(Request $request)
     {
         $shopId = Auth::user()->shopId();
-        $base   = Customer::query()
+        $base   = Customer::query()->with('shop')
             // Sub shop sees only its own customers; admin/salesman see all shops
-            ->when(Auth::user()->isSubshop(), fn($q) => $q->forShop($shopId));
+            // and can narrow with the ?shop= filter (''=all, 'main', or a shop id)
+            ->when(Auth::user()->isSubshop(),
+                fn($q) => $q->forShop($shopId),
+                fn($q) => $q->forShopFilter($request->input('shop', '')));
 
         if ($request->filled('q')) {
             $s = $request->q;
@@ -62,7 +65,9 @@ class CustomerController extends Controller
             ->paginate(20, ['*'], 'online_page')
             ->withQueryString();
 
-        return view('admin.customers.index', compact('posCustomers', 'onlineCustomers'));
+        $shops = Auth::user()->isSubshop() ? collect() : \App\Models\Shop::orderBy('name')->get();
+
+        return view('admin.customers.index', compact('posCustomers', 'onlineCustomers', 'shops'));
     }
 
     public function create()

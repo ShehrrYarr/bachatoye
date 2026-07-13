@@ -9,11 +9,22 @@
     </a>
 </div>
 
-<div class="card overflow-hidden">
+@if(($shops ?? collect())->count())
+<div class="card p-3 mb-5">
+    <form method="GET" action="{{ route('admin.pos_sessions.index') }}" class="flex items-center gap-3">
+        <span class="text-sm font-semibold text-gray-600"><i class="fas fa-store mr-1.5 text-gray-400"></i>Shop:</span>
+        @include('admin.partials.shop-filter', ['autoSubmit' => true])
+    </form>
+</div>
+@endif
+
+<div class="card">
+    <div class="overflow-x-auto">
     <table class="data-table">
         <thead>
             <tr>
                 <th>Opened By</th>
+                <th>Shop</th>
                 <th>Opened At</th>
                 <th>Closed At</th>
                 <th>Duration</th>
@@ -26,6 +37,13 @@
             @forelse($sessions as $session)
             <tr>
                 <td class="font-medium text-gray-800">{{ $session->user?->name ?? '—' }}</td>
+                <td class="text-sm">
+                    @if($session->shop)
+                        <span class="badge bg-indigo-50 text-indigo-700 text-xs">{{ $session->shop->name }}</span>
+                    @else
+                        <span class="text-gray-400 text-xs">Main</span>
+                    @endif
+                </td>
                 <td class="text-sm text-gray-600">{{ $session->opened_at->format('d M Y H:i') }}</td>
                 <td class="text-sm text-gray-500">
                     {{ $session->closed_at ? $session->closed_at->format('d M Y H:i') : '—' }}
@@ -53,11 +71,12 @@
             </tr>
             @empty
             <tr>
-                <td colspan="7" class="text-center py-12 text-gray-400">No POS sessions recorded yet.</td>
+                <td colspan="8" class="text-center py-12 text-gray-400">No POS sessions recorded yet.</td>
             </tr>
             @endforelse
         </tbody>
     </table>
+    </div>
     <div class="p-4 border-t border-gray-200">{{ $sessions->links() }}</div>
 </div>
 @endsection

@@ -22,20 +22,29 @@ class DashboardController extends Controller
 {
     public function index()
     {
+        // Shop filter: '' = all shops combined, 'main' = main shop only, id = that sub shop
+        $shopFilter = (string) request('shop', '');
+        $shops      = \App\Models\Shop::orderBy('name')->get();
+        // Purchases & vendor payments only happen at the main shop
+        $includePurchases = $shopFilter === '' || $shopFilter === 'main';
+        // Ledger entries scope through their customer's shop
+        $ledgerScope = fn($q) => $shopFilter === '' ? $q : $q->whereHas('customer', fn($c) => $c->forShopFilter($shopFilter));
+        $returnScope = fn($q) => $shopFilter === '' ? $q : $q->whereHas('order', fn($o) => $o->forShopFilter($shopFilter));
+
         $stats = [
-            'today_sales'       => Order::whereDate('created_at', today())
+            'today_sales'       => Order::forShopFilter($shopFilter)->whereDate('created_at', today())
                                         ->where('status', 'delivered')
                                         ->sum('total'),
-            'today_orders'      => Order::whereDate('created_at', today())->count(),
-            'pending_orders'    => Order::where('status', 'pending')->count(),
-            'total_customers'   => Customer::count(),
-            'outstanding_khata' => abs(Customer::where('credit_balance', '<', 0)->sum('credit_balance')),
-            'month_sales'       => Order::whereMonth('created_at', now()->month)
+            'today_orders'      => Order::forShopFilter($shopFilter)->whereDate('created_at', today())->count(),
+            'pending_orders'    => Order::forShopFilter($shopFilter)->where('status', 'pending')->count(),
+            'total_customers'   => Customer::forShopFilter($shopFilter)->count(),
+            'outstanding_khata' => abs(Customer::forShopFilter($shopFilter)->where('credit_balance', '<', 0)->sum('credit_balance')),
+            'month_sales'       => Order::forShopFilter($shopFilter)->whereMonth('created_at', now()->month)
                                         ->whereYear('created_at', now()->year)
                                         ->where('status', 'delivered')
                                         ->sum('total'),
-            'today_expenses'    => Expense::whereDate('expense_date', today())->sum('amount'),
-            'today_purchases'   => Purchase::whereDate('purchase_date', today())->sum('total'),
+            'today_expenses'    => Expense::forShopFilter($shopFilter)->whereDate('expense_date', today())->sum('amount'),
+            'today_purchases'   => $includePurchases ? Purchase::whereDate('purchase_date', today())->sum('total') : 0,
         ];
 
         $recentOrders  = Order::where('source', 'ecommerce')->latest()->take(10)->get();
@@ -46,7 +55,7 @@ class DashboardController extends Controller
 
         $posChart = collect(range(6, 0))->map(fn($i) => [
             'date'  => now()->subDays($i)->format('M d'),
-            'total' => Order::whereDate('created_at', now()->subDays($i))
+            'total' => Order::forShopFilter($shopFilter)->whereDate('created_at', now()->subDays($i))
                             ->where('source', 'pos')
                             ->where('status', 'delivered')
                             ->sum('total'),
@@ -61,7 +70,7 @@ class DashboardController extends Controller
         ]);
 
         // ── Today's Total Report ──────────────────────────────────────────
-        $posOrders = Order::whereDate('created_at', today())
+        $posOrders = Order::forShopFilter($shopFilter)->whereDate('created_at', today())
             ->where('source', 'pos')
             ->where('status', 'delivered')
             ->get(['payment_method', 'total', 'cash_amount', 'bank_amount', 'amount_paid', 'bank_account_id']);
@@ -79,7 +88,7 @@ class DashboardController extends Controller
             default         => 0,
         });
 
-        $khataEntries = AccountLedger::whereDate('created_at', today())
+        $khataEntries = $ledgerScope(AccountLedger::whereDate('created_at', today()))
             ->where('type', 'credit')
             ->whereNull('return_id')
             ->get(['payment_method', 'amount']);
@@ -89,12 +98,12 @@ class DashboardController extends Controller
         $khataOther = $khataEntries->whereNotIn('payment_method', ['cash', 'bank_transfer'])->sum('amount');
         $khataTotal = $khataEntries->sum('amount');
 
-        $expensesData  = Expense::whereDate('expense_date', today())->get(['payment_method', 'amount']);
+        $expensesData  = Expense::forShopFilter($shopFilter)->whereDate('expense_date', today())->get(['payment_method', 'amount']);
         $todayExpenses = (float) $expensesData->sum('amount');
         $expenseCash   = (float) $expensesData->where('payment_method', 'cash')->sum('amount');
         $expenseBank   = (float) $expensesData->where('payment_method', 'bank_transfer')->sum('amount');
 
-        $returnOrders = ReturnOrder::whereDate('created_at', today())
+        $returnOrders = $returnScope(ReturnOrder::whereDate('created_at', today()))
             ->whereIn('status', ['approved', 'completed'])
             ->get(['refund_method', 'refund_amount']);
 
@@ -102,7 +111,9 @@ class DashboardController extends Controller
         $returnBank  = $returnOrders->where('refund_method', 'bank_transfer')->sum('refund_amount');
         $returnTotal = $returnOrders->sum('refund_amount');
 
-        $todayPurchases     = Purchase::whereDate('purchase_date', today())->get(['payment_method', 'total', 'amount_paid', 'bank_account_id']);
+        $todayPurchases     = $includePurchases
+            ? Purchase::whereDate('purchase_date', today())->get(['payment_method', 'total', 'amount_paid', 'bank_account_id'])
+            : collect();
         $purchasesTotal     = (float) $todayPurchases->sum('total');
         $purchasesPaid      = (float) $todayPurchases->sum('amount_paid');
         $purchasesDue       = $purchasesTotal - $purchasesPaid;
@@ -110,9 +121,11 @@ class DashboardController extends Controller
         $purchasesBankPaid  = (float) $todayPurchases->filter(fn($p) => $p->payment_method === 'bank_transfer' || ($p->payment_method === 'partial' && $p->bank_account_id))->sum('amount_paid');
 
         // Manual vendor payments (cash/bank) recorded via vendor ledger page (not tied to a purchase)
-        $vendorPayData  = VendorLedger::whereDate('created_at', today())
-            ->where('type', 'debit')->whereNull('purchase_id')->whereNotNull('payment_method')
-            ->get(['payment_method', 'amount']);
+        $vendorPayData  = $includePurchases
+            ? VendorLedger::whereDate('created_at', today())
+                ->where('type', 'debit')->whereNull('purchase_id')->whereNotNull('payment_method')
+                ->get(['payment_method', 'amount'])
+            : collect();
         $vendorPayCash  = (float) $vendorPayData->where('payment_method', 'cash')->sum('amount');
         $vendorPayBank  = (float) $vendorPayData->where('payment_method', 'bank_transfer')->sum('amount');
         $vendorPayTotal = (float) $vendorPayData->sum('amount');
@@ -147,30 +160,31 @@ class DashboardController extends Controller
         ];
 
         // ── Detail rows for Today's Report modals ────────────────────────
-        $todayPosOrders = Order::whereDate('created_at', today())
+        $todayPosOrders = Order::forShopFilter($shopFilter)->whereDate('created_at', today())
             ->where('source', 'pos')->where('status', 'delivered')
             ->with(['customer', 'bankAccount', 'items'])->latest()->get();
 
-        $todayKhataEntries = AccountLedger::whereDate('created_at', today())
+        $todayKhataEntries = $ledgerScope(AccountLedger::whereDate('created_at', today()))
             ->where('type', 'credit')
             ->whereNull('return_id')
             ->with(['customer', 'user', 'bankAccount'])->latest()->get();
 
-        $todayExpensesList = Expense::whereDate('expense_date', today())
+        $todayExpensesList = Expense::forShopFilter($shopFilter)->whereDate('expense_date', today())
             ->with('category')->latest()->get();
 
-        $todayReturnsList = ReturnOrder::whereDate('created_at', today())
+        $todayReturnsList = $returnScope(ReturnOrder::whereDate('created_at', today()))
             ->whereIn('status', ['approved', 'completed'])
             ->with(['order', 'items'])->latest()->get();
 
-        $todayPurchasesList = Purchase::whereDate('purchase_date', today())
-            ->with(['vendor', 'items'])->latest()->get();
+        $todayPurchasesList = $includePurchases
+            ? Purchase::whereDate('purchase_date', today())->with(['vendor', 'items'])->latest()->get()
+            : collect();
 
         // ── Khata payment reminders (promise dates within 5 days + overdue) ─
         $khataReminders = AccountLedger::where('type', 'debit')
             ->whereNotNull('promise_date')
             ->where('promise_date', '<=', today()->addDays(5))
-            ->whereHas('customer', fn($q) => $q->where('credit_balance', '<', 0))
+            ->whereHas('customer', fn($q) => $q->forShopFilter($shopFilter)->where('credit_balance', '<', 0))
             ->with('customer')
             ->orderBy('promise_date')
             ->get();
@@ -178,7 +192,7 @@ class DashboardController extends Controller
         return view('admin.dashboard', compact(
             'stats', 'recentOrders', 'lowStockItems', 'posChart', 'ecomChart', 'todayReport',
             'todayPosOrders', 'todayKhataEntries', 'todayExpensesList', 'todayReturnsList',
-            'todayPurchasesList', 'khataReminders'
+            'todayPurchasesList', 'khataReminders', 'shops', 'shopFilter'
         ));
     }
 

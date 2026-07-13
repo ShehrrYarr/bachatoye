@@ -58,6 +58,10 @@
             </select>
         </div>
         <div>
+            <label class="form-label text-xs">Shop</label>
+            @include('admin.partials.shop-filter')
+        </div>
+        <div>
             <label class="form-label text-xs">Section</label>
             <select name="section" class="form-select text-sm">
                 <option value="">All Sections</option>

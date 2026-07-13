@@ -37,8 +37,10 @@ class ExpenseController extends Controller
         $user   = Auth::user();
         $shopId = $user->shopId();
 
-        // Sub shop sees only its own expenses; admin/salesman see all for now
-        $scope = fn($q) => $user->isSubshop() ? $q->forShop($shopId) : $q;
+        // Sub shop sees only its own expenses; admin can narrow with ?shop=
+        $scope = fn($q) => $user->isSubshop()
+            ? $q->forShop($shopId)
+            : $q->forShopFilter($request->input('shop', ''));
 
         $query = $scope(Expense::query())->with(['category', 'user', 'bankAccount'])->latest();
 
@@ -57,11 +59,12 @@ class ExpenseController extends Controller
 
         $expenses   = $query->paginate(25)->withQueryString();
         $categories = ExpenseCategory::orderBy('name')->get();
+        $shops      = $user->isAdmin() ? \App\Models\Shop::orderBy('name')->get() : collect();
         $todayTotal = $scope(Expense::query())->whereDate('expense_date', today())->sum('amount');
         $monthTotal = $scope(Expense::query())->whereYear('expense_date', now()->year)->whereMonth('expense_date', now()->month)->sum('amount');
         $yearTotal  = $scope(Expense::query())->whereYear('expense_date', now()->year)->sum('amount');
 
-        return view('admin.expenses.index', compact('expenses', 'categories', 'todayTotal', 'monthTotal', 'yearTotal'));
+        return view('admin.expenses.index', compact('expenses', 'categories', 'todayTotal', 'monthTotal', 'yearTotal', 'shops'));
     }
 
     public function create()

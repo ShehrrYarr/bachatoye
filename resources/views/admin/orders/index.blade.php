@@ -35,6 +35,17 @@
                 <option value="pos" {{ request('source') === 'pos' ? 'selected' : '' }}>POS</option>
             </select>
         </div>
+        @if(($shops ?? collect())->count())
+        <div>
+            <select name="shop" class="form-select text-sm">
+                <option value="">All Shops</option>
+                <option value="main" {{ request('shop') === 'main' ? 'selected' : '' }}>Main Shop</option>
+                @foreach($shops as $s)
+                <option value="{{ $s->id }}" {{ request('shop') == $s->id ? 'selected' : '' }}>{{ $s->name }}</option>
+                @endforeach
+            </select>
+        </div>
+        @endif
         <div>
             <select name="payment" class="form-select text-sm">
                 <option value="">All Payments</option>
@@ -48,7 +59,7 @@
             <input type="date" name="date_to" value="{{ request('date_to') }}" class="form-input text-sm">
         </div>
         <button type="submit" class="btn-primary btn-sm">Filter</button>
-        @if(request()->hasAny(['q','status','source','payment','date_from','date_to']))
+        @if(request()->hasAny(['q','status','source','payment','shop','date_from','date_to']))
         <a href="{{ route('admin.orders.index') }}" class="btn-outline btn-sm">Clear</a>
         @endif
     </form>
@@ -82,6 +93,9 @@
                         <span class="badge {{ $order->source === 'pos' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">
                             {{ strtoupper($order->source) }}
                         </span>
+                        @if($order->shop)
+                        <div class="mt-0.5"><span class="badge bg-indigo-50 text-indigo-700 text-xs"><i class="fas fa-store mr-1"></i>{{ $order->shop->name }}</span></div>
+                        @endif
                     </td>
                     <td class="text-sm text-gray-600">{{ $order->items->count() }} item(s)</td>
                     <td class="font-semibold text-gray-800">Rs. {{ number_format($order->total) }}</td>

@@ -39,6 +39,11 @@ $activeCategoryLabel = $categoryId ? collect($categoryOptions)->firstWhere('valu
             </select>
         </div>
 
+        <div>
+            <label class="form-label text-xs">Shop</label>
+            @include('admin.partials.shop-filter')
+        </div>
+
         {{-- Custom date range --}}
         <div class="flex gap-2">
             <div>

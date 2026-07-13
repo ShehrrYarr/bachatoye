@@ -39,10 +39,13 @@ class ReportController extends Controller
     {
         ['from' => $from, 'to' => $to] = $this->dateRange($request);
 
-        $sections  = Section::orderBy('sort_order')->get();
-        $sectionId = $request->filled('section') ? (int) $request->section : null;
+        $sections   = Section::orderBy('sort_order')->get();
+        $sectionId  = $request->filled('section') ? (int) $request->section : null;
+        $shopFilter = (string) $request->input('shop', '');
+        $shops      = \App\Models\Shop::orderBy('name')->get();
 
-        $query = Order::whereBetween(DB::raw('DATE(created_at)'), [$from, $to])
+        $query = Order::forShopFilter($shopFilter)
+                       ->whereBetween(DB::raw('DATE(created_at)'), [$from, $to])
                        ->where('status', 'delivered');
 
         if ($request->filled('source')) {
@@ -77,7 +80,9 @@ class ReportController extends Controller
         $topProductsQuery = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->whereBetween(DB::raw('DATE(orders.created_at)'), [$from, $to])
-            ->where('orders.status', 'delivered');
+            ->where('orders.status', 'delivered')
+            ->when($shopFilter === 'main', fn($q) => $q->whereNull('orders.shop_id'))
+            ->when($shopFilter !== '' && $shopFilter !== 'main', fn($q) => $q->where('orders.shop_id', (int) $shopFilter));
 
         if ($sectionId) {
             $topProductsQuery
@@ -103,7 +108,7 @@ class ReportController extends Controller
         return view('admin.reports.sales', compact(
             'orders', 'totalRevenue', 'totalOrders', 'avgOrderValue', 'itemsSold',
             'totalExchangeValue', 'dailyData', 'topProducts', 'byPayment', 'from', 'to',
-            'sections', 'sectionId'
+            'sections', 'sectionId', 'shops', 'shopFilter'
         ));
     }
 
@@ -122,13 +127,18 @@ class ReportController extends Controller
         $categoryId = $request->filled('category') ? (int) $request->category : null;
         $isFiltered = $sectionId || $categoryId;
 
+        $shopFilter = (string) $request->input('shop', '');
+        $shops      = \App\Models\Shop::orderBy('name')->get();
+        $shopRaw    = fn($q, $col = 'orders.shop_id') => $shopFilter === '' ? $q
+            : ($shopFilter === 'main' ? $q->whereNull($col) : $q->where($col, (int) $shopFilter));
+
         if ($isFiltered) {
-            $baseItems = DB::table('order_items')
+            $baseItems = $shopRaw(DB::table('order_items')
                 ->join('orders',    'orders.id',    '=', 'order_items.order_id')
                 ->join('products',  'products.id',  '=', 'order_items.product_id')
                 ->join('categories as cats', 'cats.id', '=', 'products.category_id')
                 ->whereBetween(DB::raw('DATE(orders.created_at)'), [$from, $to])
-                ->where('orders.status', 'delivered');
+                ->where('orders.status', 'delivered'));
 
             if ($sectionId)  $baseItems->where('cats.section_id', $sectionId);
             if ($categoryId) $baseItems->where(fn($q) =>
@@ -152,22 +162,23 @@ class ReportController extends Controller
                 ->map(fn($r) => ['month' => $r->month, 'revenue' => $r->revenue, 'cogs' => 0])
                 ->toArray();
         } else {
-            $ordersBase = Order::whereBetween(DB::raw('DATE(created_at)'), [$from, $to])
+            $ordersBase = Order::forShopFilter($shopFilter)
+                                ->whereBetween(DB::raw('DATE(created_at)'), [$from, $to])
                                 ->where('status', 'delivered');
 
             $grossRevenue   = $ordersBase->sum('total');
             $totalDiscounts = $ordersBase->sum('discount_amount');
             $deliveryIncome = $ordersBase->sum('delivery_charge');
 
-            $totalCogs = DB::table('order_items')
+            $totalCogs = $shopRaw(DB::table('order_items')
                 ->join('orders', 'orders.id', '=', 'order_items.order_id')
                 ->whereBetween(DB::raw('DATE(orders.created_at)'), [$from, $to])
-                ->where('orders.status', 'delivered')
+                ->where('orders.status', 'delivered'))
                 ->sum(DB::raw('order_items.quantity * COALESCE(order_items.cost_price, 0)'));
 
-            $monthlyData = DB::table('orders')
+            $monthlyData = $shopRaw(DB::table('orders')
                 ->whereBetween(DB::raw('DATE(created_at)'), [$from, $to])
-                ->where('status', 'delivered')
+                ->where('status', 'delivered'), 'orders.shop_id')
                 ->select(
                     DB::raw('MONTH(created_at) as month'),
                     DB::raw('SUM(total) as revenue')
@@ -181,12 +192,12 @@ class ReportController extends Controller
 
         $netRevenue  = $grossRevenue - $totalDiscounts;
         $grossProfit = $netRevenue - $totalCogs;
-        $totalExpenses = Expense::whereBetween('expense_date', [$from, $to])->sum('amount');
+        $totalExpenses = Expense::forShopFilter($shopFilter)->whereBetween('expense_date', [$from, $to])->sum('amount');
         $netProfit   = $grossProfit - $totalExpenses + $deliveryIncome;
 
-        $expensesByCategory = DB::table('expenses')
+        $expensesByCategory = $shopRaw(DB::table('expenses')
             ->leftJoin('expense_categories', 'expense_categories.id', '=', 'expenses.expense_category_id')
-            ->whereBetween('expenses.expense_date', [$from, $to])
+            ->whereBetween('expenses.expense_date', [$from, $to]), 'expenses.shop_id')
             ->select(
                 'expense_categories.name as category_name',
                 DB::raw('COUNT(*) as count'),
@@ -200,7 +211,8 @@ class ReportController extends Controller
             'grossRevenue', 'totalDiscounts', 'netRevenue', 'totalCogs', 'grossProfit',
             'totalExpenses', 'deliveryIncome', 'netProfit', 'periodLabel',
             'expensesByCategory', 'monthlyData', 'from', 'to',
-            'sections', 'categories', 'sectionId', 'categoryId', 'isFiltered'
+            'sections', 'categories', 'sectionId', 'categoryId', 'isFiltered',
+            'shops', 'shopFilter'
         ));
     }
 
@@ -279,15 +291,20 @@ class ReportController extends Controller
     {
         ['from' => $from, 'to' => $to] = $this->dateRange($request);
 
-        $expenses      = Expense::with(['category', 'user'])->whereBetween('expense_date', [$from, $to])->get();
+        $shopFilter = (string) $request->input('shop', '');
+        $shops      = \App\Models\Shop::orderBy('name')->get();
+        $shopRaw    = fn($q, $col = 'expenses.shop_id') => $shopFilter === '' ? $q
+            : ($shopFilter === 'main' ? $q->whereNull($col) : $q->where($col, (int) $shopFilter));
+
+        $expenses      = Expense::forShopFilter($shopFilter)->with(['category', 'user'])->whereBetween('expense_date', [$from, $to])->get();
         $totalExpenses = $expenses->sum('amount');
         $totalCount    = $expenses->count();
         $avgExpense    = $totalCount ? round($totalExpenses / $totalCount, 2) : 0;
         $categoryCount = $expenses->whereNotNull('expense_category_id')->groupBy('expense_category_id')->count();
 
-        $byCategory = DB::table('expenses')
+        $byCategory = $shopRaw(DB::table('expenses')
             ->leftJoin('expense_categories', 'expense_categories.id', '=', 'expenses.expense_category_id')
-            ->whereBetween('expenses.expense_date', [$from, $to])
+            ->whereBetween('expenses.expense_date', [$from, $to]))
             ->select(
                 'expense_categories.name as category_name',
                 DB::raw('COUNT(*) as count'),
@@ -297,8 +314,8 @@ class ReportController extends Controller
             ->orderByDesc('total')
             ->get();
 
-        $byMethod = DB::table('expenses')
-            ->whereBetween('expense_date', [$from, $to])
+        $byMethod = $shopRaw(DB::table('expenses')
+            ->whereBetween('expense_date', [$from, $to]), 'shop_id')
             ->select('payment_method', DB::raw('COUNT(*) as count'), DB::raw('SUM(amount) as total'))
             ->groupBy('payment_method')
             ->orderByDesc('total')
@@ -306,30 +323,36 @@ class ReportController extends Controller
 
         return view('admin.reports.expenses', compact(
             'expenses', 'totalExpenses', 'totalCount', 'avgExpense', 'categoryCount',
-            'byCategory', 'byMethod', 'from', 'to'
+            'byCategory', 'byMethod', 'from', 'to', 'shops', 'shopFilter'
         ));
     }
 
     public function accounts(Request $request)
     {
-        $customersOwing = Customer::where('credit_balance', '<', 0)
-            ->with('orders')
+        $shopFilter = (string) $request->input('shop', '');
+        $shops      = \App\Models\Shop::orderBy('name')->get();
+
+        $customersOwing = Customer::forShopFilter($shopFilter)
+            ->where('credit_balance', '<', 0)
+            ->with(['orders', 'shop'])
             ->withCount('orders')
             ->orderBy('credit_balance')
             ->get();
 
-        $customersWithCredit = Customer::where('credit_balance', '>', 0)
+        $customersWithCredit = Customer::forShopFilter($shopFilter)
+            ->where('credit_balance', '>', 0)
+            ->with('shop')
             ->orderByDesc('credit_balance')
             ->get();
 
         $totalOutstanding = abs($customersOwing->sum('credit_balance'));
         $totalCredit      = $customersWithCredit->sum('credit_balance');
         $customersWithDebt = $customersOwing->count();
-        $khataOrders      = Order::where('payment_method', 'khata')->count();
+        $khataOrders      = Order::forShopFilter($shopFilter)->where('payment_method', 'khata')->count();
 
         return view('admin.reports.accounts', compact(
             'customersOwing', 'customersWithCredit', 'totalOutstanding', 'totalCredit',
-            'customersWithDebt', 'khataOrders'
+            'customersWithDebt', 'khataOrders', 'shops', 'shopFilter'
         ));
     }
 

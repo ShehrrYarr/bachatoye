@@ -24,8 +24,17 @@
             <option value="outstanding" {{ request('balance') === 'outstanding' ? 'selected' : '' }}>Khata Outstanding</option>
             <option value="credit" {{ request('balance') === 'credit' ? 'selected' : '' }}>With Credit</option>
         </select>
+        @if(($shops ?? collect())->count())
+        <select name="shop" class="form-select text-sm">
+            <option value="">All Shops</option>
+            <option value="main" {{ request('shop') === 'main' ? 'selected' : '' }}>Main Shop</option>
+            @foreach($shops as $s)
+            <option value="{{ $s->id }}" {{ request('shop') == $s->id ? 'selected' : '' }}>{{ $s->name }}</option>
+            @endforeach
+        </select>
+        @endif
         <button type="submit" class="btn-primary btn-sm">Filter</button>
-        @if(request()->hasAny(['q', 'balance']))
+        @if(request()->hasAny(['q', 'balance', 'shop']))
             <a href="{{ route("{$prefix}.customers.index") }}" class="btn-outline btn-sm">Clear</a>
         @endif
     </form>
@@ -60,6 +69,7 @@
                     <td>
                         <div class="font-semibold text-gray-800">{{ $customer->name }}</div>
                         @if($customer->email)<div class="text-xs text-gray-400">{{ $customer->email }}</div>@endif
+                        @if($customer->shop)<span class="badge bg-indigo-50 text-indigo-700 text-xs mt-0.5"><i class="fas fa-store mr-1"></i>{{ $customer->shop->name }}</span>@endif
                     </td>
                     <td class="text-sm font-mono">{{ $customer->phone }}</td>
                     <td class="text-sm text-gray-600">{{ $customer->city ?? '—' }}</td>

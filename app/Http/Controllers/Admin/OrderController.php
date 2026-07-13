@@ -14,7 +14,9 @@ class OrderController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Order::with(['customer', 'servedBy', 'items'])->latest();
+        $query = Order::with(['customer', 'servedBy', 'items', 'shop'])
+            ->forShopFilter($request->input('shop', ''))
+            ->latest();
 
         if ($request->filled('search')) {
             $s = $request->search;
@@ -37,7 +39,8 @@ class OrderController extends Controller
         }
 
         $orders = $query->paginate(25)->withQueryString();
-        return view('admin.orders.index', compact('orders'));
+        $shops  = \App\Models\Shop::orderBy('name')->get();
+        return view('admin.orders.index', compact('orders', 'shops'));
     }
 
     public function show(Order $order)

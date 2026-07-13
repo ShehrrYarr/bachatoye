@@ -9,6 +9,15 @@
     </button>
 </div>
 
+@if(($shops ?? collect())->count())
+<div class="card p-3 mb-5 no-print">
+    <form method="GET" action="{{ route('admin.reports.accounts') }}" class="flex items-center gap-3">
+        <span class="text-sm font-semibold text-gray-600"><i class="fas fa-store mr-1.5 text-gray-400"></i>Shop:</span>
+        @include('admin.partials.shop-filter', ['autoSubmit' => true])
+    </form>
+</div>
+@endif
+
 {{-- Summary --}}
 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
     <div class="stat-card border-2 border-red-200">

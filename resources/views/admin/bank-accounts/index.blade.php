@@ -10,6 +10,20 @@
     </div>
 </div>
 
+@if(auth()->user()->isAdmin() && ($shops ?? collect())->count())
+<div class="card p-3 mb-5 flex items-center gap-3">
+    <span class="text-sm font-semibold text-gray-600"><i class="fas fa-store mr-1.5 text-gray-400"></i>Location:</span>
+    <form method="GET" action="{{ route('admin.bank-accounts.index') }}">
+        <select name="shop" onchange="this.form.submit()" class="form-select text-sm">
+            <option value="main">Main Shop</option>
+            @foreach($shops as $shopOption)
+            <option value="{{ $shopOption->id }}" {{ request('shop') == $shopOption->id ? 'selected' : '' }}>{{ $shopOption->name }}</option>
+            @endforeach
+        </select>
+    </form>
+</div>
+@endif
+
 @if(session('success'))
 <div class="mb-4 bg-green-50 border border-green-200 text-green-800 rounded-xl px-4 py-3 text-sm">
     <i class="fas fa-check-circle mr-2"></i>{{ session('success') }}
@@ -255,6 +269,8 @@
             <form method="POST" id="bank-form" action="{{ route("{$rPrefix}.bank-accounts.store") }}" class="space-y-3">
                 @csrf
                 <div id="method-field"></div>
+                {{-- Admin: new banks belong to the location currently being viewed --}}
+                <input type="hidden" name="shop_id" value="{{ ($currentShop ?? null)?->id }}">
 
                 <div>
                     <label class="form-label">Label / Display Name <span class="text-red-500">*</span></label>

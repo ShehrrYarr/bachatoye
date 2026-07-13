@@ -50,8 +50,11 @@
             <input type="date" name="date_from" value="{{ request('date_from') }}" class="form-input text-sm">
             <input type="date" name="date_to" value="{{ request('date_to') }}" class="form-input text-sm">
         </div>
+        <div>
+            @include('admin.partials.shop-filter')
+        </div>
         <button type="submit" class="btn-primary btn-sm">Filter</button>
-        @if(request()->hasAny(['q','category','date_from','date_to']))
+        @if(request()->hasAny(['q','category','shop','date_from','date_to']))
         <a href="{{ route("{$rPrefix}.expenses.index") }}" class="btn-outline btn-sm">Clear</a>
         @endif
     </form>

@@ -5,6 +5,25 @@
 @section('content')
 <div class="space-y-6">
 
+    {{-- Shop selector (only when sub shops exist) --}}
+    @if(($shops ?? collect())->count())
+    <div class="card p-3 flex items-center gap-3 flex-wrap">
+        <span class="text-sm font-semibold text-gray-600"><i class="fas fa-store mr-1.5 text-gray-400"></i>Viewing:</span>
+        <form method="GET" action="{{ route('admin.dashboard') }}">
+            <select name="shop" onchange="this.form.submit()" class="form-select text-sm">
+                <option value="">All Shops (Combined)</option>
+                <option value="main" {{ ($shopFilter ?? '') === 'main' ? 'selected' : '' }}>Main Shop</option>
+                @foreach($shops as $s)
+                <option value="{{ $s->id }}" {{ ($shopFilter ?? '') == $s->id ? 'selected' : '' }}>{{ $s->name }}</option>
+                @endforeach
+            </select>
+        </form>
+        @if(($shopFilter ?? '') !== '' && $shopFilter !== 'main')
+        <a href="{{ route('admin.shops.show', $shopFilter) }}" class="text-sm text-primary-600 hover:underline ml-auto">Shop details →</a>
+        @endif
+    </div>
+    @endif
+
     {{-- Khata Reminders --}}
     @include('admin.partials.khata-reminders')
 

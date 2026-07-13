@@ -18,6 +18,9 @@
                 @endforeach
             </select>
         </div>
+        <div>
+            @include('admin.partials.shop-filter')
+        </div>
         <div class="flex gap-2">
             <input type="date" name="date_from" value="{{ request('date_from') }}" class="form-input text-sm">
             <input type="date" name="date_to" value="{{ request('date_to') }}" class="form-input text-sm">

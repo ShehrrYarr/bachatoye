@@ -21,10 +21,20 @@ class BankAccountController extends Controller
 
     public function index(CashBalanceService $balances)
     {
-        $shopId = Auth::user()->shopId();
+        $user = Auth::user();
+
+        // Sub shop is locked to its own location; admin can switch via ?shop=
+        // (balances are per-location, so the admin default is the main shop)
+        if ($user->isSubshop()) {
+            $shopId = $user->shopId();
+        } else {
+            $selected = request('shop');
+            $shopId   = ($selected && $selected !== 'main') ? (int) $selected : null;
+        }
 
         $data = $balances->forShop($shopId);
-        $data['currentShop'] = $shopId ? Auth::user()->shop : null;
+        $data['currentShop'] = $shopId ? Shop::find($shopId) : null;
+        $data['shops']       = $user->isAdmin() ? Shop::orderBy('name')->get() : collect();
 
         return view('admin.bank-accounts.index', $data);
     }
@@ -40,15 +50,21 @@ class BankAccountController extends Controller
             'sort_order'      => 'integer|min:0',
             'is_active'       => 'boolean',
             'opening_balance' => 'numeric|min:0',
+            'shop_id'         => 'nullable|exists:shops,id',
         ]);
 
-        $data['shop_id']         = Auth::user()->shopId();
+        // Sub shop banks belong to that shop; admin creates for the location being viewed
+        $data['shop_id']         = Auth::user()->isSubshop()
+            ? Auth::user()->shopId()
+            : ($request->input('shop_id') ?: null);
         $data['is_active']       = $request->boolean('is_active', true);
         $data['sort_order']      = $request->integer('sort_order', 0);
         $data['opening_balance'] = $request->input('opening_balance', 0);
 
         BankAccount::create($data);
-        return redirect()->route(Auth::user()->panelPrefix() . '.bank-accounts.index')->with('success', 'Bank account added.');
+
+        $redirect = redirect()->route(Auth::user()->panelPrefix() . '.bank-accounts.index', array_filter(['shop' => $data['shop_id']]));
+        return $redirect->with('success', 'Bank account added.');
     }
 
     public function update(Request $request, BankAccount $bankAccount)
