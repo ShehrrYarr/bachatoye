@@ -276,6 +276,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::patch('shops/{shop}/toggle', [Admin\ShopController::class, 'toggleActive'])->name('shops.toggle');
     Route::resource('shops', Admin\ShopController::class)->except(['destroy']);
 
+    // Stock Transfers (main ↔ sub shops) — search/serials before the wildcard
+    Route::get('transfers/search', [Admin\StockTransferController::class, 'searchProducts'])->name('transfers.search');
+    Route::get('transfers/serials', [Admin\StockTransferController::class, 'serials'])->name('transfers.serials');
+    Route::get('transfers', [Admin\StockTransferController::class, 'index'])->name('transfers.index');
+    Route::get('transfers/create', [Admin\StockTransferController::class, 'create'])->name('transfers.create');
+    Route::post('transfers', [Admin\StockTransferController::class, 'store'])->name('transfers.store');
+    Route::get('transfers/{transfer}', [Admin\StockTransferController::class, 'show'])->name('transfers.show');
+    Route::get('transfers/{transfer}/slip', [Admin\StockTransferController::class, 'slip'])->name('transfers.slip');
+
     // Reports
     Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/sales', [Admin\ReportController::class, 'sales'])->name('sales');
@@ -552,6 +561,11 @@ Route::prefix('shop')->name('shop.')->middleware(['auth', 'role:subshop'])->grou
     // Stock (read-only)
     Route::get('inventory', [Admin\InventoryController::class, 'index'])->name('inventory.index');
     Route::get('inventory/low-stock', [Admin\InventoryController::class, 'lowStock'])->name('inventory.low_stock');
+
+    // Transfer history (read-only — controller scopes to this shop)
+    Route::get('transfers', [Admin\StockTransferController::class, 'index'])->name('transfers.index');
+    Route::get('transfers/{transfer}', [Admin\StockTransferController::class, 'show'])->name('transfers.show');
+    Route::get('transfers/{transfer}/slip', [Admin\StockTransferController::class, 'slip'])->name('transfers.slip');
 });
 
 /*

@@ -32,4 +32,7 @@
 <a href="{{ route('shop.inventory.index') }}" class="sidebar-link {{ $is('shop.inventory') ? 'active' : '' }}">
     <i class="fas fa-warehouse"></i> Stock
 </a>
+<a href="{{ route('shop.transfers.index') }}" class="sidebar-link {{ $is('shop.transfers') ? 'active' : '' }}">
+    <i class="fas fa-exchange-alt"></i> Transfers
+</a>
 @endcan

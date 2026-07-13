@@ -60,6 +60,9 @@
 <a href="{{ route('admin.purchases.index') }}" class="sidebar-link {{ $is('admin.purchases') ? 'active' : '' }}">
     <i class="fas fa-file-invoice-dollar"></i> Purchases
 </a>
+<a href="{{ route('admin.transfers.index') }}" class="sidebar-link {{ $is('admin.transfers') ? 'active' : '' }}">
+    <i class="fas fa-exchange-alt"></i> Stock Transfers
+</a>
 <a href="{{ route('admin.delivery-platforms.index') }}" class="sidebar-link {{ $is('admin.delivery-platforms') ? 'active' : '' }}">
     <i class="fas fa-truck"></i> Delivery Platforms
 </a>
