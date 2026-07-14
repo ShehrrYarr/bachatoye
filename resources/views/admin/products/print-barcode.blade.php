@@ -104,7 +104,8 @@
         }
         .label-card .lbl-text { position: absolute; white-space: nowrap; color: #111; }
         .label-card .lbl-price { color: #be123c; }
-        .label-card svg { position: absolute; }
+        .label-card .lbl-barcode { position: absolute; }
+        .label-card .lbl-barcode svg { display: block; }
 
         /* ── Print ─────────────────────────────────────────────────────── */
         @media print {
@@ -208,8 +209,12 @@ function render() {
 
         const b = TPL.elements.barcode;
         if (b && b.visible && BARCODE) {
-            html += `<svg id="bc-svg-${i}"
-                          style="left:${b.x}%; top:${b.y}%; transform:${anchorTransform(b.align)};"></svg>`;
+            // Position the wrapper div, not the svg — JsBarcode rewrites the
+            // svg's attributes when rendering, which would wipe inline styles.
+            html += `<div class="lbl-barcode"
+                          style="left:${b.x}%; top:${b.y}%; transform:${anchorTransform(b.align)};">
+                        <svg id="bc-svg-${i}"></svg>
+                     </div>`;
         }
 
         card.innerHTML = html;
@@ -223,7 +228,7 @@ function render() {
                 displayValue: b.showText,
                 fontSize:     b.textSize,
                 margin:       0,
-                background:   '#ffffff',
+                background:   'transparent',
                 lineColor:    '#000000',
             });
         }
