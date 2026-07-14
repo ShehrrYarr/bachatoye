@@ -302,6 +302,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('settings/logo', [Admin\SettingController::class, 'uploadLogo'])->name('settings.logo');
     Route::post('settings/account', [Admin\SettingController::class, 'updateAccount'])->name('settings.account');
     Route::post('settings/sections', [Admin\SettingController::class, 'updateSectionPermissions'])->name('settings.sections');
+    Route::get('settings/barcode-canvas', [Admin\SettingController::class, 'barcodeCanvas'])->name('settings.barcode-canvas');
+    Route::post('settings/barcode-canvas', [Admin\SettingController::class, 'saveBarcodeCanvas'])->name('settings.barcode-canvas.save');
 
     // Per-product store attribute selector + pricing + serial entry field selection
     Route::post('products/{product}/primary-attribute', [Admin\ProductAttributePriceController::class, 'savePrimaryAttribute'])->name('products.primary-attribute.save');

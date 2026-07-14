@@ -514,7 +514,8 @@ class ProductController extends Controller
 
     public function printBarcode(Product $product)
     {
-        return view('admin.products.print-barcode', compact('product'));
+        $template = SettingController::barcodeTemplate();
+        return view('admin.products.print-barcode', compact('product', 'template'));
     }
 
     public function printStickers(Product $product)

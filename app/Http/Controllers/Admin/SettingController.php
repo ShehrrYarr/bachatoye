@@ -12,6 +12,60 @@ use Illuminate\Validation\Rules\Password;
 
 class SettingController extends Controller
 {
+    /**
+     * Default barcode label design. Positions are % of the label,
+     * font sizes are px at print resolution (96 dpi), w/h are inches.
+     */
+    public const DEFAULT_BARCODE_TEMPLATE = [
+        'w' => 2.5,
+        'h' => 1.5,
+        'elements' => [
+            'shop_name'    => ['visible' => false, 'x' => 50, 'y' => 2,  'align' => 'center', 'size' => 10, 'bold' => true],
+            'product_name' => ['visible' => true,  'x' => 50, 'y' => 6,  'align' => 'center', 'size' => 11, 'bold' => true],
+            'barcode'      => ['visible' => true,  'x' => 50, 'y' => 24, 'align' => 'center', 'barHeight' => 42, 'barWidth' => 1.5, 'showText' => true, 'textSize' => 10],
+            'price'        => ['visible' => true,  'x' => 50, 'y' => 80, 'align' => 'center', 'size' => 12, 'bold' => true],
+            'sku'          => ['visible' => false, 'x' => 50, 'y' => 92, 'align' => 'center', 'size' => 8,  'bold' => false],
+        ],
+    ];
+
+    /** Load the saved template, falling back to the default design. */
+    public static function barcodeTemplate(): array
+    {
+        $saved    = Setting::get('barcode_label_template');
+        $template = $saved ? json_decode($saved, true) : null;
+
+        if (!is_array($template) || empty($template['elements'])) {
+            return self::DEFAULT_BARCODE_TEMPLATE;
+        }
+
+        // Merge with defaults so newly added elements get sane values
+        $template['elements'] += self::DEFAULT_BARCODE_TEMPLATE['elements'];
+        return $template;
+    }
+
+    public function barcodeCanvas()
+    {
+        $template = self::barcodeTemplate();
+        return view('admin.settings.barcode-canvas', compact('template'));
+    }
+
+    public function saveBarcodeCanvas(Request $request)
+    {
+        $data = $request->validate([
+            'w'        => 'required|numeric|min:0.5|max:12',
+            'h'        => 'required|numeric|min:0.3|max:12',
+            'elements' => 'required|array',
+        ]);
+
+        Setting::set('barcode_label_template', json_encode([
+            'w'        => (float) $data['w'],
+            'h'        => (float) $data['h'],
+            'elements' => $data['elements'],
+        ]));
+
+        return response()->json(['success' => true]);
+    }
+
     public function index()
     {
         $settings = [

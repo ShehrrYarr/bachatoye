@@ -6,7 +6,7 @@
     <title>Print Barcode — {{ $product->name }}</title>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 
-    {{-- @page size is injected dynamically by JS so it matches the chosen label dimensions --}}
+    {{-- @page size injected by JS from the saved label template --}}
     <style id="page-size-style"></style>
 
     <style>
@@ -35,6 +35,11 @@
             flex: 1;
             min-width: 160px;
         }
+        .label-size-info {
+            font-size: 12px;
+            color: #6b7280;
+            white-space: nowrap;
+        }
         .field-group {
             display: flex;
             align-items: center;
@@ -55,20 +60,7 @@
             text-align: center;
             color: #111;
         }
-        .field-group input[type=number]:focus {
-            outline: none;
-            border-color: #6366f1;
-            box-shadow: 0 0 0 2px rgba(99,102,241,.15);
-        }
-        .field-group .unit {
-            font-size: 11px;
-            color: #6b7280;
-        }
-        .divider {
-            width: 1px;
-            height: 28px;
-            background: #e5e7eb;
-        }
+        .divider { width: 1px; height: 28px; background: #e5e7eb; }
         .btn-print {
             padding: 8px 20px;
             border-radius: 8px;
@@ -81,7 +73,7 @@
             white-space: nowrap;
         }
         .btn-print:hover { background: linear-gradient(135deg, #4f46e5, #4338ca); }
-        .btn-back {
+        .btn-back, .btn-design {
             padding: 8px 14px;
             border-radius: 8px;
             border: 1px solid #d1d5db;
@@ -89,15 +81,9 @@
             cursor: pointer;
             font-size: 13px;
             color: #374151;
+            text-decoration: none;
+            display: inline-block;
         }
-        .saved-badge {
-            font-size: 11px;
-            color: #16a34a;
-            font-weight: 500;
-            opacity: 0;
-            transition: opacity .4s;
-        }
-        .saved-badge.show { opacity: 1; }
 
         /* ── Label preview area ────────────────────────────────────────── */
         #preview-area {
@@ -108,61 +94,30 @@
             align-items: flex-start;
         }
 
-        /* ── Single label card ─────────────────────────────────────────── */
         .label-card {
             background: #fff;
             border: 1.5px dashed #9ca3af;
             border-radius: 5px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 5px 6px;
-            text-align: center;
+            position: relative;
             overflow: hidden;
-            /* width / height set by JS */
+            /* width / height set by JS from template */
         }
-        .label-card .lbl-name {
-            font-weight: 700;
-            color: #111;
-            line-height: 1.2;
-            max-width: 100%;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            margin-bottom: 2px;
-            /* font-size set by JS */
-        }
-        .label-card svg {
-            max-width: 100%;
-            height: auto;
-            display: block;
-        }
-        .label-card .lbl-price {
-            font-weight: 700;
-            color: #be123c;
-            margin-top: 2px;
-            /* font-size set by JS */
-        }
+        .label-card .lbl-text { position: absolute; white-space: nowrap; color: #111; }
+        .label-card .lbl-price { color: #be123c; }
+        .label-card svg { position: absolute; }
 
         /* ── Print ─────────────────────────────────────────────────────── */
         @media print {
             body { background: #fff; }
             .controls { display: none !important; }
 
-            #preview-area {
-                padding: 0;
-                gap: 0;
-                display: block;
-            }
+            #preview-area { padding: 0; gap: 0; display: block; }
 
             .label-card {
-                /* width / height still set by JS — these are physical inches */
                 border: none !important;
                 border-radius: 0 !important;
                 page-break-after: always;
                 break-after: page;
-                padding: 3px 4px;
             }
             .label-card:last-child {
                 page-break-after: avoid;
@@ -176,17 +131,7 @@
 <div class="controls">
     <h1>🏷 {{ $product->name }}</h1>
 
-    <div class="field-group">
-        <label>Width</label>
-        <input type="number" id="input-w" min="0.5" max="12" step="0.1" value="2.5">
-        <span class="unit">in</span>
-    </div>
-
-    <div class="field-group">
-        <label>Height</label>
-        <input type="number" id="input-h" min="0.3" max="12" step="0.1" value="1.5">
-        <span class="unit">in</span>
-    </div>
+    <span class="label-size-info" id="size-info"></span>
 
     <div class="divider"></div>
 
@@ -195,10 +140,11 @@
         <input type="number" id="input-qty" min="1" max="200" step="1" value="1">
     </div>
 
-    <span class="saved-badge" id="saved-badge">✓ Saved</span>
-
     <div class="divider"></div>
 
+    @if(auth()->user()->hasRole('admin'))
+    <a class="btn-design" href="{{ route('admin.settings.barcode-canvas') }}">✏️ Edit Design</a>
+    @endif
     <button class="btn-print" onclick="doPrint()">🖨 Print</button>
     <button class="btn-back" onclick="window.close()">✕ Close</button>
 </div>
@@ -206,85 +152,77 @@
 <div id="preview-area"></div>
 
 <script>
-const product = {
-    name:    @json($product->name),
-    barcode: @json($product->barcode ?? ''),
-    price:   @json('Rs. ' . number_format($product->price)),
+const TPL = @json($template);
+
+const VALUES = {
+    shop_name:    @json(\App\Models\Setting::get('shop_name', 'MobileHub')),
+    product_name: @json($product->name),
+    price:        @json('Rs. ' . number_format($product->price)),
+    sku:          @json($product->sku ?? ''),
 };
+const BARCODE = @json($product->barcode ?? '');
 
-const STORAGE_KEY = 'barcode_label_size_v1';
 const DPI = 96; // CSS resolution: 1in = 96px
+const COPIES_KEY = 'barcode_print_copies';
 
-// ── Persist / restore settings ────────────────────────────────────────────
-function loadSettings() {
-    try {
-        const s = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-        if (s.w) document.getElementById('input-w').value   = s.w;
-        if (s.h) document.getElementById('input-h').value   = s.h;
-        if (s.qty) document.getElementById('input-qty').value = s.qty;
-    } catch(e) {}
+function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-function saveSettings() {
-    const s = { w: getW(), h: getH(), qty: getQty() };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-    const badge = document.getElementById('saved-badge');
-    badge.classList.add('show');
-    setTimeout(() => badge.classList.remove('show'), 1400);
+function getQty() {
+    return Math.max(1, parseInt(document.getElementById('input-qty').value) || 1);
 }
 
-function getW()   { return Math.max(0.5, parseFloat(document.getElementById('input-w').value)   || 2.5); }
-function getH()   { return Math.max(0.3, parseFloat(document.getElementById('input-h').value)   || 1.5); }
-function getQty() { return Math.max(1,   parseInt(document.getElementById('input-qty').value)   || 1);   }
+function anchorTransform(align) {
+    return align === 'center' ? 'translateX(-50%)'
+         : align === 'right'  ? 'translateX(-100%)' : 'none';
+}
 
-// ── Update @page size (must be injected as a real <style> rule) ───────────
-function updatePageRule(w, h) {
+function render() {
+    const w = TPL.w, h = TPL.h;
+
     document.getElementById('page-size-style').textContent =
         `@page { size: ${w}in ${h}in; margin: 0; }`;
-}
+    document.getElementById('size-info').textContent = `Label: ${w}″ × ${h}″`;
 
-// ── Generate / refresh labels ─────────────────────────────────────────────
-function render() {
-    const w   = getW();
-    const h   = getH();
-    const qty = getQty();
-
-    updatePageRule(w, h);
-
-    const wPx = w * DPI;
-    const hPx = h * DPI;
-
-    // Proportional sizes
-    const nameFontPx  = Math.round(Math.min(hPx * 0.10, wPx * 0.055, 14));
-    const priceFontPx = Math.round(Math.min(hPx * 0.11, wPx * 0.060, 15));
-    const bcHeight    = Math.round(hPx * 0.44);
-    const barWidth    = Math.max(1, Math.min(2.5, Math.round(wPx / 100)));
-
+    const qty  = getQty();
     const area = document.getElementById('preview-area');
     area.innerHTML = '';
 
     for (let i = 0; i < qty; i++) {
         const card = document.createElement('div');
-        card.className = 'label-card';
-        card.style.width  = wPx + 'px';
-        card.style.height = hPx + 'px';
+        card.className    = 'label-card';
+        card.style.width  = (w * DPI) + 'px';
+        card.style.height = (h * DPI) + 'px';
 
-        const svgId = 'bc-svg-' + i;
-        card.innerHTML =
-            `<div class="lbl-name" style="font-size:${nameFontPx}px">${product.name}</div>` +
-            `<svg id="${svgId}"></svg>` +
-            `<div class="lbl-price" style="font-size:${priceFontPx}px">${product.price}</div>`;
+        let html = '';
+        for (const key of ['shop_name', 'product_name', 'price', 'sku']) {
+            const e = TPL.elements[key];
+            if (!e || !e.visible || !VALUES[key]) continue;
+            html += `<div class="lbl-text ${key === 'price' ? 'lbl-price' : ''}"
+                          style="left:${e.x}%; top:${e.y}%; transform:${anchorTransform(e.align)};
+                                 font-size:${e.size}px; font-weight:${e.bold ? 700 : 400};">
+                        ${esc(VALUES[key])}
+                     </div>`;
+        }
 
+        const b = TPL.elements.barcode;
+        if (b && b.visible && BARCODE) {
+            html += `<svg id="bc-svg-${i}"
+                          style="left:${b.x}%; top:${b.y}%; transform:${anchorTransform(b.align)};"></svg>`;
+        }
+
+        card.innerHTML = html;
         area.appendChild(card);
 
-        if (product.barcode) {
-            JsBarcode('#' + svgId, product.barcode, {
+        if (b && b.visible && BARCODE) {
+            JsBarcode('#bc-svg-' + i, BARCODE, {
                 format:       'CODE128',
-                width:        barWidth,
-                height:       bcHeight,
-                displayValue: true,
-                fontSize:     Math.round(nameFontPx * 0.9),
-                margin:       2,
+                width:        b.barWidth,
+                height:       b.barHeight,
+                displayValue: b.showText,
+                fontSize:     b.textSize,
+                margin:       0,
                 background:   '#ffffff',
                 lineColor:    '#000000',
             });
@@ -293,18 +231,16 @@ function render() {
 }
 
 function doPrint() {
-    saveSettings();
+    localStorage.setItem(COPIES_KEY, String(getQty()));
     window.print();
 }
 
-// ── Wire up inputs ────────────────────────────────────────────────────────
-['input-w', 'input-h', 'input-qty'].forEach(id => {
-    document.getElementById(id).addEventListener('input', render);
-    document.getElementById(id).addEventListener('change', saveSettings);
-});
+document.getElementById('input-qty').addEventListener('input', render);
 
-// ── Init ──────────────────────────────────────────────────────────────────
-loadSettings();
+// Restore last-used copies count
+const savedQty = parseInt(localStorage.getItem(COPIES_KEY));
+if (savedQty > 0) document.getElementById('input-qty').value = savedQty;
+
 render();
 </script>
 </body>

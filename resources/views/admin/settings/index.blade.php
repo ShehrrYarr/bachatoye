@@ -268,6 +268,21 @@
             </div>
         </div>
 
+        {{-- Barcode Labels --}}
+        <div class="card">
+            <div class="card-header"><h2 class="font-semibold text-gray-800">Barcode Labels</h2></div>
+            <div class="card-body">
+                <p class="text-sm text-gray-500 mb-4">
+                    Design the product barcode label on a visual canvas — set the label size,
+                    drag elements into position, and control font size, alignment and visibility
+                    for each field. Every product barcode will print with this design.
+                </p>
+                <a href="{{ route('admin.settings.barcode-canvas') }}" class="btn-primary inline-flex items-center">
+                    <i class="fas fa-barcode mr-2"></i> Open Barcode Canvas
+                </a>
+            </div>
+        </div>
+
         {{-- Social Media --}}
         <div class="card">
             <div class="card-header"><h2 class="font-semibold text-gray-800">Social Media</h2></div>
