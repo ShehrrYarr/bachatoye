@@ -91,6 +91,14 @@ class OrderController extends Controller
                         $available = max(0, $item->product->stock_quantity);
                         $outOfStock[] = "{$item->product_name} (need {$item->quantity}, only {$available} in stock)";
                     }
+
+                    // Color-specific availability when the item was ordered in a color
+                    if ($item->color_id) {
+                        $color = \App\Models\ProductColor::find($item->color_id);
+                        if ($color && $color->stock_quantity < $item->quantity) {
+                            $outOfStock[] = "{$item->product_name} ({$color->name}) — need {$item->quantity}, only " . max(0, $color->stock_quantity) . ' in stock';
+                        }
+                    }
                 }
             }
 
@@ -114,6 +122,13 @@ class OrderController extends Controller
                 if ($item->product && $item->product->track_inventory) {
                     $before = $item->product->stock_quantity;
                     $item->product->decrement('stock_quantity', $item->quantity);
+
+                    // Keep the color ledger in sync — this was the source of
+                    // product-vs-color stock drift on delivered online orders
+                    if ($item->color_id) {
+                        \App\Models\ProductColor::where('id', $item->color_id)
+                            ->decrement('stock_quantity', $item->quantity);
+                    }
 
                     StockMovement::create([
                         'product_id'      => $item->product_id,

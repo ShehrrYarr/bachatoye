@@ -235,6 +235,33 @@ class PurchaseController extends Controller
     }
 
     /**
+     * Products with color variants must be purchased against a specific color,
+     * otherwise the product total and the per-color stock drift apart
+     * (POS reads color stock; the website reads the product total).
+     * Returns an error message, or null when everything is fine.
+     */
+    private function colorRequirementError(array $items): ?string
+    {
+        foreach ($items as $row) {
+            $product = Product::with('colors')->find($row['product_id']);
+            if (!$product || $product->is_serialized || $product->colors->isEmpty()) {
+                continue;
+            }
+
+            $colorId = $row['color_id'] ?? null;
+            if (!$colorId) {
+                return "{$product->name} has color variants — please select which color you are purchasing.";
+            }
+
+            if (!$product->colors->contains('id', (int) $colorId)) {
+                return "The selected color for {$product->name} does not belong to that product.";
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Effective line cost: serialized products take the sum of their per-unit serial
      * cost prices (the top-level unit cost field is hidden for them); everyone else
      * uses quantity × unit_cost.
@@ -401,6 +428,10 @@ class PurchaseController extends Controller
             return back()->withErrors(['items' => $err])->withInput();
         }
 
+        if ($err = $this->colorRequirementError($request->items)) {
+            return back()->withErrors(['items' => $err])->withInput();
+        }
+
         $purchase = $this->persistPurchase($request->all());
 
         $rPrefix = auth()->user()->panelPrefix();
@@ -427,6 +458,11 @@ class PurchaseController extends Controller
         ])]);
 
         if ($err = $this->serialConflictError($request->items)) {
+            return redirect()->route("{$rPrefix}.purchases.create")
+                ->withErrors(['items' => $err]);
+        }
+
+        if ($err = $this->colorRequirementError($request->items)) {
             return redirect()->route("{$rPrefix}.purchases.create")
                 ->withErrors(['items' => $err]);
         }
@@ -513,6 +549,11 @@ class PurchaseController extends Controller
 
         // Re-check: a serial could have been registered elsewhere since the review started
         if ($err = $this->serialConflictError($draft['items'])) {
+            return redirect()->route("{$rPrefix}.purchases.create")
+                ->withErrors(['items' => $err]);
+        }
+
+        if ($err = $this->colorRequirementError($draft['items'])) {
             return redirect()->route("{$rPrefix}.purchases.create")
                 ->withErrors(['items' => $err]);
         }
