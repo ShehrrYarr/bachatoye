@@ -9,7 +9,7 @@
 </div>
 
 <div class="max-w-2xl">
-    <form method="POST" action="{{ route("{$rPrefix}.vendors.store") }}">
+    <form method="POST" action="{{ route("{$rPrefix}.vendors.store") }}" x-data="{ submitting: false }" @submit="submitting = true">
         @csrf
         <div class="card">
             <div class="card-header"><h2 class="font-semibold text-gray-800">Vendor Information</h2></div>
@@ -55,8 +55,9 @@
             </div>
         </div>
         <div class="flex gap-3 mt-5">
-            <button type="submit" class="btn-primary btn-lg">
-                <i class="fas fa-save mr-2"></i> Save Vendor
+            <button type="submit" :disabled="submitting" class="btn-primary btn-lg">
+                <i class="fas fa-save mr-2"></i>
+                <span x-text="submitting ? 'Saving...' : 'Save Vendor'"></span>
             </button>
             <a href="{{ route("{$rPrefix}.vendors.index") }}" class="btn-outline btn-lg">Cancel</a>
         </div>
