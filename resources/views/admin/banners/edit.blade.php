@@ -12,7 +12,7 @@
         @csrf @method('PUT')
         <div class="card p-6 space-y-4">
             <div>
-                <img src="{{ $banner->image_url }}" class="w-full h-40 object-cover rounded-xl bg-gray-100 mb-3">
+                <img src="{{ $banner->image_url }}" loading="lazy" class="w-full h-40 object-cover rounded-xl bg-gray-100 mb-3">
                 <label class="form-label">Replace Image</label>
                 <input type="file" name="image" accept="image/*" class="form-input">
             </div>

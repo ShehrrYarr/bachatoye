@@ -40,7 +40,7 @@
                 <tr class="bg-white">
                     <td>
                         @if($cat->image)
-                            <img src="{{ $cat->image_url }}" class="w-10 h-10 object-cover rounded-lg bg-gray-100">
+                            <img src="{{ $cat->image_url }}" loading="lazy" class="w-10 h-10 object-cover rounded-lg bg-gray-100">
                         @else
                             <div class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
                                 <i class="fas fa-folder text-gray-400"></i>

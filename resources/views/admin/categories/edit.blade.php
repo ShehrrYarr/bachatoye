@@ -14,7 +14,7 @@
         <div class="card p-6 space-y-4">
             @if($category->image)
             <div class="flex items-center gap-3">
-                <img src="{{ $category->image_url }}" class="w-16 h-16 object-cover rounded-xl bg-gray-100">
+                <img src="{{ $category->image_url }}" loading="lazy" class="w-16 h-16 object-cover rounded-xl bg-gray-100">
                 <div>
                     <p class="text-sm text-gray-600">Current image</p>
                     <label class="flex items-center gap-2 mt-1 cursor-pointer">

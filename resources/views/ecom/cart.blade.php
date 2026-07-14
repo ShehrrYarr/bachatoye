@@ -21,6 +21,7 @@
             <div class="card flex items-start gap-4 p-4">
                 <a href="{{ route('products.show', $item['product']->slug) }}" class="shrink-0">
                     <img src="{{ $item['product']->primary_image_url }}" alt="{{ $item['product']->name }}"
+                         loading="lazy"
                          class="w-20 h-20 object-cover rounded-xl bg-gray-100">
                 </a>
                 <div class="flex-1 min-w-0">

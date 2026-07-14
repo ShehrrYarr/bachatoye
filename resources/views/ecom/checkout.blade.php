@@ -169,7 +169,7 @@
                     <div class="space-y-3 mb-4">
                         @foreach($items as $item)
                         <div class="flex items-center gap-3">
-                            <img src="{{ $item['product']->primary_image_url }}" class="w-12 h-12 object-cover rounded-lg bg-gray-100 shrink-0">
+                            <img src="{{ $item['product']->primary_image_url }}" loading="lazy" class="w-12 h-12 object-cover rounded-lg bg-gray-100 shrink-0">
                             <div class="flex-1 min-w-0">
                                 <div class="text-xs font-medium text-gray-800 truncate">{{ $item['product']->name }}</div>
                                 <div class="text-xs text-gray-500">Qty: {{ $item['quantity'] }}</div>
@@ -184,7 +184,7 @@
                         @foreach($triggeredDeals as $deal)
                             @foreach($deal->freeProducts as $fp)
                             <div class="flex items-center gap-3 bg-green-50 rounded-lg p-1.5">
-                                <img src="{{ $fp->primary_image_url }}" class="w-12 h-12 object-cover rounded-lg bg-gray-100 shrink-0">
+                                <img src="{{ $fp->primary_image_url }}" loading="lazy" class="w-12 h-12 object-cover rounded-lg bg-gray-100 shrink-0">
                                 <div class="flex-1 min-w-0">
                                     <div class="text-xs font-medium text-green-800 truncate">{{ $fp->name }}</div>
                                     <div class="text-xs text-green-600">

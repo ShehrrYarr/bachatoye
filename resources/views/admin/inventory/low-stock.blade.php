@@ -26,7 +26,7 @@
             <tr>
                 <td>
                     <div class="flex items-center gap-3">
-                        <img src="{{ $product->primary_image_url }}" class="w-9 h-9 object-cover rounded-lg bg-gray-100 shrink-0">
+                        <img src="{{ $product->primary_image_url }}" loading="lazy" class="w-9 h-9 object-cover rounded-lg bg-gray-100 shrink-0">
                         <div>
                             <div class="font-medium text-gray-800 text-sm">{{ $product->name }}</div>
                             @if($product->barcode)<div class="text-xs text-gray-400 font-mono">{{ $product->barcode }}</div>@endif

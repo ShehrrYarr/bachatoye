@@ -203,6 +203,7 @@
             @if($customer->photo)
             <div class="flex justify-center mb-4">
                 <img src="{{ Storage::url($customer->photo) }}" alt="{{ $customer->name }}"
+                     loading="lazy"
                      class="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md">
             </div>
             @endif

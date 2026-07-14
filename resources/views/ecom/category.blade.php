@@ -15,7 +15,7 @@
     {{-- Category Header --}}
     <div class="flex items-center gap-5 mb-8">
         @if($category->image)
-        <img src="{{ $category->image_url }}" class="w-20 h-20 object-cover rounded-2xl bg-gray-100 shrink-0">
+        <img src="{{ $category->image_url }}" loading="lazy" class="w-20 h-20 object-cover rounded-2xl bg-gray-100 shrink-0">
         @else
         <div class="w-20 h-20 rounded-2xl bg-primary-50 flex items-center justify-center shrink-0">
             <i class="fas fa-box text-primary-600 text-3xl"></i>

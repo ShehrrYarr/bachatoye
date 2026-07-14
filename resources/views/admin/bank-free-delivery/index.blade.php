@@ -60,6 +60,7 @@
                 <td class="w-12">
                     @if($product->primaryImage)
                         <img src="{{ asset('storage/' . $product->primaryImage->path) }}"
+                             loading="lazy"
                              class="w-10 h-10 object-cover rounded-lg border border-gray-200">
                     @else
                         <div class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">

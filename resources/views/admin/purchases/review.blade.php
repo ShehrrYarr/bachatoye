@@ -62,6 +62,7 @@
                                 <div class="flex items-center gap-3 flex-wrap text-xs">
                                     @if(!empty($s['image_path']))
                                         <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($s['image_path']) }}"
+                                             loading="lazy"
                                              class="w-8 h-8 object-cover rounded border border-gray-200 shrink-0">
                                     @endif
                                     <span class="font-mono text-gray-700">{{ $s['serial'] }}</span>

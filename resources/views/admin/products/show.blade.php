@@ -38,7 +38,7 @@
                 <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
                     @foreach($product->images as $img)
                     <div class="relative group rounded-xl overflow-hidden bg-gray-100 aspect-square">
-                        <img src="{{ $img->url }}" alt="" class="w-full h-full object-cover">
+                        <img src="{{ $img->url }}" alt="" loading="lazy" class="w-full h-full object-cover">
 
                         {{-- Primary crown --}}
                         @if($img->is_primary)

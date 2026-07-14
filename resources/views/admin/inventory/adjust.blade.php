@@ -13,7 +13,7 @@
     {{-- Product info --}}
     <div class="card p-5">
         <div class="flex items-center gap-4 mb-4">
-            <img src="{{ $product->primary_image_url }}" class="w-16 h-16 object-cover rounded-xl bg-gray-100 shrink-0">
+            <img src="{{ $product->primary_image_url }}" loading="lazy" class="w-16 h-16 object-cover rounded-xl bg-gray-100 shrink-0">
             <div>
                 <h2 class="font-bold text-gray-900">{{ $product->name }}</h2>
                 @if($product->sku) <p class="text-xs text-gray-500 font-mono">SKU: {{ $product->sku }}</p> @endif

@@ -24,7 +24,7 @@
             @forelse($banners as $banner)
             <tr>
                 <td>
-                    <img src="{{ $banner->image_url }}" class="w-20 h-12 object-cover rounded-lg bg-gray-100">
+                    <img src="{{ $banner->image_url }}" loading="lazy" class="w-20 h-12 object-cover rounded-lg bg-gray-100">
                 </td>
                 <td>
                     <div class="font-medium text-gray-800">{{ $banner->title ?? '(No title)' }}</div>

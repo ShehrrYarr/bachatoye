@@ -20,7 +20,7 @@
     </div>
     <div class="stat-card lg:col-span-3">
         <div class="flex items-center gap-4">
-            <img src="{{ $product->primary_image_url }}" class="w-12 h-12 object-cover rounded-xl bg-gray-100 shrink-0">
+            <img src="{{ $product->primary_image_url }}" loading="lazy" class="w-12 h-12 object-cover rounded-xl bg-gray-100 shrink-0">
             <div>
                 <div class="font-bold text-gray-900">{{ $product->name }}</div>
                 @if($product->sku)<div class="text-xs text-gray-500 font-mono">SKU: {{ $product->sku }}</div>@endif

@@ -146,6 +146,7 @@
             @else
                 <a href="{{ asset('storage/'.$order->payment_proof) }}" target="_blank">
                     <img src="{{ asset('storage/'.$order->payment_proof) }}"
+                         loading="lazy"
                          class="w-full max-h-72 object-contain rounded-xl border border-gray-200 bg-gray-50">
                 </a>
             @endif

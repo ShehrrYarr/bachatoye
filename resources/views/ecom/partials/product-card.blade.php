@@ -31,6 +31,7 @@
         <a href="{{ route('products.show', $product->slug) }}">
             <img src="{{ $product->primary_image_url }}"
                  alt="{{ $product->name }}"
+                 loading="lazy"
                  class="w-full h-full object-contain transition-transform duration-500 p-1"
                  :class="hovered ? 'scale-105' : 'scale-100'">
         </a>

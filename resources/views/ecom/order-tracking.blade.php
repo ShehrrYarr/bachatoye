@@ -118,7 +118,7 @@
                     @foreach($order->items as $item)
                     <div class="flex items-center gap-3">
                         @if($item->product && $item->product->primary_image_url)
-                        <img src="{{ $item->product->primary_image_url }}" class="w-10 h-10 object-cover rounded-lg bg-gray-100 shrink-0">
+                        <img src="{{ $item->product->primary_image_url }}" loading="lazy" class="w-10 h-10 object-cover rounded-lg bg-gray-100 shrink-0">
                         @else
                         <div class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center shrink-0">
                             <i class="fas fa-box text-gray-400 text-sm"></i>

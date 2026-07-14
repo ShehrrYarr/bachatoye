@@ -64,7 +64,7 @@
                 <div class="flex items-start gap-4">
                     @if($serial->product)
                     <div class="w-16 h-16 rounded-xl bg-gray-100 overflow-hidden shrink-0">
-                        <img src="{{ $serial->product->primary_image_url }}" class="w-full h-full object-cover">
+                        <img src="{{ $serial->product->primary_image_url }}" loading="lazy" class="w-full h-full object-cover">
                     </div>
                     @endif
                     <div class="flex-1">

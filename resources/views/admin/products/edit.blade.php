@@ -226,7 +226,7 @@
                         <div class="grid grid-cols-4 gap-3">
                             @foreach($product->images as $img)
                             <div class="relative group">
-                                <img src="{{ $img->url }}" class="w-full aspect-square object-cover rounded-xl bg-gray-100
+                                <img src="{{ $img->url }}" loading="lazy" class="w-full aspect-square object-cover rounded-xl bg-gray-100
                                     {{ $img->is_primary ? 'ring-2 ring-primary-500' : '' }}">
                                 @if($img->is_primary)
                                     <div class="absolute top-1 left-1 bg-primary-600 text-white text-xs px-1.5 py-0.5 rounded">Primary</div>

@@ -188,6 +188,7 @@ function heroBanner(total, interval) {
             </span>
             @if($cat->image)
                 <img src="{{ $cat->image_url }}" alt="{{ $cat->name }}"
+                     loading="lazy"
                      class="w-14 h-14 object-cover rounded-xl bg-gray-100 group-hover:scale-110 transition-transform">
             @else
                 <div class="w-14 h-14 rounded-xl bg-primary-50 flex items-center justify-center group-hover:bg-primary-100 transition-colors">
@@ -204,6 +205,7 @@ function heroBanner(total, interval) {
            class="group flex flex-col items-center gap-2 p-4 bg-white rounded-2xl border border-gray-200 hover:border-primary-300 hover:shadow-md transition-all">
             @if($cat->image)
                 <img src="{{ $cat->image_url }}" alt="{{ $cat->name }}"
+                     loading="lazy"
                      class="w-14 h-14 object-cover rounded-xl bg-gray-100 group-hover:scale-110 transition-transform">
             @else
                 <div class="w-14 h-14 rounded-xl bg-primary-50 flex items-center justify-center group-hover:bg-primary-100 transition-colors">
@@ -321,7 +323,7 @@ window._catData = @js(
     <div class="grid grid-cols-1 md:grid-cols-{{ $promoBanners->count() > 1 ? '2' : '1' }} gap-4" data-reveal-grid>
         @foreach($promoBanners->take(2) as $banner)
         <a href="{{ $banner->link_url ?: '#' }}" class="relative overflow-hidden rounded-2xl group">
-            <img src="{{ $banner->image_url }}" class="w-full object-cover h-48 group-hover:scale-105 transition-transform duration-500" alt="{{ $banner->title }}">
+            <img src="{{ $banner->image_url }}" loading="lazy" class="w-full object-cover h-48 group-hover:scale-105 transition-transform duration-500" alt="{{ $banner->title }}">
             @if($banner->title)
             <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent flex items-end p-5">
                 <div>

@@ -71,6 +71,7 @@
         <div class="aspect-square rounded-xl border border-gray-200 overflow-hidden shadow-sm group-hover:border-primary-400 group-hover:shadow-md transition-all">
             @if($cat->image)
             <img src="{{ Storage::url($cat->image) }}" alt="{{ $cat->name }}"
+                 loading="lazy"
                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
             @else
             <div class="w-full h-full bg-gray-100 flex items-center justify-center">
@@ -155,6 +156,7 @@
         <div class="aspect-square rounded-xl border border-gray-200 overflow-hidden shadow-sm group-hover:border-primary-400 group-hover:shadow-md transition-all">
             @if($sub->image)
             <img src="{{ Storage::url($sub->image) }}" alt="{{ $sub->name }}"
+                 loading="lazy"
                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
             @else
             <div class="w-full h-full bg-gray-100 flex items-center justify-center">
@@ -290,7 +292,7 @@
                 @forelse($products as $product)
                 <tr>
                     <td>
-                        <img src="{{ $product->primary_image_url }}" class="w-10 h-10 object-cover rounded-lg bg-gray-100">
+                        <img src="{{ $product->primary_image_url }}" loading="lazy" class="w-10 h-10 object-cover rounded-lg bg-gray-100">
                     </td>
                     <td>
                         <div class="font-semibold text-gray-800">{{ $product->name }}</div>

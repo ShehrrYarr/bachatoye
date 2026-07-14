@@ -37,7 +37,7 @@
                                 : 'ring-1 ring-gray-200 opacity-60 hover:opacity-100 hover:ring-gray-400'"
                             class="rounded-xl overflow-hidden bg-gray-100 transition-all duration-150 focus:outline-none"
                             style="width:68px; height:68px; flex-shrink:0;">
-                        <img src="{{ $img->url }}" alt="Image {{ $i + 1 }}" class="w-full h-full object-cover">
+                        <img src="{{ $img->url }}" alt="Image {{ $i + 1 }}" loading="lazy" class="w-full h-full object-cover">
                     </button>
                     @endforeach
                 </div>
@@ -54,6 +54,7 @@
                         @foreach($product->images as $i => $img)
                         <img src="{{ $img->url }}"
                              alt="{{ $product->name }}"
+                             loading="lazy"
                              x-show="activeImg === {{ $i }}"
                              x-transition:enter="transition ease-out duration-400"
                              x-transition:enter-start="opacity-0"
@@ -117,6 +118,7 @@
                  style="padding-bottom:100%;">
                 <img src="{{ asset('images/product-placeholder.png') }}"
                      alt="{{ $product->name }}"
+                     loading="lazy"
                      class="absolute inset-0 w-full h-full object-contain p-8 opacity-40">
 
                 @if($attrOptions->whereNotNull('image')->isNotEmpty() || $usedUnits->isNotEmpty())
@@ -404,7 +406,7 @@
                                     ? 'ring-2 ring-primary-500 border-primary-400 bg-primary-50'
                                     : 'ring-1 ring-gray-200 hover:ring-gray-300 bg-white'"
                                 class="flex gap-3 p-3 rounded-xl border text-left transition-all">
-                            <img src="{{ $u['image'] }}" alt="Used unit"
+                            <img src="{{ $u['image'] }}" alt="Used unit" loading="lazy"
                                  class="w-16 h-16 object-cover rounded-lg bg-gray-100 shrink-0">
                             <div class="min-w-0">
                                 <div class="flex flex-wrap gap-1 mb-1.5">
