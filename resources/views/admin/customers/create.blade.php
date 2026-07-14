@@ -8,7 +8,7 @@
 </div>
 
 <div class="max-w-xl">
-    <form method="POST" action="{{ route(auth()->user()->panelPrefix() . '.customers.store') }}" enctype="multipart/form-data">
+    <form method="POST" action="{{ route(auth()->user()->panelPrefix() . '.customers.store') }}" enctype="multipart/form-data" x-data="{ submitting: false }" @submit="submitting = true">
         @csrf
         <div class="card p-6 space-y-4">
 
@@ -77,7 +77,9 @@
                 <label for="is_active" class="text-sm font-medium text-gray-700 cursor-pointer">Active</label>
             </div>
             <div class="flex gap-3 pt-2">
-                <button type="submit" class="btn-primary">Save Customer</button>
+                <button type="submit" :disabled="submitting" class="btn-primary">
+                    <span x-text="submitting ? 'Saving...' : 'Save Customer'"></span>
+                </button>
                 <a href="{{ route(auth()->user()->panelPrefix() . '.customers.index') }}" class="btn-outline">Cancel</a>
             </div>
         </div>
