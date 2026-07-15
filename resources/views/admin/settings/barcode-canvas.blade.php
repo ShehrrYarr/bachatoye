@@ -165,14 +165,7 @@
                                         <input type="number" x-model.number="tpl.elements.barcode.barWidth" min="0.5" max="4" step="0.25" class="form-input text-sm">
                                     </div>
                                 </div>
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" x-model="tpl.elements.barcode.showText" class="w-4 h-4 rounded border-gray-300 text-indigo-600">
-                                    <span class="text-sm text-gray-700">Show digits under barcode</span>
-                                </label>
-                                <div x-show="tpl.elements.barcode.showText">
-                                    <label class="form-label text-xs">Digits Font Size (px)</label>
-                                    <input type="number" x-model.number="tpl.elements.barcode.textSize" min="5" max="30" step="1" class="form-input text-sm">
-                                </div>
+                                <p class="form-hint text-xs">The digits are a separate element — see "Barcode Digits" in the list.</p>
                             </div>
                         </template>
 
@@ -193,7 +186,7 @@
                          @click.self="selected = null">
 
                         {{-- Text elements --}}
-                        <template x-for="key in ['shop_name', 'product_name', 'price', 'sku']" :key="key">
+                        <template x-for="key in ['shop_name', 'product_name', 'barcode_text', 'price', 'sku']" :key="key">
                             <div class="canvas-el"
                                  :class="selected === key && 'selected'"
                                  x-show="tpl.elements[key].visible"
@@ -208,7 +201,7 @@
                              x-show="tpl.elements.barcode.visible"
                              :style="elStyle('barcode')"
                              @pointerdown.prevent="startDrag($event, 'barcode')"
-                             x-effect="renderBarcode(tpl.elements.barcode.barHeight, tpl.elements.barcode.barWidth, tpl.elements.barcode.showText, tpl.elements.barcode.textSize, zoom)">
+                             x-effect="renderBarcode(tpl.elements.barcode.barHeight, tpl.elements.barcode.barWidth, zoom)">
                             <svg x-ref="bcsvg"></svg>
                         </div>
 
@@ -241,6 +234,7 @@ function barcodeCanvas() {
             shop_name:    'Shop Name',
             product_name: 'Product Name',
             barcode:      'Barcode',
+            barcode_text: 'Barcode Digits',
             price:        'Price',
             sku:          'SKU',
         },
@@ -249,6 +243,7 @@ function barcodeCanvas() {
             shop_name:    @json(\App\Models\Setting::get('shop_name', 'MobileHub')),
             product_name: 'Sample Product Name',
             barcode:      '123456789012',
+            barcode_text: '123456789012',
             price:        'Rs. 1,999',
             sku:          'SKU-0001',
         },
@@ -276,6 +271,7 @@ function barcodeCanvas() {
                 style.fontSize   = (e.size * this.zoom) + 'px';
                 style.fontWeight = e.bold ? '700' : '400';
                 style.color      = key === 'price' ? '#be123c' : '#111';
+                if (key === 'barcode_text') style.fontFamily = 'monospace';
             }
             return style;
         },
@@ -307,8 +303,7 @@ function barcodeCanvas() {
                         format:       'CODE128',
                         width:        b.barWidth * this.zoom,
                         height:       b.barHeight * this.zoom,
-                        displayValue: b.showText,
-                        fontSize:     b.textSize * this.zoom,
+                        displayValue: false,
                         margin:       0,
                         background:   'transparent',
                         lineColor:    '#000000',

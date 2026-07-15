@@ -22,7 +22,8 @@ class SettingController extends Controller
         'elements' => [
             'shop_name'    => ['visible' => false, 'x' => 50, 'y' => 2,  'align' => 'center', 'size' => 10, 'bold' => true],
             'product_name' => ['visible' => true,  'x' => 50, 'y' => 6,  'align' => 'center', 'size' => 11, 'bold' => true],
-            'barcode'      => ['visible' => true,  'x' => 50, 'y' => 24, 'align' => 'center', 'barHeight' => 42, 'barWidth' => 1.5, 'showText' => true, 'textSize' => 10],
+            'barcode'      => ['visible' => true,  'x' => 50, 'y' => 24, 'align' => 'center', 'barHeight' => 42, 'barWidth' => 1.5],
+            'barcode_text' => ['visible' => true,  'x' => 50, 'y' => 56, 'align' => 'center', 'size' => 10, 'bold' => false],
             'price'        => ['visible' => true,  'x' => 50, 'y' => 80, 'align' => 'center', 'size' => 12, 'bold' => true],
             'sku'          => ['visible' => false, 'x' => 50, 'y' => 92, 'align' => 'center', 'size' => 8,  'bold' => false],
         ],
@@ -36,6 +37,24 @@ class SettingController extends Controller
 
         if (!is_array($template) || empty($template['elements'])) {
             return self::DEFAULT_BARCODE_TEMPLATE;
+        }
+
+        // Migrate old templates where the digits were part of the barcode
+        // element (showText/textSize): spawn a standalone barcode_text element
+        // right under the barcode so the printed label looks unchanged.
+        if (!isset($template['elements']['barcode_text']) && isset($template['elements']['barcode'])) {
+            $b      = $template['elements']['barcode'];
+            $hPx    = max(0.3, (float) ($template['h'] ?? 1.5)) * 96;
+            $barPct = (($b['barHeight'] ?? 42) / $hPx) * 100;
+
+            $template['elements']['barcode_text'] = [
+                'visible' => (bool) ($b['showText'] ?? true),
+                'x'       => $b['x'] ?? 50,
+                'y'       => min(95, round(($b['y'] ?? 24) + $barPct + 1, 1)),
+                'align'   => $b['align'] ?? 'center',
+                'size'    => $b['textSize'] ?? 10,
+                'bold'    => false,
+            ];
         }
 
         // Merge with defaults so newly added elements get sane values

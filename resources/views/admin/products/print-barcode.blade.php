@@ -104,6 +104,7 @@
         }
         .label-card .lbl-text { position: absolute; white-space: nowrap; color: #111; }
         .label-card .lbl-price { color: #be123c; }
+        .label-card .lbl-bctext { font-family: monospace; }
         .label-card .lbl-barcode { position: absolute; }
         .label-card .lbl-barcode svg { display: block; }
 
@@ -155,13 +156,15 @@
 <script>
 const TPL = @json($template);
 
+const BARCODE = @json($product->barcode ?? '');
+
 const VALUES = {
     shop_name:    @json(\App\Models\Setting::get('shop_name', 'MobileHub')),
     product_name: @json($product->name),
+    barcode_text: BARCODE,
     price:        @json('Rs. ' . number_format($product->price)),
     sku:          @json($product->sku ?? ''),
 };
-const BARCODE = @json($product->barcode ?? '');
 
 const DPI = 96; // CSS resolution: 1in = 96px
 const COPIES_KEY = 'barcode_print_copies';
@@ -197,10 +200,11 @@ function render() {
         card.style.height = (h * DPI) + 'px';
 
         let html = '';
-        for (const key of ['shop_name', 'product_name', 'price', 'sku']) {
+        for (const key of ['shop_name', 'product_name', 'barcode_text', 'price', 'sku']) {
             const e = TPL.elements[key];
             if (!e || !e.visible || !VALUES[key]) continue;
-            html += `<div class="lbl-text ${key === 'price' ? 'lbl-price' : ''}"
+            const extra = key === 'price' ? 'lbl-price' : (key === 'barcode_text' ? 'lbl-bctext' : '');
+            html += `<div class="lbl-text ${extra}"
                           style="left:${e.x}%; top:${e.y}%; transform:${anchorTransform(e.align)};
                                  font-size:${e.size}px; font-weight:${e.bold ? 700 : 400};">
                         ${esc(VALUES[key])}
@@ -225,8 +229,7 @@ function render() {
                 format:       'CODE128',
                 width:        b.barWidth,
                 height:       b.barHeight,
-                displayValue: b.showText,
-                fontSize:     b.textSize,
+                displayValue: false,
                 margin:       0,
                 background:   'transparent',
                 lineColor:    '#000000',
