@@ -195,6 +195,35 @@ class InventoryController extends Controller
         return view('admin.inventory.history', compact('product', 'movements'));
     }
 
+    public function search(Request $request)
+    {
+        $q = trim($request->input('q', ''));
+        if (strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $prefix   = Auth::user()->panelPrefix();
+        $products = Product::active()
+            ->where(fn($query) =>
+                $query->where('name', 'like', "%{$q}%")
+                      ->orWhere('barcode', $q)
+                      ->orWhere('sku', 'like', "%{$q}%")
+            )
+            ->orderByRaw('CASE WHEN barcode = ? THEN 0 ELSE 1 END', [$q])
+            ->orderBy('name')
+            ->limit(15)
+            ->get(['id', 'name', 'barcode', 'sku', 'stock_quantity', 'track_inventory']);
+
+        return response()->json($products->map(fn($p) => [
+            'id'         => $p->id,
+            'name'       => $p->name,
+            'barcode'    => $p->barcode ?? '—',
+            'sku'        => $p->sku ?? '—',
+            'stock'      => $p->track_inventory ? $p->stock_quantity : null,
+            'adjust_url' => route("{$prefix}.inventory.adjust.form", $p),
+        ]));
+    }
+
     public function barcodeScan(Request $request)
     {
         $product = Product::where('barcode', $request->code)

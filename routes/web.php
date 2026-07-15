@@ -130,6 +130,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::get('inventory/{product}/adjust', [Admin\InventoryController::class, 'adjustForm'])->name('inventory.adjust.form');
     Route::patch('inventory/{product}/adjust', [Admin\InventoryController::class, 'adjust'])->name('inventory.adjust');
     Route::get('inventory/{product}/history', [Admin\InventoryController::class, 'history'])->name('inventory.history');
+    Route::get('inventory/search', [Admin\InventoryController::class, 'search'])->name('inventory.search');
     Route::get('inventory/barcode-scan', [Admin\InventoryController::class, 'barcodeScan'])->name('inventory.barcode_scan');
     Route::post('inventory/barcode-assign', [Admin\InventoryController::class, 'assignBarcode'])->name('inventory.barcode_assign');
     Route::get('inventory/barcode-print', [Admin\InventoryController::class, 'printLabels'])->name('inventory.barcode_print');
@@ -346,6 +347,8 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
 
     Route::get('inventory', [Admin\InventoryController::class, 'index'])
         ->middleware('permission:inventory.view')->name('inventory.index');
+    Route::get('inventory/search', [Admin\InventoryController::class, 'search'])
+        ->middleware('permission:inventory.view')->name('inventory.search');
     Route::get('inventory/low-stock', [Admin\InventoryController::class, 'lowStock'])
         ->middleware('permission:inventory.view')->name('inventory.low_stock');
     Route::get('inventory/{product}/history', [Admin\InventoryController::class, 'history'])

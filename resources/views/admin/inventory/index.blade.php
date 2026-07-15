@@ -2,7 +2,68 @@
 @section('title', 'Inventory')
 
 @section('content')
-@php $rPrefix = auth()->user()->panelPrefix(); @endphp
+@php
+    $rPrefix          = auth()->user()->panelPrefix();
+    $inventorySearchUrl = route("{$rPrefix}.inventory.search");
+@endphp
+
+{{-- ── Global real-time product search ─────────────────────────────── --}}
+<div x-data="inventorySearch(@json($inventorySearchUrl))"
+     @click.outside="open = false"
+     class="relative mb-5">
+
+    <div class="relative">
+        <i class="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+        <input type="text"
+               x-model="q"
+               @input="onInput()"
+               @keydown.enter.prevent="goFirst()"
+               @keydown.escape="open = false"
+               @focus="results.length && (open = true)"
+               placeholder="Search any product by name or barcode..."
+               class="form-input pl-9 pr-9 w-full text-sm">
+        <span x-show="loading" class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+            <i class="fas fa-spinner fa-spin text-gray-400 text-xs"></i>
+        </span>
+        <button x-show="q && !loading" @click="clear()"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            <i class="fas fa-times text-xs"></i>
+        </button>
+    </div>
+
+    {{-- Results dropdown --}}
+    <div x-show="open" x-cloak
+         class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+
+        <template x-if="results.length">
+            <div>
+                <template x-for="p in results" :key="p.id">
+                    <a :href="p.adjust_url"
+                       class="flex items-center gap-3 px-4 py-2.5 hover:bg-indigo-50 border-b border-gray-100 last:border-0 transition-colors">
+                        <div class="flex-1 min-w-0">
+                            <div class="font-medium text-gray-900 text-sm truncate" x-text="p.name"></div>
+                            <div class="text-xs text-gray-400 font-mono mt-0.5"
+                                 x-text="[p.barcode !== '—' ? p.barcode : '', p.sku !== '—' ? p.sku : ''].filter(Boolean).join(' · ')"></div>
+                        </div>
+                        <div class="shrink-0" x-show="p.stock !== null">
+                            <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                                  :class="p.stock <= 0
+                                      ? 'bg-red-100 text-red-700'
+                                      : (p.stock <= 5 ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700')"
+                                  x-text="'Stock: ' + p.stock"></span>
+                        </div>
+                    </a>
+                </template>
+            </div>
+        </template>
+
+        <template x-if="!results.length && !loading">
+            <div class="px-4 py-3 text-sm text-gray-400">
+                No products found for "<span x-text="q"></span>"
+            </div>
+        </template>
+    </div>
+</div>
 
 {{-- ═══════════════════════════════════════════════════════════════════
      STAGE 1 — PICKER
@@ -359,3 +420,48 @@
 @endif
 
 @endsection
+
+@push('scripts')
+<script>
+function inventorySearch(searchUrl) {
+    return {
+        q:       '',
+        results: [],
+        loading: false,
+        open:    false,
+        timer:   null,
+
+        onInput() {
+            clearTimeout(this.timer);
+            if (this.q.length < 2) {
+                this.results = [];
+                this.open    = false;
+                this.loading = false;
+                return;
+            }
+            this.loading = true;
+            this.timer   = setTimeout(() => this.doSearch(), 300);
+        },
+
+        async doSearch() {
+            try {
+                const res    = await fetch(searchUrl + '?q=' + encodeURIComponent(this.q));
+                this.results = await res.json();
+                this.open    = true;
+            } catch (e) {
+                this.results = [];
+            }
+            this.loading = false;
+        },
+
+        goFirst() {
+            if (this.results.length) window.location.href = this.results[0].adjust_url;
+        },
+
+        clear() {
+            this.q = ''; this.results = []; this.open = false;
+        },
+    };
+}
+</script>
+@endpush
