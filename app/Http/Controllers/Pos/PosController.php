@@ -779,6 +779,8 @@ class PosController extends Controller
             'bank_account_id'          => 'nullable|exists:bank_accounts,id',
             'customer_id'         => 'nullable|exists:customers,id',
             'vendor_id'           => 'nullable|exists:vendors,id',
+            'walk_in_name'        => 'nullable|string|max:100',
+            'walk_in_phone'       => 'nullable|string|max:30',
             'discount'            => 'nullable|numeric|min:0',
             'notes'               => 'nullable|string|max:500',
             'exchange_item_name'  => 'nullable|string|max:200',
@@ -939,8 +941,8 @@ class PosController extends Controller
                 'offline_ref'     => $request->offline_ref ?: null,
                 'customer_id'     => $customer?->id,
                 'vendor_id'       => $vendor?->id,
-                'customer_name'   => $customer?->name ?? $vendor?->name ?? 'Walk-in Customer',
-                'customer_phone'  => $customer?->phone ?? $vendor?->phone ?? '-',
+                'customer_name'   => $customer?->name ?? $vendor?->name ?? (trim($request->walk_in_name ?? '') ?: 'Walk-in Customer'),
+                'customer_phone'  => $customer?->phone ?? $vendor?->phone ?? (trim($request->walk_in_phone ?? '') ?: '-'),
                 'subtotal'        => $subtotal,
                 'discount_amount' => $discount,
                 'total'           => $total,
@@ -1528,8 +1530,13 @@ class PosController extends Controller
             $order->update([
                 'customer_id'     => $customer?->id,
                 'vendor_id'       => $vendor?->id,
-                'customer_name'   => $customer?->name ?? $vendor?->name ?? 'Walk-in Customer',
-                'customer_phone'  => $customer?->phone ?? $vendor?->phone ?? '-',
+                // No customer/vendor: keep the previous snapshot so a typed
+                // walk-in name/phone survives an edit; blank it only when a
+                // previously attached customer/vendor is being removed.
+                'customer_name'   => $customer?->name ?? $vendor?->name
+                                        ?? (!$order->customer_id && !$order->vendor_id ? $order->customer_name : 'Walk-in Customer'),
+                'customer_phone'  => $customer?->phone ?? $vendor?->phone
+                                        ?? (!$order->customer_id && !$order->vendor_id ? $order->customer_phone : '-'),
                 'subtotal'        => $subtotal,
                 'discount_amount' => $discount,
                 'total'           => $newTotal,

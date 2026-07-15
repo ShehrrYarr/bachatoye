@@ -443,6 +443,15 @@
                         </div>
                     </div>
                 </div>
+                {{-- Walk-in details: printed on the receipt only, no account is created --}}
+                <div class="grid grid-cols-2 gap-1.5 mt-1.5">
+                    <input type="text" x-model="walkInName" maxlength="100"
+                           placeholder="Walk-in name (optional)"
+                           class="w-full text-xs px-2.5 py-1.5 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-primary-400">
+                    <input type="tel" x-model="walkInPhone" maxlength="30"
+                           placeholder="Phone (optional)"
+                           class="w-full text-xs px-2.5 py-1.5 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-primary-400">
+                </div>
             </div>
             <div x-show="selectedCustomer" class="flex items-center justify-between">
                 <div>
@@ -1995,6 +2004,9 @@ function posApp() {
         showNewCustomer: false,
         newCustomer: { name: '', phone: '', address: '', khata_enabled: false },
         khataBlockMsg: '',
+        // Walk-in details (receipt only — no customer record is created)
+        walkInName: '',
+        walkInPhone: '',
 
         // Boot loader — masks the Alpine init flash until the page is ready
         loading: true,
@@ -2809,6 +2821,8 @@ function posApp() {
                 bank_account_id: ['bank_transfer', 'split'].includes(this.paymentMethod) ? this.bankAccountId : null,
                 customer_id: (this.selectedCustomer?.type === 'customer') ? (this.selectedCustomer?.id || null) : null,
                 vendor_id:   (this.selectedCustomer?.type === 'vendor')   ? (this.selectedCustomer?.id || null) : null,
+                walk_in_name:  !this.selectedCustomer ? (this.walkInName.trim() || null) : null,
+                walk_in_phone: !this.selectedCustomer ? (this.walkInPhone.trim() || null) : null,
                 notes: this.orderNotes || null,
                 cash_received: this.cashReceived,
                 promise_date: ['khata','partial'].includes(this.paymentMethod) ? (this.promiseDate || null) : null,
@@ -2820,6 +2834,8 @@ function posApp() {
         resetAfterSale() {
             this.clearCart();
             this.selectedCustomer = null;
+            this.walkInName = '';
+            this.walkInPhone = '';
             this.orderNotes = '';
             this.paymentMethod = 'cash';
             this.showMobileCart = false;
@@ -2870,7 +2886,10 @@ function posApp() {
                 ref,
                 payload: { ...payload, offline_ref: ref, offline_created_at: nowIso },
                 // Display snapshot (for the modal + interim receipt)
-                label:     this.selectedCustomer?.name || 'Walk-in Customer',
+                label:     this.selectedCustomer?.name
+                            || (this.walkInName.trim()
+                                ? this.walkInName.trim() + (this.walkInPhone.trim() ? ` (${this.walkInPhone.trim()})` : '')
+                                : 'Walk-in Customer'),
                 items:     this.cart.map(i => ({ name: i.name, qty: i.quantity, price: i.price, serial: i.serial_number || null })),
                 total:     this.total,
                 subtotal:  this.subtotal,
@@ -3008,12 +3027,18 @@ function posApp() {
         async holdOrder() {
             if (this.cart.length === 0) return;
             const label = this.selectedCustomer?.name
+                || this.walkInName.trim()
                 || (this.orderNotes?.trim() ? this.orderNotes.substring(0, 24) : null)
                 || `Hold ${this.heldOrders.length + 1}`;
             const payload = {
                 label:          label,
                 cart:           JSON.parse(JSON.stringify(this.cart)),
-                customer:       this.selectedCustomer ? { ...this.selectedCustomer } : null,
+                // Walk-in details ride along in customer_data (flagged) so they
+                // survive hold/resume without creating a customer record
+                customer:       this.selectedCustomer ? { ...this.selectedCustomer }
+                                : ((this.walkInName.trim() || this.walkInPhone.trim())
+                                    ? { walk_in: true, name: this.walkInName.trim(), phone: this.walkInPhone.trim() }
+                                    : null),
                 discount_type:  this.discountType,
                 discount_value: this.discountValue,
                 payment_method: this.paymentMethod,
@@ -3023,6 +3048,8 @@ function posApp() {
             // Clear POS immediately for responsiveness
             this.cart             = [];
             this.selectedCustomer = null;
+            this.walkInName       = '';
+            this.walkInPhone      = '';
             this.discountType     = 'flat';
             this.discountValue    = 0;
             this.orderNotes       = '';
@@ -3048,7 +3075,13 @@ function posApp() {
             if (this.cart.length > 0) await this.holdOrder();
             const held            = this.heldOrders[idx];
             this.cart             = held.cart;
-            this.selectedCustomer = held.customer;
+            if (held.customer?.walk_in) {
+                this.selectedCustomer = null;
+                this.walkInName       = held.customer.name  || '';
+                this.walkInPhone      = held.customer.phone || '';
+            } else {
+                this.selectedCustomer = held.customer;
+            }
             this.discountType     = held.discountType  || 'flat';
             this.discountValue    = held.discountValue || 0;
             this.paymentMethod    = held.paymentMethod || 'cash';

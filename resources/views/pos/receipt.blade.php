@@ -59,6 +59,18 @@
             <span>Customer:</span>
             <span>{{ $order->customer->name }}</span>
         </div>
+        @elseif($order->customer_name && $order->customer_name !== 'Walk-in Customer')
+        {{-- Walk-in customer: name/phone typed at sale time, no account --}}
+        <div class="row">
+            <span>Customer:</span>
+            <span>{{ $order->customer_name }}</span>
+        </div>
+        @if($order->customer_phone && $order->customer_phone !== '-')
+        <div class="row">
+            <span>Phone:</span>
+            <span>{{ $order->customer_phone }}</span>
+        </div>
+        @endif
         @endif
     </div>
 
