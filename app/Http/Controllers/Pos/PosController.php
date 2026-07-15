@@ -366,7 +366,11 @@ class PosController extends Controller
                 ->orWhere('barcode', 'like', "%{$q}%")
                 ->orWhere('sku', 'like', "%{$q}%")
             )
-            ->with(['images', 'colors', 'category.section'])
+            ->with([
+                'images', 'colors', 'category.section',
+                'serialNumbers' => fn($s) => $s->where('status', 'in_stock')->forShop($shopId)
+                    ->select('id', 'product_id', 'selling_price'),
+            ])
             ->when($shopId, fn($query) => $query->with(['shopStocks' => fn($s) => $s->where('shop_id', $shopId)]))
             ->limit($q ? 15 : 60)
             ->get()
@@ -376,12 +380,15 @@ class PosController extends Controller
                 'name'             => $p->name,
                 'barcode'          => $p->barcode,
                 'price'            => $p->getDiscountedPrice(),
+                'price_from'       => self::serialPriceFrom($p),
                 'cost_price'       => $p->cost_price,
-                'stock'            => $shopId
-                                        ? (int) $p->shopStocks->sum('quantity')
-                                        : ($p->colors->count() > 0
-                                            ? $p->colors->sum('stock_quantity')
-                                            : $p->stock_quantity),
+                'stock'            => $p->is_serialized
+                                        ? $p->serialNumbers->count()
+                                        : ($shopId
+                                            ? (int) $p->shopStocks->sum('quantity')
+                                            : ($p->colors->count() > 0
+                                                ? $p->colors->sum('stock_quantity')
+                                                : $p->stock_quantity)),
                 'image'            => $p->primary_image_url,
                 'exchange_eligible' => (bool)($p->category?->section?->exchange_enabled),
                 'is_serialized'    => (bool) $p->is_serialized,
@@ -439,6 +446,23 @@ class PosController extends Controller
     }
 
     /**
+     * Lowest selling price among the product's loaded in-stock serials
+     * (serials without their own price fall back to the product price).
+     * Null for non-serialized products or when no serials are in stock —
+     * the POS tile then shows "Out of stock" instead of a price.
+     */
+    private static function serialPriceFrom(Product $p): ?float
+    {
+        if (! $p->is_serialized) {
+            return null;
+        }
+
+        return $p->serialNumbers
+            ->map(fn($s) => $s->selling_price ? (float) $s->selling_price : (float) $p->getDiscountedPrice())
+            ->min();
+    }
+
+    /**
      * Full product catalog for offline POS use. The salesman's browser caches
      * this while online so products (and serialized units) remain browsable
      * after the connection drops. Mirrors searchProduct()'s item shape, plus
@@ -466,12 +490,15 @@ class PosController extends Controller
                 'sku'               => $p->sku,
                 'barcode'           => $p->barcode,
                 'price'             => $p->getDiscountedPrice(),
+                'price_from'        => self::serialPriceFrom($p),
                 'cost_price'        => $p->cost_price,
-                'stock'             => $shopId
-                                        ? (int) $p->shopStocks->sum('quantity')
-                                        : ($p->colors->count() > 0
-                                            ? $p->colors->sum('stock_quantity')
-                                            : $p->stock_quantity),
+                'stock'             => $p->is_serialized
+                                        ? $p->serialNumbers->count()
+                                        : ($shopId
+                                            ? (int) $p->shopStocks->sum('quantity')
+                                            : ($p->colors->count() > 0
+                                                ? $p->colors->sum('stock_quantity')
+                                                : $p->stock_quantity)),
                 'image'             => $p->primary_image_url,
                 'exchange_eligible' => (bool)($p->category?->section?->exchange_enabled),
                 'is_serialized'     => (bool) $p->is_serialized,
@@ -545,7 +572,11 @@ class PosController extends Controller
         $product = Product::active()
             ->when($allowedCategoryIds !== null, fn($q) => $q->whereIn('category_id', $allowedCategoryIds))
             ->where('barcode', $barcode)
-            ->with(['images', 'colors', 'category.section'])
+            ->with([
+                'images', 'colors', 'category.section',
+                'serialNumbers' => fn($s) => $s->where('status', 'in_stock')->forShop($shopId)
+                    ->select('id', 'product_id', 'selling_price'),
+            ])
             ->when($shopId, fn($q) => $q->with(['shopStocks' => fn($s) => $s->where('shop_id', $shopId)]))
             ->first();
 
@@ -555,13 +586,16 @@ class PosController extends Controller
                 'name'             => $product->name,
                 'barcode'          => $product->barcode,
                 'price'            => $product->getDiscountedPrice(),
+                'price_from'       => self::serialPriceFrom($product),
                 'cost_price'       => $product->cost_price,
-                'stock'            => $shopId
-                                        ? (int) $product->shopStocks->sum('quantity')
-                                        : $product->stock_quantity,
+                'stock'            => $product->is_serialized
+                                        ? $product->serialNumbers->count()
+                                        : ($shopId
+                                            ? (int) $product->shopStocks->sum('quantity')
+                                            : $product->stock_quantity),
                 'image'            => $product->primary_image_url,
                 'exchange_eligible' => (bool)($product->category?->section?->exchange_enabled),
-                'is_serialized'    => false,
+                'is_serialized'    => (bool) $product->is_serialized,
                 'serial_number'    => null,
                 'serial_id'        => null,
                 'colors'           => $product->colors->map(fn($c) => [

@@ -341,7 +341,9 @@
                             <template x-if="product.serial_number">
                                 <div class="text-[10px] font-mono text-indigo-600 mb-0.5 truncate" x-text="product.serial_number"></div>
                             </template>
-                            <div class="text-xs font-bold text-primary-700" x-text="`Rs. ${Number(product.price).toLocaleString()}`"></div>
+                            <div class="text-xs font-bold"
+                                 :class="tilePriceLabel(product) === 'Out of stock' ? 'text-red-500' : 'text-primary-700'"
+                                 x-text="tilePriceLabel(product)"></div>
                             <div class="text-xs mt-0.5" :class="product.stock <= 0 ? 'text-red-500' : 'text-gray-400'"
                                  x-text="product.stock <= 0 ? 'Out of Stock' : `Stock: ${product.stock}`"></div>
                         </div>
@@ -2445,6 +2447,22 @@ function posApp() {
 
             // 3) No exact hit → show partial matches in the grid
             this.searchProducts();
+        },
+
+        // Price text for a product tile. Serialized products have no meaningful
+        // product-level price — show "From Rs. X" based on the cheapest in-stock
+        // serial (matching the ecom site), or "Out of stock" when none remain.
+        tilePriceLabel(p) {
+            if (p.is_serialized && !p.serial_number && !(Number(p.price) > 0)) {
+                // price_from comes from the server; fall back to cached serials offline
+                let from = Number(p.price_from) || 0;
+                if (!from && Array.isArray(p.serials) && p.serials.length) {
+                    from = Math.min(...p.serials.map(s => Number(s.selling_price) || 0).filter(v => v > 0));
+                    if (!isFinite(from)) from = 0;
+                }
+                return from > 0 ? `From Rs. ${from.toLocaleString()}` : 'Out of stock';
+            }
+            return `Rs. ${Number(p.price).toLocaleString()}`;
         },
 
         addSerializedToCart(product, serialNumber, serialId) {
