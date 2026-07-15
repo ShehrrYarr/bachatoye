@@ -55,7 +55,10 @@
             <tbody>
                 @forelse($purchases as $purchase)
                 <tr>
-                    <td class="text-sm">{{ $purchase->purchase_date->format('d M Y') }}</td>
+                    <td class="text-sm">
+                        {{ $purchase->purchase_date->format('d M Y') }}
+                        <div class="text-xs text-gray-400">{{ $purchase->created_at->format('h:i A') }}</div>
+                    </td>
                     <td>
                         @if($purchase->vendor)
                             <a href="{{ route('admin.vendors.show', $purchase->vendor) }}" class="text-primary-600 hover:underline font-medium">
