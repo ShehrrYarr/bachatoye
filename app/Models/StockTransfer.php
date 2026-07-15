@@ -16,6 +16,15 @@ class StockTransfer extends Model
         'created_by',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'from_shop_id' => 'integer',
+            'to_shop_id'   => 'integer',
+            'created_by'   => 'integer',
+        ];
+    }
+
     protected static function booted(): void
     {
         static::creating(function (StockTransfer $transfer) {

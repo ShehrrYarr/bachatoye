@@ -54,7 +54,10 @@ class ShopStockService
 
         if ($colorId) {
             $color = ProductColor::lockForUpdate()->find($colorId);
-            if ($color && $color->product_id === $locked->id) {
+            // Cast both sides: some hosts' PDO returns integer columns as
+            // strings, and a silent strict-mismatch here skips the color
+            // decrement entirely (production bug, 2026-07).
+            if ($color && (int) $color->product_id === (int) $locked->id) {
                 if ($delta < 0 && $color->stock_quantity < -$delta) {
                     throw ValidationException::withMessages([
                         'stock' => "Not enough stock of {$locked->name} ({$color->name}) at Main Shop (available: {$color->stock_quantity}).",

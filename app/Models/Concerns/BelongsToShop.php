@@ -7,6 +7,16 @@ use Illuminate\Database\Eloquent\Builder;
 
 trait BelongsToShop
 {
+    /**
+     * Force shop_id to int (null stays null): some hosts' PDO returns
+     * integer columns as strings, which silently breaks strict ===
+     * ownership guards against User::shopId().
+     */
+    public function initializeBelongsToShop(): void
+    {
+        $this->casts['shop_id'] = 'integer';
+    }
+
     public function shop()
     {
         return $this->belongsTo(Shop::class);
