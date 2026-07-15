@@ -24,7 +24,7 @@ class PurchaseController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Purchase::with('vendor')->latest('purchase_date');
+        $query = Purchase::with('vendor')->orderByDesc('purchase_date')->orderByDesc('id');
 
         if ($request->filled('vendor')) {
             $query->where('vendor_id', $request->vendor);
