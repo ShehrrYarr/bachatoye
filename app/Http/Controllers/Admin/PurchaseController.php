@@ -26,6 +26,13 @@ class PurchaseController extends Controller
     {
         $query = Purchase::with('vendor')->orderByDesc('purchase_date')->orderByDesc('id');
 
+        if ($request->filled('product')) {
+            $search = $request->product;
+            $query->whereHas('items', function ($q) use ($search) {
+                $q->where('product_name', 'like', "%{$search}%")
+                  ->orWhereHas('product', fn($p) => $p->where('barcode', $search));
+            });
+        }
         if ($request->filled('vendor')) {
             $query->where('vendor_id', $request->vendor);
         }

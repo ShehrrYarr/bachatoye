@@ -17,6 +17,7 @@
 
 {{-- Filters --}}
 <form method="GET" class="flex flex-wrap gap-3 mb-5">
+    <input type="text" name="product" value="{{ request('product') }}" class="form-input w-52" placeholder="Product name or barcode">
     <select name="vendor" class="form-select w-44">
         <option value="">All Vendors</option>
         @foreach($vendors as $v)
@@ -32,7 +33,7 @@
     <input type="date" name="from" value="{{ request('from') }}" class="form-input w-40" placeholder="From date">
     <input type="date" name="to" value="{{ request('to') }}" class="form-input w-40" placeholder="To date">
     <button type="submit" class="btn-outline btn-sm">Filter</button>
-    @if(request()->hasAny(['vendor','status','from','to']))
+    @if(request()->hasAny(['product','vendor','status','from','to']))
         <a href="{{ route("{$rPrefix}.purchases.index") }}" class="btn-outline btn-sm">Clear</a>
     @endif
 </form>
