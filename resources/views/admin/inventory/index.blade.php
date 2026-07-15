@@ -1,6 +1,10 @@
 @extends('layouts.admin')
 @section('title', 'Inventory')
 
+@push('styles')
+<style>[x-cloak] { display: none !important; }</style>
+@endpush
+
 @section('content')
 @php
     $rPrefix          = auth()->user()->panelPrefix();
@@ -8,7 +12,7 @@
 @endphp
 
 {{-- ── Global real-time product search ─────────────────────────────── --}}
-<div x-data="inventorySearch(@json($inventorySearchUrl))"
+<div x-data="inventorySearch('{{ $inventorySearchUrl }}')"
      @click.outside="open = false"
      class="relative mb-5">
 
