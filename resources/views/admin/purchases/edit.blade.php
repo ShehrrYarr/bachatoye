@@ -268,8 +268,11 @@
 
                 <div x-show="payMethod === 'partial'" class="space-y-2 mt-2">
                     <label class="form-label text-sm">Amount Paid Now (Rs.)</label>
+                    {{-- Disabled when not partial: a hidden input failing its
+                         max constraint blocks submit with a non-focusable error --}}
                     <input type="number" name="amount_paid" x-model.number="amountPaid"
                            @input="recalc()" min="0" step="0.01" :max="total"
+                           :disabled="payMethod !== 'partial'"
                            class="form-input">
                     <div class="flex justify-between text-xs text-gray-500">
                         <span>Remaining on credit:</span>
@@ -424,6 +427,9 @@ function purchaseForm() {
                 }
             });
             this.total = this.items.reduce((s, i) => s + (i.quantity * i.unit_cost), 0);
+            // Keep the paid amount within the (possibly reduced) total so the
+            // native max constraint can never block submission
+            if (this.amountPaid > this.total) this.amountPaid = this.total;
         },
 
         async loadVendor() {
