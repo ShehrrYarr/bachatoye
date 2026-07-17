@@ -226,11 +226,19 @@
                             class="flex flex-col items-center py-2.5 rounded-xl border border-gray-200 text-xs font-semibold transition-all">
                         <i class="fas fa-money-bill-wave text-green-600 mb-1"></i> Cash
                     </button>
+                    @if($bankAccounts->count())
                     <button type="button" @click="payMethod = 'bank_transfer'"
                             :class="payMethod === 'bank_transfer' ? 'ring-2 ring-blue-500 bg-blue-50' : 'bg-gray-50'"
                             class="flex flex-col items-center py-2.5 rounded-xl border border-gray-200 text-xs font-semibold transition-all">
                         <i class="fas fa-university text-blue-600 mb-1"></i> Bank
                     </button>
+                    @else
+                    <button type="button" disabled
+                            title="Add a bank account first (Admin → Bank Accounts)"
+                            class="flex flex-col items-center py-2.5 rounded-xl border border-gray-200 text-xs font-semibold bg-gray-50 opacity-40 cursor-not-allowed">
+                        <i class="fas fa-university text-blue-600 mb-1"></i> Bank
+                    </button>
+                    @endif
                     <button type="button" @click="payMethod = 'credit'"
                             :class="payMethod === 'credit' ? 'ring-2 ring-red-400 bg-red-50' : 'bg-gray-50'"
                             class="flex flex-col items-center py-2.5 rounded-xl border border-gray-200 text-xs font-semibold transition-all">
@@ -247,7 +255,7 @@
                 @if($bankAccounts->count())
                 <div x-show="payMethod === 'bank_transfer'" class="mt-2 space-y-1">
                     <label class="form-label text-sm"><i class="fas fa-university mr-1 text-blue-500"></i>Select Bank Account *</label>
-                    <select name="bank_account_id" class="form-select text-sm">
+                    <select name="bank_account_id" :required="payMethod === 'bank_transfer'" class="form-select text-sm">
                         <option value="">— Choose bank account —</option>
                         @foreach($bankAccounts as $bank)
                         <option value="{{ $bank->id }}" {{ $purchase->bank_account_id == $bank->id ? 'selected' : '' }}>

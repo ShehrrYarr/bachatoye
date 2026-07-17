@@ -17,6 +17,7 @@ use App\Models\VendorLedger;
 use App\Services\BarcodeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -168,6 +169,15 @@ class PurchaseController extends Controller
         ]);
     }
 
+    /** Friendly messages for the bank-selection rules. */
+    private function purchaseValidationMessages(): array
+    {
+        return [
+            'bank_account_id.required_if'      => 'Select a bank account for the bank transfer payment.',
+            'partial_bank_account_id.required' => 'Select a bank account for the bank portion of the partial payment.',
+        ];
+    }
+
     /**
      * Validation rules shared by store() (direct save) and review() (draft).
      */
@@ -178,9 +188,12 @@ class PurchaseController extends Controller
             'vendor_id'               => 'required|exists:vendors,id',
             'reference'               => 'nullable|string|max:100',
             'payment_method'          => 'required|in:cash,bank_transfer,credit,partial',
-            'bank_account_id'         => 'nullable|exists:bank_accounts,id',
+            'bank_account_id'         => ['required_if:payment_method,bank_transfer', 'nullable', 'exists:bank_accounts,id'],
             'partial_pay_via'         => 'nullable|in:cash,bank',
-            'partial_bank_account_id' => 'nullable|exists:bank_accounts,id',
+            'partial_bank_account_id' => [
+                Rule::requiredIf(fn() => request('payment_method') === 'partial' && request('partial_pay_via') === 'bank'),
+                'nullable', 'exists:bank_accounts,id',
+            ],
             'amount_paid'             => 'nullable|numeric|min:0',
             'notes'               => 'nullable|string|max:1000',
             'items'               => 'required|array|min:1',
@@ -429,7 +442,7 @@ class PurchaseController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate($this->purchaseValidationRules());
+        $request->validate($this->purchaseValidationRules(), $this->purchaseValidationMessages());
 
         if ($err = $this->serialConflictError($request->items)) {
             return back()->withErrors(['items' => $err])->withInput();
@@ -456,7 +469,7 @@ class PurchaseController extends Controller
 
         $request->validate($this->purchaseValidationRules() + [
             'ui_state' => 'nullable|string', // raw Alpine items JSON, used to rebuild the form
-        ]);
+        ], $this->purchaseValidationMessages());
 
         // Stash first so the create page can restore state even when a serial conflicts
         session(['purchase_draft' => $request->only([
@@ -646,9 +659,12 @@ class PurchaseController extends Controller
             'vendor_id'               => 'required|exists:vendors,id',
             'reference'               => 'nullable|string|max:100',
             'payment_method'          => 'required|in:cash,bank_transfer,credit,partial',
-            'bank_account_id'         => 'nullable|exists:bank_accounts,id',
+            'bank_account_id'         => ['required_if:payment_method,bank_transfer', 'nullable', 'exists:bank_accounts,id'],
             'partial_pay_via'         => 'nullable|in:cash,bank',
-            'partial_bank_account_id' => 'nullable|exists:bank_accounts,id',
+            'partial_bank_account_id' => [
+                Rule::requiredIf(fn() => request('payment_method') === 'partial' && request('partial_pay_via') === 'bank'),
+                'nullable', 'exists:bank_accounts,id',
+            ],
             'amount_paid'             => 'nullable|numeric|min:0',
             'notes'               => 'nullable|string|max:1000',
             'items'               => 'required|array|min:1',
@@ -657,6 +673,9 @@ class PurchaseController extends Controller
             'items.*.unit_cost'   => 'required|numeric|min:0',
             'items.*.color_id'    => 'nullable|exists:product_colors,id',
             'items.*.color_name'  => 'nullable|string|max:100',
+        ], [
+            'bank_account_id.required_if'      => 'Select a bank account for the bank transfer payment.',
+            'partial_bank_account_id.required' => 'Select a bank account for the bank portion of the partial payment.',
         ]);
 
         try {
