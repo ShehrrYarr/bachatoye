@@ -10,6 +10,7 @@ use App\Models\Purchase;
 use App\Models\ReturnOrder;
 use App\Models\Setting;
 use App\Models\Shop;
+use App\Models\VendorLedger;
 
 /**
  * Cash + per-bank balances for one location. NULL = main shop, which must
@@ -57,16 +58,32 @@ class CashBalanceService
             ->whereIn('status', ['approved', 'completed'])
             ->sum('refund_amount');
 
+        // Manual khata payouts to customers (debits with a payment method —
+        // POS khata-sale debits carry no method and move no money)
+        $cashOutKhata = (float) AccountLedger::where('type', 'debit')
+            ->where('payment_method', 'cash')
+            ->whereHas('customer', fn($q) => $q->forShop($shopId))
+            ->sum('amount');
+
+        // Payments made to vendors against their khata (main shop only)
+        $cashOutVendor = $shopId ? 0.0
+            : (float) VendorLedger::where('type', 'debit')
+                ->where('payment_method', 'cash')
+                ->sum('amount');
+
         $cashSummary = [
-            'opening'  => $cashOpening,
-            'in_pos'   => $cashInPos,
-            'in_ecom'  => $cashInEcom,
-            'in_khata' => $cashInKhata,
-            'out_exp'  => $cashOutExpenses,
-            'out_pur'  => $cashOutPurchases,
-            'out_ret'  => $cashOutReturns,
-            'balance'  => $cashOpening + $cashInPos + $cashInEcom + $cashInKhata
-                          - $cashOutExpenses - $cashOutPurchases - $cashOutReturns,
+            'opening'    => $cashOpening,
+            'in_pos'     => $cashInPos,
+            'in_ecom'    => $cashInEcom,
+            'in_khata'   => $cashInKhata,
+            'out_exp'    => $cashOutExpenses,
+            'out_pur'    => $cashOutPurchases,
+            'out_ret'    => $cashOutReturns,
+            'out_khata'  => $cashOutKhata,
+            'out_vendor' => $cashOutVendor,
+            'balance'    => $cashOpening + $cashInPos + $cashInEcom + $cashInKhata
+                          - $cashOutExpenses - $cashOutPurchases - $cashOutReturns
+                          - $cashOutKhata - $cashOutVendor,
         ];
 
         // ── Per-bank balances ───────────────────────────────────────────────
@@ -108,8 +125,18 @@ class CashBalanceService
                 ->where('bank_account_id', $bank->id)
                 ->sum('amount');
 
+            $bankOutKhata = (float) AccountLedger::where('type', 'debit')
+                ->where('payment_method', 'bank_transfer')
+                ->where('bank_account_id', $bank->id)
+                ->sum('amount');
+
+            $bankOutVendor = (float) VendorLedger::where('type', 'debit')
+                ->where('payment_method', 'bank_transfer')
+                ->where('bank_account_id', $bank->id)
+                ->sum('amount');
+
             $bank->computed_in           = $bankInSales + $bankInSplit + $bankInPartial + $bankInKhata;
-            $bank->computed_out          = $bankOutPurchases + $bankOutReturns + $bankOutExpenses;
+            $bank->computed_out          = $bankOutPurchases + $bankOutReturns + $bankOutExpenses + $bankOutKhata + $bankOutVendor;
             $bank->computed_out_expenses = $bankOutExpenses;
             $bank->computed_balance      = (float) $bank->opening_balance + $bank->computed_in - $bank->computed_out;
         }

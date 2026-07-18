@@ -55,7 +55,7 @@
                 </div>
                 <div class="bg-red-50 rounded-lg px-3 py-2">
                     <p class="text-red-700 font-medium">Total Out</p>
-                    <p class="text-red-900 font-bold text-sm">Rs. {{ number_format($cashSummary['out_exp'] + $cashSummary['out_pur'] + $cashSummary['out_ret']) }}</p>
+                    <p class="text-red-900 font-bold text-sm">Rs. {{ number_format($cashSummary['out_exp'] + $cashSummary['out_pur'] + $cashSummary['out_ret'] + ($cashSummary['out_khata'] ?? 0) + ($cashSummary['out_vendor'] ?? 0)) }}</p>
                 </div>
             </div>
         </div>
@@ -101,6 +101,18 @@
                 <div class="flex justify-between text-red-600">
                     <span>− Refunds (cash)</span>
                     <span>Rs. {{ number_format($cashSummary['out_ret']) }}</span>
+                </div>
+                @endif
+                @if($cashSummary['out_khata'] ?? 0)
+                <div class="flex justify-between text-red-600">
+                    <span>− Khata payouts to customers (cash)</span>
+                    <span>Rs. {{ number_format($cashSummary['out_khata']) }}</span>
+                </div>
+                @endif
+                @if($cashSummary['out_vendor'] ?? 0)
+                <div class="flex justify-between text-red-600">
+                    <span>− Vendor payments (cash)</span>
+                    <span>Rs. {{ number_format($cashSummary['out_vendor']) }}</span>
                 </div>
                 @endif
             </div>

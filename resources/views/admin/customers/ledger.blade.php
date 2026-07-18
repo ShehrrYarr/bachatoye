@@ -65,7 +65,7 @@
                         <td class="text-sm">{{ $entry->description }}</td>
                         <td class="text-xs text-gray-400 font-mono">{{ $entry->reference ?? '—' }}</td>
                         <td class="text-xs text-gray-500">
-                            @if($entry->type === 'credit' && $entry->payment_method)
+                            @if($entry->payment_method)
                                 @if($entry->payment_method === 'cash')
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
                                         <i class="fas fa-money-bill-wave"></i> Cash
@@ -116,9 +116,9 @@
                         </select>
                     </div>
 
-                    {{-- Payment method — only shown for credit entries --}}
-                    <div x-show="entryType === 'credit'" x-transition>
-                        <label class="form-label">Paid Via</label>
+                    {{-- Payment method — required for both directions: money moves either way --}}
+                    <div>
+                        <label class="form-label" x-text="entryType === 'credit' ? 'Paid Via' : 'Paid Out Via'"></label>
                         <div class="flex gap-2">
                             <label class="flex-1 flex items-center justify-center gap-2 p-2 border-2 rounded-xl cursor-pointer transition-all has-[:checked]:border-green-500 has-[:checked]:bg-green-50 border-gray-200">
                                 <input type="radio" name="payment_method" value="cash" x-model="payMethod" class="sr-only">
@@ -131,16 +131,17 @@
                                 <span class="text-sm font-medium">Bank</span>
                             </label>
                         </div>
-                        <p x-show="entryType === 'credit' && payMethod === ''"
+                        <p x-show="payMethod === ''"
                            class="text-xs text-red-500 mt-1 font-medium">
                             <i class="fas fa-exclamation-circle mr-1"></i>Please select Cash or Bank
                         </p>
                     </div>
 
                     {{-- Bank account selector — shown when Bank is selected --}}
-                    <div x-show="entryType === 'credit' && payMethod === 'bank_transfer'" x-transition>
+                    <div x-show="payMethod === 'bank_transfer'" x-transition>
                         <label class="form-label">Select Bank Account *</label>
-                        <select name="bank_account_id" class="form-select">
+                        <select name="bank_account_id" class="form-select"
+                                :required="payMethod === 'bank_transfer'">
                             <option value="">— Select account —</option>
                             @foreach($bankAccounts as $bank)
                                 <option value="{{ $bank->id }}">
@@ -164,7 +165,7 @@
                         @error('description') <p class="form-error">{{ $message }}</p> @enderror
                     </div>
                     <button type="submit"
-                            :disabled="entryType === 'credit' && payMethod === ''"
+                            :disabled="payMethod === ''"
                             class="btn-primary w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed">
                         <i class="fas fa-plus mr-2"></i> Add Entry
                     </button>

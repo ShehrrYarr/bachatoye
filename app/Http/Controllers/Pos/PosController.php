@@ -99,6 +99,16 @@ class PosController extends Controller
                 ->get()
             : collect();
 
+        // Cash/bank paid out to customers today (manual khata debit entries with a payment method)
+        $todayPayoutList = \App\Models\AccountLedger::whereDate('created_at', today())
+            ->where('type', 'debit')
+            ->whereNotNull('payment_method')
+            ->whereHas('customer', fn($q) => $q->forShop($shopId))
+            ->when(!$isAdmin && !$shopId, fn($q) => $q->where('user_id', $user->id))
+            ->with(['customer', 'user', 'bankAccount'])
+            ->latest()
+            ->get();
+
         // Aggregated totals for the summary bar
         $cashTotal = $todaySalesOrders->sum(function ($o) {
             return match ($o->payment_method) {
@@ -137,6 +147,12 @@ class PosController extends Controller
             'vendor_pay_cash'  => (float) $todayVendorPayList->where('payment_method', 'cash')->sum('amount'),
             'vendor_pay_bank'  => (float) $todayVendorPayList->where('payment_method', 'bank_transfer')->sum('amount'),
         ];
+        $todayCustomerPayouts = (object)[
+            'payout_count' => $todayPayoutList->count(),
+            'payout_total' => (float) $todayPayoutList->sum('amount'),
+            'payout_cash'  => (float) $todayPayoutList->where('payment_method', 'cash')->sum('amount'),
+            'payout_bank'  => (float) $todayPayoutList->where('payment_method', 'bank_transfer')->sum('amount'),
+        ];
 
         $bankAccounts = BankAccount::active()->forShop($shopId)->orderBy('sort_order')->orderBy('id')->get();
         $canViewCost  = $user->can('products.view_cost');
@@ -144,8 +160,8 @@ class PosController extends Controller
 
         return view('pos.index', compact(
             'session', 'categories', 'featuredProducts',
-            'todaySales', 'todayReturns', 'todayPayments', 'todayVendorPayments',
-            'todaySalesOrders', 'todayReturnsList', 'todayPaymentsList', 'todayVendorPayList',
+            'todaySales', 'todayReturns', 'todayPayments', 'todayVendorPayments', 'todayCustomerPayouts',
+            'todaySalesOrders', 'todayReturnsList', 'todayPaymentsList', 'todayVendorPayList', 'todayPayoutList',
             'bankAccounts', 'canViewCost', 'currentShop'
         ));
     }
@@ -198,6 +214,13 @@ class PosController extends Controller
                 ->get(['payment_method', 'amount'])
             : collect();
 
+        $payoutData = \App\Models\AccountLedger::whereDate('created_at', today())
+            ->where('type', 'debit')
+            ->whereNotNull('payment_method')
+            ->whereHas('customer', fn($q) => $q->forShop($shopId))
+            ->when(!$isAdmin && !$shopId, fn($q) => $q->where('user_id', $user->id))
+            ->get(['payment_method', 'amount']);
+
         return response()->json([
             'order_count'      => $todaySalesOrders->count(),
             'total_revenue'    => (float) $todaySalesOrders->sum('total'),
@@ -211,6 +234,10 @@ class PosController extends Controller
             'vendor_pay_total' => (float) $vendorPayData->sum('amount'),
             'vendor_pay_cash'  => (float) $vendorPayData->where('payment_method', 'cash')->sum('amount'),
             'vendor_pay_bank'  => (float) $vendorPayData->where('payment_method', 'bank_transfer')->sum('amount'),
+            'payout_count'     => $payoutData->count(),
+            'payout_total'     => (float) $payoutData->sum('amount'),
+            'payout_cash'      => (float) $payoutData->where('payment_method', 'cash')->sum('amount'),
+            'payout_bank'      => (float) $payoutData->where('payment_method', 'bank_transfer')->sum('amount'),
         ]);
     }
 
@@ -302,7 +329,26 @@ class PosController extends Controller
                 ])->values()
             : collect()->values();
 
-        return response()->json(compact('orders', 'returns', 'payments', 'vendor_payments'));
+        $customer_payouts = \App\Models\AccountLedger::whereDate('created_at', today())
+            ->where('type', 'debit')
+            ->whereNotNull('payment_method')
+            ->whereHas('customer', fn($q) => $q->forShop($shopId))
+            ->when(!$isAdmin && !$shopId, fn($q) => $q->where('user_id', $user->id))
+            ->latest()->with(['customer', 'user', 'bankAccount'])
+            ->get()
+            ->map(fn($p) => [
+                'time'           => $p->created_at->format('H:i'),
+                'customer_name'  => $p->customer?->name ?? '—',
+                'customer_phone' => $p->customer?->phone ?? null,
+                'description'    => $p->description ?? null,
+                'payment_method' => $p->payment_method,
+                'bank_label'     => $p->bankAccount?->label ?? null,
+                'user_name'      => $p->user?->name ?? '—',
+                'amount'         => (float) $p->amount,
+                'balance_after'  => (float) ($p->balance_after ?? 0),
+            ])->values();
+
+        return response()->json(compact('orders', 'returns', 'payments', 'vendor_payments', 'customer_payouts'));
     }
 
     public function openSession(Request $request)

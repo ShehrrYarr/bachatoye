@@ -212,8 +212,10 @@ class CustomerController extends Controller
         $this->guardShop($customer);
         $data = $request->validate([
             'type'            => 'required|in:debit,credit',
-            'payment_method'  => 'required_if:type,credit|in:cash,bank_transfer',
+            // Both directions move real money — cash or a specific bank
+            'payment_method'  => 'required|in:cash,bank_transfer',
             'bank_account_id' => [
+                'required_if:payment_method,bank_transfer',
                 'nullable',
                 \Illuminate\Validation\Rule::exists('bank_accounts', 'id')->where(
                     fn($q) => $customer->shop_id ? $q->where('shop_id', $customer->shop_id) : $q->whereNull('shop_id')
@@ -222,13 +224,12 @@ class CustomerController extends Controller
             'amount'          => 'required|numeric|min:0.01',
             'description'     => 'required|string|max:255',
             'reference'       => 'nullable|string|max:100',
+        ], [
+            'bank_account_id.required_if' => 'Select a bank account for the bank payment.',
         ]);
 
-        $isCredit       = $data['type'] === 'credit';
-        $paymentMethod  = $isCredit ? ($data['payment_method'] ?? null) : null;
-        $bankAccountId  = ($isCredit && $paymentMethod === 'bank_transfer')
-                            ? ($data['bank_account_id'] ?? null)
-                            : null;
+        $paymentMethod  = $data['payment_method'];
+        $bankAccountId  = $paymentMethod === 'bank_transfer' ? ($data['bank_account_id'] ?? null) : null;
 
         DB::transaction(function () use ($data, $customer, $paymentMethod, $bankAccountId) {
             $delta  = $data['type'] === 'debit' ? -$data['amount'] : $data['amount'];
