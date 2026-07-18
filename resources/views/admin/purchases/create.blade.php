@@ -1,17 +1,29 @@
 @extends('layouts.admin')
-@section('title', 'Record Purchase')
+@section('title', isset($editPurchase) ? 'Edit Purchase' : 'Record Purchase')
+
+@push('styles')
+<style>
+    /* Sold/returned/transferred serial rows are read-only */
+    .serial-locked input, .serial-locked select, .serial-locked button {
+        pointer-events: none;
+        opacity: .55;
+    }
+</style>
+@endpush
 
 @section('content')
 @php $rPrefix = auth()->user()->panelPrefix(); @endphp
 <div class="flex items-center gap-3 mb-6">
     <a href="{{ route("{$rPrefix}.purchases.index") }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
-    <h1 class="text-xl font-bold text-gray-900">Record Purchase</h1>
+    <h1 class="text-xl font-bold text-gray-900">{{ isset($editPurchase) ? 'Edit Purchase — ' . ($editPurchase->reference ?? 'PUR-' . $editPurchase->id) : 'Record Purchase' }}</h1>
 </div>
 
-<form method="POST" action="{{ route("{$rPrefix}.purchases.review") }}"
+<form method="POST"
+      action="{{ isset($editPurchase) ? route("{$rPrefix}.purchases.update", $editPurchase) : route("{$rPrefix}.purchases.review") }}"
       x-data="purchaseForm()" @submit.prevent="submitForm"
       @product-created.window="onProductCreated($event.detail)">
     @csrf
+    @isset($editPurchase) @method('PUT') @endisset
 
     {{-- Same/Different attributes prompt (shown when a serialized product with attributes is added) --}}
     <template x-if="attrPrompt">
@@ -259,8 +271,15 @@
                                                     <template x-if="item.is_serialized && (clr.quantity || 0) > 0">
                                                         <div class="pl-7 mt-2 space-y-2">
                                                             <template x-for="(csn, csi) in (clr.serials || [])" :key="csi">
-                                                                <div class="border border-gray-200 rounded-xl p-2.5 bg-gray-50 space-y-2">
-                                                                    <div class="text-[10px] font-semibold text-gray-400 uppercase" x-text="`Unit ${csi+1}`"></div>
+                                                                <div class="border rounded-xl p-2.5 space-y-2"
+                                                                     :class="csn.locked ? 'serial-locked border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'">
+                                                                    <div class="flex items-center gap-2">
+                                                                        <span class="text-[10px] font-semibold text-gray-400 uppercase" x-text="`Unit ${csi+1}`"></span>
+                                                                        <span x-show="csn.locked"
+                                                                              class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-200 text-amber-800"
+                                                                              style="opacity:1 !important;"
+                                                                              x-text="csn.lockedReason"></span>
+                                                                    </div>
                                                                     <input type="text"
                                                                            x-model="clr.serials[csi].serial"
                                                                            :placeholder="`IMEI / Serial #${csi+1}`"
@@ -450,9 +469,16 @@
                                         </template>
                                         <div class="space-y-3">
                                             <template x-for="(sn, si) in item.serials" :key="si">
-                                                <div class="border border-gray-200 rounded-xl p-3 bg-gray-50 space-y-2">
+                                                <div class="border rounded-xl p-3 space-y-2"
+                                                     :class="sn.locked ? 'serial-locked border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'">
                                                     {{-- Row header --}}
-                                                    <div class="text-xs font-semibold text-gray-500" x-text="`Unit ${si+1}`"></div>
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="text-xs font-semibold text-gray-500" x-text="`Unit ${si+1}`"></span>
+                                                        <span x-show="sn.locked"
+                                                              class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-200 text-amber-800"
+                                                              style="opacity:1 !important;"
+                                                              x-text="sn.lockedReason"></span>
+                                                    </div>
 
                                                     {{-- IMEI / Serial --}}
                                                     <input type="text"
@@ -768,9 +794,19 @@
                 <button type="submit" :disabled="items.length === 0"
                         class="btn-primary w-full justify-center mt-4 btn-lg"
                         :class="items.length === 0 ? 'opacity-50 cursor-not-allowed' : ''">
+                    @isset($editPurchase)
+                    <i class="fas fa-save mr-2"></i> Update Purchase
+                    @else
                     <i class="fas fa-arrow-right mr-2"></i> Review Purchase
+                    @endisset
                 </button>
-                <p class="text-xs text-gray-400 text-center mt-2">Nothing is recorded until you confirm on the next page</p>
+                <p class="text-xs text-gray-400 text-center mt-2">
+                    @isset($editPurchase)
+                        Stock, serial numbers and vendor ledger will be adjusted
+                    @else
+                        Nothing is recorded until you confirm on the next page
+                    @endisset
+                </p>
             </div>
         </div>
     </div>
@@ -796,6 +832,7 @@
     const _serialCheckUrl         = '/{{ auth()->user()->panelPrefix() }}/api/serials/check';
     const _serialImageUploadUrl   = '/{{ auth()->user()->panelPrefix() }}/purchases/temp-serial-image';
     const _purchaseDraft          = {!! json_encode($draft ?? null) !!};
+    const _editPurchaseId         = {!! json_encode($editPurchase->id ?? null) !!};
 </script>
 
 <div x-data="purchaseCreateModal()"
@@ -951,17 +988,20 @@ function purchaseForm() {
             this.attrPrompt = null;
         },
 
-        // "Same attributes" mode: copy the shared cost/selling price onto every unit
+        // "Same attributes" mode: copy the shared cost/selling price onto every
+        // unit (locked units keep their original values)
         applySharedPricing(item) {
             if (!item.is_serialized || item.attrMode !== 'same') return;
             if (!item.has_colors) {
                 item.serials.forEach(sn => {
+                    if (sn.locked) return;
                     sn.cost_price    = item.sharedCost;
                     sn.selling_price = item.sharedSelling;
                 });
             } else {
                 item.colors.forEach(clr => {
                     (clr.serials || []).forEach(sn => {
+                        if (sn.locked) return;
                         sn.cost_price    = clr.sharedCost;
                         sn.selling_price = clr.sharedSelling;
                     });
@@ -969,7 +1009,18 @@ function purchaseForm() {
             }
         },
 
+        itemHasLockedSerials(item) {
+            if (!item.is_serialized) return false;
+            return item.has_colors
+                ? item.colors.some(c => (c.serials || []).some(s => s.locked))
+                : item.serials.some(s => s.locked);
+        },
+
         removeItem(i) {
+            if (this.itemHasLockedSerials(this.items[i])) {
+                alert('This item has sold or transferred units and cannot be removed from the purchase.');
+                return;
+            }
             this.items.splice(i, 1);
             this.recalc();
         },
@@ -1000,7 +1051,8 @@ function purchaseForm() {
         newSerialRow() {
             return { serial: '', cost_price: '', selling_price: '', attributes: {}, extraFields: [],
                      serialError: null, serialChecking: false,
-                     image_path: null, imagePreviewUrl: null, imageUploading: false, imageError: null };
+                     image_path: null, imagePreviewUrl: null, imageUploading: false, imageError: null,
+                     locked: false, lockedReason: null };
         },
 
         async uploadSerialImage(snObj, file) {
@@ -1061,7 +1113,8 @@ function purchaseForm() {
             // Check against the database
             snObj.serialChecking = true;
             try {
-                const res  = await fetch(`${_serialCheckUrl}?serial=${encodeURIComponent(val)}`);
+                const excl = _editPurchaseId ? `&exclude_purchase=${_editPurchaseId}` : '';
+                const res  = await fetch(`${_serialCheckUrl}?serial=${encodeURIComponent(val)}${excl}`);
                 const data = await res.json();
                 if (data.exists) snObj.serialError = 'Already registered in the system';
             } catch (e) {
@@ -1071,18 +1124,27 @@ function purchaseForm() {
             }
         },
 
+        // Shrink/grow a serial list to qty without ever dropping locked
+        // (sold/transferred) rows; returns the effective quantity.
+        _resizeSerials(list, qty) {
+            const locked = list.filter(s => s.locked).length;
+            if (qty < locked) qty = locked;
+            while (list.length < qty) list.push(this.newSerialRow());
+            let excess = list.length - qty;
+            for (let i = list.length - 1; i >= 0 && excess > 0; i--) {
+                if (!list[i].locked) { list.splice(i, 1); excess--; }
+            }
+            return qty;
+        },
+
         syncSerials(item) {
             if (!item.is_serialized) return;
             if (!item.has_colors) {
-                const qty = parseInt(item.quantity) || 0;
-                while (item.serials.length < qty) item.serials.push(this.newSerialRow());
-                item.serials.splice(qty);
+                item.quantity = this._resizeSerials(item.serials, parseInt(item.quantity) || 0);
             } else {
                 item.colors.forEach(clr => {
                     if (!clr.serials) clr.serials = [];
-                    const qty = parseInt(clr.quantity) || 0;
-                    while (clr.serials.length < qty) clr.serials.push(this.newSerialRow());
-                    clr.serials.splice(qty);
+                    clr.quantity = this._resizeSerials(clr.serials, parseInt(clr.quantity) || 0);
                 });
             }
             this.applySharedPricing(item);   // new rows inherit shared prices in "same" mode
@@ -1211,6 +1273,7 @@ function purchaseForm() {
                         inp.value = val ?? '';
                         container.appendChild(inp);
                     };
+                    if (snObj.id) mk('id', snObj.id);   // existing serial (edit mode)
                     mk('serial',        snObj.serial        || '');
                     mk('cost_price',    snObj.cost_price    || '');
                     mk('selling_price', snObj.selling_price || '');

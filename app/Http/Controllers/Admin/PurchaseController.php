@@ -205,6 +205,7 @@ class PurchaseController extends Controller
             'items.*.color_id'    => 'nullable|exists:product_colors,id',
             'items.*.color_name'  => 'nullable|string|max:100',
             'items.*.serials'                   => 'nullable|array',
+            'items.*.serials.*.id'              => 'nullable|integer',
             'items.*.serials.*.serial'          => 'nullable|string|max:100',
             'items.*.serials.*.cost_price'      => 'nullable|numeric|min:0',
             'items.*.serials.*.selling_price'   => 'nullable|numeric|min:0',
@@ -218,7 +219,7 @@ class PurchaseController extends Controller
      * Server-side serial validation for serialized products.
      * Returns an error message, or null when everything is fine.
      */
-    private function serialConflictError(array $items): ?string
+    private function serialConflictError(array $items, ?int $excludePurchaseId = null): ?string
     {
         // Pass 1: collect all serials across all items and check for cross-item duplicates
         $allSerialMap = []; // uppercase → original value
@@ -246,8 +247,13 @@ class PurchaseController extends Controller
         }
 
         // Pass 2: check all collected serials against the database in one query
+        // (when editing, this purchase's own serials are not conflicts)
         if (!empty($allSerialMap)) {
-            $existing = SerialNumber::whereIn('serial_number', array_values($allSerialMap))->pluck('serial_number');
+            $existing = SerialNumber::whereIn('serial_number', array_values($allSerialMap))
+                ->when($excludePurchaseId, fn($q) => $q->where(
+                    fn($qq) => $qq->whereNull('purchase_id')->orWhere('purchase_id', '!=', $excludePurchaseId)
+                ))
+                ->pluck('serial_number');
             if ($existing->isNotEmpty()) {
                 return "Serial number(s) already registered in the system: " . $existing->implode(', ');
             }
@@ -611,78 +617,191 @@ class PurchaseController extends Controller
     {
         $purchase->load(['items.product.colors', 'vendor']);
         $vendors      = Vendor::orderBy('name')->get();
+        $products     = Product::orderBy('name')->get(['id', 'name', 'cost_price', 'sku']);
         $bankAccounts = BankAccount::active()->orderBy('sort_order')->get();
         $categories   = Category::active()->whereNull('parent_id')
             ->with(['children' => fn($q) => $q->active()->orderBy('name')->select('id', 'name', 'parent_id')])
             ->orderBy('name')->get(['id', 'name']);
         $brands = Brand::orderBy('name')->get(['id', 'name']);
+        $serialAttributeDefs = SerialAttributeDefinition::activeOrdered();
 
-        // Group purchase items back into the Alpine item format (one entry per product,
-        // with per-color quantity rows when colors are present).
+        $allDefs = $serialAttributeDefs
+            ->map(fn($d) => ['id' => $d->id, 'name' => $d->name, 'options' => $d->options])
+            ->values();
+
+        $serialsByItem = SerialNumber::where('purchase_id', $purchase->id)->get()->groupBy('purchase_item_id');
+
+        // Rebuild the create form's Alpine item state (one entry per product,
+        // per-color rows when colors are present, serial rows for serialized).
+        $uid     = 0;
         $grouped = [];
         foreach ($purchase->items as $item) {
-            $pid = $item->product_id;
+            $pid     = $item->product_id;
+            $product = $item->product;
+
             if (!isset($grouped[$pid])) {
+                $attrDefs = ($product?->is_serialized)
+                    ? (($product->serial_attribute_ids && count($product->serial_attribute_ids))
+                        ? $allDefs->filter(fn($d) => in_array($d['id'], $product->serial_attribute_ids))->values()->all()
+                        : $allDefs->all())
+                    : [];
+
                 $grouped[$pid] = [
-                    'id'         => $pid,
-                    'name'       => $item->product_name,
-                    'sku'        => $item->product?->sku ?? '',
-                    'unit_cost'  => (float) $item->unit_cost,
-                    'has_colors' => false,
-                    'colors'     => [],
-                    'quantity'   => 0,
+                    '_uid'             => ++$uid,
+                    'id'               => $pid,
+                    'name'             => $item->product_name,
+                    'sku'              => $product?->sku ?? '',
+                    'unit_cost'        => (float) $item->unit_cost,
+                    'has_colors'       => false,
+                    'is_serialized'    => (bool) ($product?->is_serialized),
+                    'attrDefs'         => $attrDefs,
+                    'attrMode'         => 'different',
+                    'sharedAttributes' => (object) [],
+                    'sharedCost'       => '',
+                    'sharedSelling'    => '',
+                    'colors'           => [],
+                    'quantity'         => 0,
+                    'serials'          => [],
                 ];
             }
+
+            $serialRows = $this->serialRowsForEdit(
+                $serialsByItem->get($item->id) ?? collect(),
+                $grouped[$pid]['attrDefs']
+            );
+
             if ($item->color_id) {
-                $hex = $item->product?->colors->find($item->color_id)?->hex_code ?? '';
-                $grouped[$pid]['has_colors']  = true;
-                $grouped[$pid]['colors'][]    = [
-                    'id'       => $item->color_id,
-                    'name'     => $item->color_name,
-                    'hex_code' => $hex,
-                    'quantity' => (int) $item->quantity,
+                $grouped[$pid]['has_colors'] = true;
+                $grouped[$pid]['colors'][]   = [
+                    'id'               => $item->color_id,
+                    'name'             => $item->color_name,
+                    'hex_code'         => $product?->colors->find($item->color_id)?->hex_code ?? '',
+                    'quantity'         => (int) $item->quantity,
+                    'serials'          => $serialRows,
+                    'sharedAttributes' => (object) [],
+                    'sharedCost'       => '',
+                    'sharedSelling'    => '',
                 ];
                 $grouped[$pid]['quantity'] += (int) $item->quantity;
             } else {
                 $grouped[$pid]['quantity'] = (int) $item->quantity;
+                $grouped[$pid]['serials']  = $serialRows;
             }
         }
-        $existingItems = array_values($grouped);
 
-        return view('admin.purchases.edit', compact(
-            'purchase', 'vendors', 'bankAccounts', 'categories', 'brands', 'existingItems'
+        // Colored products: append the product's other colors with qty 0 so
+        // more units can be added, matching the create form's color list.
+        foreach ($grouped as &$g) {
+            if (!$g['has_colors']) continue;
+            $presentIds = array_column($g['colors'], 'id');
+            $allColors  = $purchase->items->firstWhere('product_id', $g['id'])?->product?->colors ?? collect();
+            foreach ($allColors as $c) {
+                if (!in_array($c->id, $presentIds)) {
+                    $g['colors'][] = [
+                        'id'               => $c->id,
+                        'name'             => $c->name,
+                        'hex_code'         => $c->hex_code ?? '',
+                        'quantity'         => 0,
+                        'serials'          => [],
+                        'sharedAttributes' => (object) [],
+                        'sharedCost'       => '',
+                        'sharedSelling'    => '',
+                    ];
+                }
+            }
+        }
+        unset($g);
+
+        $draft = [
+            'vendor_id'               => $purchase->vendor_id,
+            'purchase_date'           => $purchase->purchase_date->format('Y-m-d'),
+            'reference'               => $purchase->reference,
+            'notes'                   => $purchase->notes,
+            'payment_method'          => $purchase->payment_method,
+            'bank_account_id'         => $purchase->payment_method === 'bank_transfer' ? $purchase->bank_account_id : null,
+            'partial_pay_via'         => $purchase->payment_method === 'partial' && $purchase->bank_account_id ? 'bank' : 'cash',
+            'partial_bank_account_id' => $purchase->payment_method === 'partial' ? $purchase->bank_account_id : null,
+            'amount_paid'             => (float) $purchase->amount_paid,
+            'ui_state'                => json_encode(array_values($grouped)),
+        ];
+
+        $editPurchase = $purchase;
+
+        return view('admin.purchases.create', compact(
+            'vendors', 'products', 'categories', 'brands', 'bankAccounts',
+            'serialAttributeDefs', 'draft', 'editPurchase'
         ));
+    }
+
+    /**
+     * Map a purchase item's serial rows into the create form's Alpine shape.
+     * Sold/returned/transferred units come first and are flagged locked so
+     * the form renders them read-only and quantity cuts can't drop them.
+     */
+    private function serialRowsForEdit($serials, array $attrDefs): array
+    {
+        $defNames = array_column($attrDefs, 'name');
+
+        return collect($serials)
+            ->sortBy(fn($s) => ($s->status === 'in_stock' && $s->shop_id === null) ? 1 : 0)
+            ->values()
+            ->map(function ($s) use ($defNames) {
+                $locked = $s->status !== 'in_stock' || $s->shop_id !== null;
+                $attrs  = $s->attributes ?? [];
+                $known  = array_filter($attrs, fn($k) => in_array($k, $defNames), ARRAY_FILTER_USE_KEY);
+                $extra  = array_diff_key($attrs, $known);
+
+                return [
+                    'id'              => $s->id,
+                    'serial'          => $s->serial_number,
+                    'cost_price'      => $s->cost_price !== null ? (float) $s->cost_price : '',
+                    'selling_price'   => $s->selling_price !== null ? (float) $s->selling_price : '',
+                    'attributes'      => (object) $known,
+                    'extraFields'     => collect($extra)->map(fn($v, $k) => ['key' => $k, 'value' => $v])->values()->all(),
+                    'serialError'     => null,
+                    'serialChecking'  => false,
+                    'image_path'      => $s->image,
+                    'imagePreviewUrl' => $s->image ? asset('storage/' . $s->image) : null,
+                    'imageUploading'  => false,
+                    'imageError'      => null,
+                    'locked'          => $locked,
+                    'lockedReason'    => $locked ? ($s->shop_id ? 'TRANSFERRED' : strtoupper($s->status)) : null,
+                ];
+            })->all();
     }
 
     public function update(Request $request, Purchase $purchase)
     {
-        $request->validate([
-            'purchase_date'           => 'required|date',
-            'vendor_id'               => 'required|exists:vendors,id',
-            'reference'               => 'nullable|string|max:100',
-            'payment_method'          => 'required|in:cash,bank_transfer,credit,partial',
-            'bank_account_id'         => ['required_if:payment_method,bank_transfer', 'nullable', 'exists:bank_accounts,id'],
-            'partial_pay_via'         => 'nullable|in:cash,bank',
-            'partial_bank_account_id' => [
-                Rule::requiredIf(fn() => request('payment_method') === 'partial' && request('partial_pay_via') === 'bank'),
-                'nullable', 'exists:bank_accounts,id',
-            ],
-            'amount_paid'             => 'nullable|numeric|min:0',
-            'notes'               => 'nullable|string|max:1000',
-            'items'               => 'required|array|min:1',
-            'items.*.product_id'  => 'required|exists:products,id',
-            'items.*.quantity'    => 'required|integer|min:1',
-            'items.*.unit_cost'   => 'required|numeric|min:0',
-            'items.*.color_id'    => 'nullable|exists:product_colors,id',
-            'items.*.color_name'  => 'nullable|string|max:100',
-        ], [
-            'bank_account_id.required_if'      => 'Select a bank account for the bank transfer payment.',
-            'partial_bank_account_id.required' => 'Select a bank account for the bank portion of the partial payment.',
-        ]);
+        $request->validate($this->purchaseValidationRules(), $this->purchaseValidationMessages());
+
+        // Serial checks: same as create, but this purchase's own serials don't conflict
+        if ($err = $this->serialConflictError($request->items, $purchase->id)) {
+            return back()->withErrors(['items' => $err])->withInput();
+        }
+        if ($err = $this->colorRequirementError($request->items)) {
+            return back()->withErrors(['items' => $err])->withInput();
+        }
 
         try {
             DB::transaction(function () use ($request, $purchase) {
                 $purchase->load('items');
+
+                // ── 0. Guard: sold/returned/transferred serials must stay ──
+                // They're rendered locked on the form and must come back in
+                // the payload — dropping one would corrupt sales history.
+                $lockedSerials = SerialNumber::where('purchase_id', $purchase->id)
+                    ->where(fn($q) => $q->where('status', '!=', 'in_stock')->orWhereNotNull('shop_id'))
+                    ->get();
+                $submittedIds = collect($request->items)
+                    ->flatMap(fn($row) => collect($row['serials'] ?? [])->pluck('id'))
+                    ->filter()->map(fn($v) => (int) $v)->all();
+                $missing = $lockedSerials->reject(fn($s) => in_array($s->id, $submittedIds));
+                if ($missing->isNotEmpty()) {
+                    throw new \RuntimeException(
+                        'Cannot update: serial(s) ' . $missing->pluck('serial_number')->take(5)->join(', ')
+                        . ' are sold, returned or transferred and cannot be removed from this purchase.'
+                    );
+                }
 
                 // ── 1. Guard: verify stock reversal won't go negative ─────
                 foreach ($purchase->items as $old) {
@@ -738,9 +857,10 @@ class PurchaseController extends Controller
                 // ── 4. Delete old items ───────────────────────────────────
                 $purchase->items()->delete();
 
-                // ── 5. Recalculate totals from new items ──────────────────
+                // ── 5. Recalculate totals from new items (serialized lines
+                //       cost = sum of their per-unit serial cost prices) ────
                 $newItems   = $request->items;
-                $subtotal   = collect($newItems)->sum(fn($i) => $i['quantity'] * $i['unit_cost']);
+                $subtotal   = collect($newItems)->sum(fn($i) => $this->lineCost($i));
                 $total      = $subtotal;
                 $payMethod  = $request->payment_method;
                 $bankAccId  = $payMethod === 'bank_transfer'
@@ -773,23 +893,79 @@ class PurchaseController extends Controller
                     'notes'           => $request->notes,
                 ]);
 
-                // ── 7. Apply new items ────────────────────────────────────
+                // ── 7. Apply new items (and reconcile serials) ────────────
+                $keptSerialIds = [];
                 foreach ($newItems as $row) {
                     $product   = Product::find($row['product_id']);
                     if (!$product) continue;
                     $colorId   = !empty($row['color_id'])   ? (int)$row['color_id']   : null;
                     $colorName = !empty($row['color_name']) ? $row['color_name']       : null;
-                    $lineTotal = $row['quantity'] * $row['unit_cost'];
+                    $lineTotal = $this->lineCost($row);
+                    $unitCost  = ($product->is_serialized && (int) $row['quantity'] > 0)
+                        ? round($lineTotal / (int) $row['quantity'], 2)
+                        : (float) $row['unit_cost'];
 
-                    $purchase->items()->create([
+                    $purchaseItem = $purchase->items()->create([
                         'product_id'   => $product->id,
                         'product_name' => $product->name,
                         'color_id'     => $colorId,
                         'color_name'   => $colorName,
                         'quantity'     => $row['quantity'],
-                        'unit_cost'    => $row['unit_cost'],
+                        'unit_cost'    => $unitCost,
                         'line_total'   => $lineTotal,
                     ]);
+
+                    // Serial reconciliation: rows with an id are this purchase's
+                    // existing serials (updated in place, or just relinked when
+                    // locked); rows without an id are new units.
+                    if ($product->is_serialized && !empty($row['serials'])) {
+                        foreach ($row['serials'] as $snData) {
+                            $snVal = trim($snData['serial'] ?? '');
+                            if ($snVal === '') continue;
+
+                            $existing = !empty($snData['id'])
+                                ? SerialNumber::where('id', (int) $snData['id'])
+                                    ->where('purchase_id', $purchase->id)
+                                    ->first()
+                                : null;
+
+                            if ($existing) {
+                                $isLocked = $existing->status !== 'in_stock' || $existing->shop_id !== null;
+                                if ($isLocked) {
+                                    // Sold/transferred: only relink to the recreated item
+                                    $existing->update(['purchase_item_id' => $purchaseItem->id]);
+                                } else {
+                                    $existing->update([
+                                        'serial_number'    => $snVal,
+                                        'cost_price'       => isset($snData['cost_price']) && is_numeric($snData['cost_price'])
+                                                              ? $snData['cost_price'] : null,
+                                        'selling_price'    => isset($snData['selling_price']) && is_numeric($snData['selling_price'])
+                                                              ? $snData['selling_price'] : null,
+                                        'attributes'       => !empty($snData['attributes']) ? $snData['attributes'] : null,
+                                        'image'            => $snData['image_path'] ?? null,
+                                        'product_id'       => $product->id,
+                                        'purchase_item_id' => $purchaseItem->id,
+                                    ]);
+                                }
+                                $keptSerialIds[] = $existing->id;
+                            } else {
+                                $new = SerialNumber::create([
+                                    'product_id'       => $product->id,
+                                    'serial_number'    => $snVal,
+                                    'cost_price'       => isset($snData['cost_price']) && is_numeric($snData['cost_price'])
+                                                          ? $snData['cost_price'] : null,
+                                    'selling_price'    => isset($snData['selling_price']) && is_numeric($snData['selling_price'])
+                                                          ? $snData['selling_price'] : null,
+                                    'attributes'       => !empty($snData['attributes']) ? $snData['attributes'] : null,
+                                    'image'            => $snData['image_path'] ?? null,
+                                    'status'           => 'in_stock',
+                                    'purchase_id'      => $purchase->id,
+                                    'purchase_item_id' => $purchaseItem->id,
+                                ]);
+                                $keptSerialIds[] = $new->id;
+                            }
+                        }
+                    }
 
                     if ($colorId) {
                         ProductColor::where('id', $colorId)->increment('stock_quantity', $row['quantity']);
@@ -799,7 +975,7 @@ class PurchaseController extends Controller
                     $before = (int) $product->stock_quantity;
                     $after  = $before + (int) $row['quantity'];
                     $product->increment('stock_quantity', $row['quantity']);
-                    $product->update(['cost_price' => $row['unit_cost']]);
+                    $product->update(['cost_price' => $unitCost]);
 
                     StockMovement::create([
                         'product_id'      => $product->id,
@@ -812,6 +988,14 @@ class PurchaseController extends Controller
                         'user_id'         => auth()->id(),
                     ]);
                 }
+
+                // In-stock serials of this purchase that were dropped from the
+                // form are removed (locked ones are guaranteed present above)
+                SerialNumber::where('purchase_id', $purchase->id)
+                    ->where('status', 'in_stock')
+                    ->whereNull('shop_id')
+                    ->whereNotIn('id', $keptSerialIds)
+                    ->delete();
 
                 // ── 8. New vendor ledger entry if on credit ───────────────
                 if ($payStatus !== 'paid') {

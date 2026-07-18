@@ -197,7 +197,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::get('api/serials/check', function (\Illuminate\Http\Request $request) {
         $serial = trim($request->input('serial', ''));
         if ($serial === '') return response()->json(['exists' => false]);
-        $exists = \App\Models\SerialNumber::where('serial_number', $serial)->exists();
+        // When editing a purchase, its own serials are not conflicts
+        $exclude = (int) $request->input('exclude_purchase', 0);
+        $exists  = \App\Models\SerialNumber::where('serial_number', $serial)
+            ->when($exclude, fn($q) => $q->where(
+                fn($qq) => $qq->whereNull('purchase_id')->orWhere('purchase_id', '!=', $exclude)
+            ))
+            ->exists();
         return response()->json(['exists' => $exists]);
     })->name('api.serials.check');
     Route::post('api/products/quick-create', [Admin\PurchaseController::class, 'quickCreateProduct'])->name('api.products.quick-create');
@@ -437,7 +443,13 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
     Route::get('api/serials/check', function (\Illuminate\Http\Request $request) {
         $serial = trim($request->input('serial', ''));
         if ($serial === '') return response()->json(['exists' => false]);
-        $exists = \App\Models\SerialNumber::where('serial_number', $serial)->exists();
+        // When editing a purchase, its own serials are not conflicts
+        $exclude = (int) $request->input('exclude_purchase', 0);
+        $exists  = \App\Models\SerialNumber::where('serial_number', $serial)
+            ->when($exclude, fn($q) => $q->where(
+                fn($qq) => $qq->whereNull('purchase_id')->orWhere('purchase_id', '!=', $exclude)
+            ))
+            ->exists();
         return response()->json(['exists' => $exists]);
     })->middleware('permission:purchases.manage')->name('api.serials.check');
 
