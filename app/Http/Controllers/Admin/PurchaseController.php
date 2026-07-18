@@ -846,6 +846,21 @@ class PurchaseController extends Controller
             DB::transaction(function () use ($purchase) {
                 $purchase->load('items');
 
+                // ── 0. Guard: serials from this purchase must all be untouched ──
+                // Sold/returned units belong to sales history; transferred units
+                // sit at a sub shop — deleting the purchase would corrupt both.
+                $blocked = SerialNumber::where('purchase_id', $purchase->id)
+                    ->where(fn($q) => $q->where('status', '!=', 'in_stock')->orWhereNotNull('shop_id'))
+                    ->get();
+                if ($blocked->isNotEmpty()) {
+                    $list = $blocked->take(5)
+                        ->map(fn($s) => $s->serial_number . ' (' . ($s->shop_id ? 'transferred' : $s->status) . ')')
+                        ->join(', ');
+                    throw new \RuntimeException(
+                        'Cannot delete: ' . $blocked->count() . ' serial(s) from this purchase are sold, returned or transferred — ' . $list . '. Handle those first.'
+                    );
+                }
+
                 // ── 1. Guard: verify stock reversal won't go negative ─────
                 foreach ($purchase->items as $item) {
                     $product = Product::find($item->product_id);
@@ -897,7 +912,9 @@ class PurchaseController extends Controller
                 }
                 VendorLedger::where('purchase_id', $purchase->id)->delete();
 
-                // ── 4. Hard delete ────────────────────────────────────────
+                // ── 4. Hard delete (serials too — the guard above ensures
+                //       they're all untouched in_stock units) ──────────────
+                SerialNumber::where('purchase_id', $purchase->id)->delete();
                 $purchase->items()->delete();
                 $purchase->delete();
             });
