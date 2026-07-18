@@ -29,9 +29,11 @@ class PurchaseController extends Controller
 
         if ($request->filled('product')) {
             $search = $request->product;
-            $query->whereHas('items', function ($q) use ($search) {
-                $q->where('product_name', 'like', "%{$search}%")
-                  ->orWhereHas('product', fn($p) => $p->where('barcode', $search));
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('items', function ($i) use ($search) {
+                    $i->where('product_name', 'like', "%{$search}%")
+                      ->orWhereHas('product', fn($p) => $p->where('barcode', $search));
+                })->orWhereHas('serialNumbers', fn($s) => $s->where('serial_number', $search));
             });
         }
         if ($request->filled('vendor')) {

@@ -17,7 +17,7 @@
 
 {{-- Filters --}}
 <form method="GET" class="flex flex-wrap gap-3 mb-5">
-    <input type="text" name="product" value="{{ request('product') }}" class="form-input w-52" placeholder="Product name or barcode">
+    <input type="text" name="product" value="{{ request('product') }}" class="form-input w-56" placeholder="Product, barcode or serial #">
     <select name="vendor" class="form-select w-44">
         <option value="">All Vendors</option>
         @foreach($vendors as $v)

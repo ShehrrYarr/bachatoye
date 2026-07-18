@@ -37,6 +37,11 @@ class Purchase extends Model
         return $this->hasMany(PurchaseItem::class);
     }
 
+    public function serialNumbers()
+    {
+        return $this->hasMany(SerialNumber::class);
+    }
+
     public function createdBy()
     {
         return $this->belongsTo(\App\Models\User::class, 'created_by');
