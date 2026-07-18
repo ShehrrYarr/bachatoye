@@ -198,6 +198,24 @@
     </div>
     @endif
 
+    {{-- Customer Payouts --}}
+    @if(($todayReport['payout_total'] ?? 0) > 0)
+    <div class="section expense">
+        <div class="section-header">
+            <span class="section-title">&#129297; Customer Payouts (Out)</span>
+            <span class="section-total">– Rs. {{ number_format($todayReport['payout_total']) }}</span>
+        </div>
+        <div class="breakdown">
+            @if($todayReport['payout_cash'] > 0)
+            <span><span class="dot dot-green"></span>Cash: Rs. {{ number_format($todayReport['payout_cash']) }}</span>
+            @endif
+            @if($todayReport['payout_bank'] > 0)
+            <span><span class="dot dot-blue"></span>Bank: Rs. {{ number_format($todayReport['payout_bank']) }}</span>
+            @endif
+        </div>
+    </div>
+    @endif
+
     {{-- Returns --}}
     <div class="section returns">
         <div class="section-header">
@@ -242,6 +260,12 @@
         <div class="total-row">
             <span>Vendor Payments (Out)</span>
             <strong style="color:#92400e;">– Rs. {{ number_format($todayReport['vendor_pay_total']) }}</strong>
+        </div>
+        @endif
+        @if(($todayReport['payout_total'] ?? 0) > 0)
+        <div class="total-row">
+            <span>Customer Payouts (Out)</span>
+            <strong style="color:#6b21a8;">– Rs. {{ number_format($todayReport['payout_total']) }}</strong>
         </div>
         @endif
         <div class="total-row grand">

@@ -94,6 +94,14 @@
                             <td class="text-right">- Rs. {{ number_format($todayReport['expense_bank']) }}</td>
                             <td class="text-right font-semibold">- Rs. {{ number_format($todayReport['expenses']) }}</td>
                         </tr>
+                        @if(($todayReport['payout_total'] ?? 0) > 0)
+                        <tr class="text-purple-600">
+                            <td class="font-medium">Customer Payouts</td>
+                            <td class="text-right">- Rs. {{ number_format($todayReport['payout_cash']) }}</td>
+                            <td class="text-right">- Rs. {{ number_format($todayReport['payout_bank']) }}</td>
+                            <td class="text-right font-semibold">- Rs. {{ number_format($todayReport['payout_total']) }}</td>
+                        </tr>
+                        @endif
                     </tbody>
                     <tfoot>
                         <tr class="bg-gray-50 font-bold text-gray-900">

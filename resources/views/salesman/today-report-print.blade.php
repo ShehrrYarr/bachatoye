@@ -163,6 +163,24 @@
     </div>
     @endif
 
+    {{-- Customer Payouts (manual khata cash-outs; shop-scoped reports only) --}}
+    @if(($todayReport['payout_total'] ?? 0) > 0)
+    <div class="section returns">
+        <div class="section-header">
+            <span class="section-title">&#128184; Customer Payouts (Out)</span>
+            <span class="section-total">– Rs. {{ number_format($todayReport['payout_total']) }}</span>
+        </div>
+        <div class="breakdown">
+            @if($todayReport['payout_cash'] > 0)
+            <span><span class="dot dot-green"></span>Cash: Rs. {{ number_format($todayReport['payout_cash']) }}</span>
+            @endif
+            @if($todayReport['payout_bank'] > 0)
+            <span><span class="dot dot-blue"></span>Bank: Rs. {{ number_format($todayReport['payout_bank']) }}</span>
+            @endif
+        </div>
+    </div>
+    @endif
+
     {{-- Grand Totals --}}
     <div class="totals">
         <div class="total-row">
@@ -183,6 +201,12 @@
         <div class="total-row">
             <span><span class="dot dot-purple"></span>Purchases Paid (Out)</span>
             <strong style="color:#7c3aed;">– Rs. {{ number_format($todayReport['purchases_paid']) }}</strong>
+        </div>
+        @endif
+        @if(($todayReport['payout_total'] ?? 0) > 0)
+        <div class="total-row">
+            <span><span class="dot dot-purple"></span>Customer Payouts (Out)</span>
+            <strong style="color:#6b21a8;">– Rs. {{ number_format($todayReport['payout_total']) }}</strong>
         </div>
         @endif
         <div class="total-row grand">

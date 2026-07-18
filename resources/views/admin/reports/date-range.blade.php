@@ -129,6 +129,24 @@
     </div>
     @endif
 
+    {{-- Customer Payouts --}}
+    @if(($report['payout_total'] ?? 0) > 0)
+    <div class="card p-4 border-l-4 border-purple-400">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-semibold text-purple-700"><i class="fas fa-hand-holding-dollar mr-1.5"></i>Customer Payouts (Out)</span>
+            <span class="text-lg font-bold text-purple-900">– Rs. {{ number_format($report['payout_total']) }}</span>
+        </div>
+        <div class="flex flex-wrap gap-3 text-xs text-purple-700">
+            @if($report['payout_cash'] > 0)
+            <span><i class="fas fa-money-bill-wave mr-1"></i>Cash: Rs. {{ number_format($report['payout_cash']) }}</span>
+            @endif
+            @if($report['payout_bank'] > 0)
+            <span><i class="fas fa-university mr-1"></i>Bank: Rs. {{ number_format($report['payout_bank']) }}</span>
+            @endif
+        </div>
+    </div>
+    @endif
+
     {{-- Net totals --}}
     <div class="card p-4 border-l-4 border-gray-800 bg-gray-50">
         <div class="flex items-center justify-between mb-3">
