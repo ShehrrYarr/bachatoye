@@ -400,6 +400,10 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
         ->middleware('permission:purchases.manage')->name('purchases.review.discard');
     Route::get('purchases/{purchase}', [Admin\PurchaseController::class, 'show'])
         ->middleware('permission:purchases.view')->name('purchases.show');
+    Route::get('purchases/{purchase}/edit', [Admin\PurchaseController::class, 'edit'])
+        ->middleware('permission:purchases.manage')->name('purchases.edit');
+    Route::put('purchases/{purchase}', [Admin\PurchaseController::class, 'update'])
+        ->middleware('permission:purchases.manage')->name('purchases.update');
     // Serial number routes for salesman
     Route::get('purchases/{purchase}/serials', [Admin\SerialController::class, 'showForPurchase'])
         ->middleware('permission:purchases.manage')->name('purchases.serials');

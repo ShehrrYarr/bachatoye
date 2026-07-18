@@ -88,10 +88,12 @@
                             <a href="{{ route("{$rPrefix}.purchases.show", $purchase) }}" class="btn-outline btn-sm">
                                 <i class="fas fa-eye"></i>
                             </a>
-                            @if(auth()->user()->hasRole('admin'))
-                            <a href="{{ route('admin.purchases.edit', $purchase) }}" class="btn-outline btn-sm text-blue-600 border-blue-200 hover:bg-blue-50">
+                            @if($isAdmin || auth()->user()->can('purchases.manage'))
+                            <a href="{{ route("{$rPrefix}.purchases.edit", $purchase) }}" class="btn-outline btn-sm text-blue-600 border-blue-200 hover:bg-blue-50">
                                 <i class="fas fa-edit"></i>
                             </a>
+                            @endif
+                            @if($isAdmin)
                             <form method="POST" action="{{ route('admin.purchases.destroy', $purchase) }}"
                                   onsubmit="return confirm('Delete purchase {{ $purchase->reference ?? 'PUR-'.$purchase->id }}? Stock and vendor ledger will be reversed.')">
                                 @csrf @method('DELETE')

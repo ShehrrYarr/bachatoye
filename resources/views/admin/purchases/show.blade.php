@@ -25,11 +25,12 @@
             {{ ucfirst($purchase->payment_status) }}
         </span>
     </div>
-    @if(auth()->user()->hasRole('admin'))
+    @if(auth()->user()->hasRole('admin') || auth()->user()->can('purchases.manage'))
     <div class="flex items-center gap-2">
-        <a href="{{ route('admin.purchases.edit', $purchase) }}" class="btn-outline btn-sm">
+        <a href="{{ route("{$rPrefix}.purchases.edit", $purchase) }}" class="btn-outline btn-sm">
             <i class="fas fa-edit mr-1"></i> Edit
         </a>
+        @if(auth()->user()->hasRole('admin'))
         <form method="POST" action="{{ route('admin.purchases.destroy', $purchase) }}"
               onsubmit="return confirm('Delete this purchase? Stock and vendor ledger will be reversed. This cannot be undone.')">
             @csrf @method('DELETE')
@@ -37,6 +38,7 @@
                 <i class="fas fa-trash mr-1"></i> Delete
             </button>
         </form>
+        @endif
     </div>
     @endif
     <div class="text-sm text-gray-500">{{ $purchase->purchase_date->format('d M Y') }}</div>
