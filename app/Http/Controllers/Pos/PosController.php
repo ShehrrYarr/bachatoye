@@ -1210,6 +1210,16 @@ class PosController extends Controller
                 );
             }
 
+            // Serialized units go back in stock (they keep their shop_id, so
+            // they reappear at the shop the sale was made from)
+            SerialNumber::where('order_id', $order->id)
+                ->where('status', 'sold')
+                ->update([
+                    'status'        => 'in_stock',
+                    'order_id'      => null,
+                    'order_item_id' => null,
+                ]);
+
             // ── 2. Reverse khata ledger entries ───────────────────────────
             if ($oldVendor && in_array($oldMethod, ['khata', 'partial'])) {
                 $ledgers     = VendorLedger::where('reference', $order->order_number)
@@ -1264,6 +1274,12 @@ class PosController extends Controller
         abort_if($order->source !== 'pos', 404);
         abort_if(Auth::user()->isSubshop() && $order->shop_id !== Auth::user()->shopId(), 404);
         abort_if(in_array($order->status, ['returned', 'cancelled']), 403, 'This order cannot be edited.');
+        // The edit form has no serial picker — editing would orphan sold serials
+        abort_if(
+            $order->items()->whereNotNull('serial_number_id')->exists(),
+            403,
+            'This sale contains serialized (IMEI) items and cannot be edited. Delete the sale (stock and serials are restored) and record it again instead.'
+        );
 
         $order->load(['items.product', 'customer', 'bankAccount', 'servedBy']);
         $bankAccounts = BankAccount::active()->forShop($order->shop_id)->orderBy('sort_order')->orderBy('id')->get();
@@ -1304,6 +1320,11 @@ class PosController extends Controller
         abort_if($order->source !== 'pos', 404);
         abort_if(Auth::user()->isSubshop() && $order->shop_id !== Auth::user()->shopId(), 404);
         abort_if(in_array($order->status, ['returned', 'cancelled']), 403);
+        if ($order->items()->whereNotNull('serial_number_id')->exists()) {
+            return response()->json([
+                'error' => 'This sale contains serialized (IMEI) items and cannot be edited. Delete the sale and record it again instead.',
+            ], 422);
+        }
 
         $orderShopId = $order->shop_id;
 
