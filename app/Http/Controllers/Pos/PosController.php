@@ -1274,15 +1274,13 @@ class PosController extends Controller
         abort_if($order->source !== 'pos', 404);
         abort_if(Auth::user()->isSubshop() && $order->shop_id !== Auth::user()->shopId(), 404);
         abort_if(in_array($order->status, ['returned', 'cancelled']), 403, 'This order cannot be edited.');
-        // The edit form has no serial picker — editing would orphan sold serials
-        abort_if(
-            $order->items()->whereNotNull('serial_number_id')->exists(),
-            403,
-            'This sale contains serialized (IMEI) items and cannot be edited. Delete the sale (stock and serials are restored) and record it again instead.'
-        );
 
         $order->load(['items.product', 'customer', 'bankAccount', 'servedBy']);
         $bankAccounts = BankAccount::active()->forShop($order->shop_id)->orderBy('sort_order')->orderBy('id')->get();
+
+        // Serial numbers attached to this order's items (for display + payload)
+        $serialsById = SerialNumber::whereIn('id', $order->items->pluck('serial_number_id')->filter())
+            ->get()->keyBy('id');
 
         $orderData = [
             'id'             => $order->id,
@@ -1302,17 +1300,55 @@ class PosController extends Controller
             'bank_account_id' => $order->bank_account_id,
             'notes'           => $order->notes ?? '',
             'items'           => $order->items->map(fn($item) => [
-                'product_id'   => $item->product_id,
-                'product_name' => $item->product_name,
-                'color_id'     => $item->color_id,
-                'color_name'   => $item->color_name,
-                'qty'          => (int) $item->quantity,
-                'unit_price'   => (float) $item->unit_price,
-                'cost_price'   => (float) $item->cost_price,
+                'product_id'    => $item->product_id,
+                'product_name'  => $item->product_name,
+                'color_id'      => $item->color_id,
+                'color_name'    => $item->color_name,
+                'qty'           => (int) $item->quantity,
+                'unit_price'    => (float) $item->unit_price,
+                'cost_price'    => (float) $item->cost_price,
+                'serial_id'     => $item->serial_number_id,
+                'serial_number' => $item->serial_number_id
+                    ? ($serialsById[$item->serial_number_id]?->serial_number)
+                    : null,
             ])->values(),
         ];
 
         return view('pos.edit-order', compact('order', 'bankAccounts', 'orderData'));
+    }
+
+    /**
+     * In-stock serials for a product at the shop an order belongs to —
+     * feeds the edit-sale serial picker (an admin may be editing a sub
+     * shop's order, so scoping by the order's shop matters).
+     */
+    public function editOrderSerials(Order $order, int $productId)
+    {
+        abort_if($order->source !== 'pos', 404);
+        abort_if(Auth::user()->isSubshop() && $order->shop_id !== Auth::user()->shopId(), 404);
+
+        $product = Product::active()
+            ->where('id', $productId)
+            ->where('is_serialized', true)
+            ->firstOrFail();
+
+        $serials = SerialNumber::where('product_id', $product->id)
+            ->where('status', 'in_stock')
+            ->forShop($order->shop_id)
+            ->orderBy('serial_number')
+            ->get()
+            ->map(fn($s) => [
+                'id'            => $s->id,
+                'serial_number' => $s->serial_number,
+                'selling_price' => $s->selling_price ? (float) $s->selling_price : (float) $product->getDiscountedPrice(),
+                'attributes'    => $s->attributes ?? [],
+            ]);
+
+        return response()->json([
+            'product_id'   => $product->id,
+            'product_name' => $product->name,
+            'serials'      => $serials,
+        ]);
     }
 
     public function updateOrder(Request $request, Order $order)
@@ -1320,11 +1356,6 @@ class PosController extends Controller
         abort_if($order->source !== 'pos', 404);
         abort_if(Auth::user()->isSubshop() && $order->shop_id !== Auth::user()->shopId(), 404);
         abort_if(in_array($order->status, ['returned', 'cancelled']), 403);
-        if ($order->items()->whereNotNull('serial_number_id')->exists()) {
-            return response()->json([
-                'error' => 'This sale contains serialized (IMEI) items and cannot be edited. Delete the sale and record it again instead.',
-            ], 422);
-        }
 
         $orderShopId = $order->shop_id;
 
@@ -1334,6 +1365,7 @@ class PosController extends Controller
             'items.*.quantity'    => 'required|integer|min:1',
             'items.*.unit_price'  => 'required|numeric|min:0',
             'items.*.color_id'    => 'nullable|exists:product_colors,id',
+            'items.*.serial_number' => 'nullable|string|max:100',
             'payment_method'           => 'required|in:cash,bank_transfer,khata,partial,split',
             'amount_paid'              => 'nullable|numeric|min:0',
             'partial_pay_via'          => 'nullable|in:cash,bank',
@@ -1363,6 +1395,12 @@ class PosController extends Controller
             }
         }
 
+        // A serial can appear on only one line
+        $payloadSerials = collect($request->items)->pluck('serial_number')->filter()->map(fn($s) => strtoupper(trim($s)));
+        if ($payloadSerials->count() !== $payloadSerials->unique()->count()) {
+            return response()->json(['error' => 'The same serial number appears on more than one line.'], 422);
+        }
+
         DB::beginTransaction();
         try {
             $oldTotal    = (float) $order->total;
@@ -1386,6 +1424,16 @@ class PosController extends Controller
                     'adjustment', $order->order_number, 'Sale edit — stock restored'
                 );
             }
+
+            // Free this order's sold serials — kept lines re-mark them sold
+            // below; dropped lines leave them back in stock at the order's shop
+            SerialNumber::where('order_id', $order->id)
+                ->where('status', 'sold')
+                ->update([
+                    'status'        => 'in_stock',
+                    'order_id'      => null,
+                    'order_item_id' => null,
+                ]);
 
             // ── 2. Reverse khata ledger entries ───────────────────────────
             if ($oldVendor && in_array($oldMethod, ['khata', 'partial'])) {
@@ -1453,6 +1501,29 @@ class PosController extends Controller
                     ], 422);
                 }
 
+                // Serialized line: resolve the unit (this order's own serials were
+                // freed above, so kept units pass the in_stock check too)
+                $serial = null;
+                if (!empty($item['serial_number'])) {
+                    $serial = SerialNumber::where('serial_number', trim($item['serial_number']))
+                        ->where('status', 'in_stock')
+                        ->forShop($orderShopId)
+                        ->lockForUpdate()
+                        ->first();
+                    if (!$serial || (int) $serial->product_id !== (int) $product->id) {
+                        DB::rollBack();
+                        return response()->json([
+                            'error' => "Serial {$item['serial_number']} is not available for {$product->name} at this shop.",
+                        ], 422);
+                    }
+                    $item['quantity'] = 1; // one physical unit per serial
+                } elseif ($product->is_serialized) {
+                    DB::rollBack();
+                    return response()->json([
+                        'error' => "{$product->name} is a serialized product — pick a specific unit (IMEI) for it.",
+                    ], 422);
+                }
+
                 $lineTotal  = $item['unit_price'] * $item['quantity'];
                 $subtotal  += $lineTotal;
 
@@ -1463,6 +1534,7 @@ class PosController extends Controller
                     'qty'        => $item['quantity'],
                     'price'      => $item['unit_price'],
                     'line_total' => $lineTotal,
+                    'serial'     => $serial,
                 ];
             }
 
@@ -1500,18 +1572,27 @@ class PosController extends Controller
 
             // ── 5. Save new items and deduct stock ────────────────────────
             foreach ($newItems as $item) {
-                OrderItem::create([
-                    'order_id'        => $order->id,
-                    'product_id'      => $item['product']->id,
-                    'product_name'    => $item['product']->name,
-                    'color_name'      => $item['color_name'],
-                    'color_id'        => $item['color']?->id,
-                    'product_barcode' => $item['product']->barcode,
-                    'unit_price'      => $item['price'],
-                    'cost_price'      => $item['product']->cost_price,
-                    'quantity'        => $item['qty'],
-                    'line_total'      => $item['line_total'],
+                $orderItem = OrderItem::create([
+                    'order_id'         => $order->id,
+                    'product_id'       => $item['product']->id,
+                    'product_name'     => $item['product']->name,
+                    'color_name'       => $item['color_name'],
+                    'color_id'         => $item['color']?->id,
+                    'product_barcode'  => $item['product']->barcode,
+                    'unit_price'       => $item['price'],
+                    'cost_price'       => $item['serial']?->cost_price ?? $item['product']->cost_price,
+                    'quantity'         => $item['qty'],
+                    'line_total'       => $item['line_total'],
+                    'serial_number_id' => $item['serial']?->id,
                 ]);
+
+                if ($item['serial']) {
+                    $item['serial']->update([
+                        'status'        => 'sold',
+                        'order_id'      => $order->id,
+                        'order_item_id' => $orderItem->id,
+                    ]);
+                }
 
                 app(\App\Services\ShopStockService::class)->adjust(
                     $orderShopId, $item['product'], $item['color']?->id, -$item['qty'],

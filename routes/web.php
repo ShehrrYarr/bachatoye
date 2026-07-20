@@ -618,6 +618,8 @@ Route::prefix('pos')->name('pos.')->middleware(['auth', 'permission:pos.access']
     // Edit sale
     Route::get('/orders/{order}/edit', [Pos\PosController::class, 'editOrder'])
         ->middleware('permission:pos.edit_sale')->name('order.edit');
+    Route::get('/orders/{order}/serials/{product}', [Pos\PosController::class, 'editOrderSerials'])
+        ->middleware('permission:pos.edit_sale')->name('order.serials');
     Route::put('/orders/{order}', [Pos\PosController::class, 'updateOrder'])
         ->middleware('permission:pos.edit_sale')->name('order.update');
 

@@ -24,6 +24,8 @@ function editSale() {
         customerSearch:  '',
         customerResults: [],
         colorPickerProduct: null,
+        serialPicker:        null,   // { product_name, serials: [...] }
+        serialPickerLoading: false,
 
         subtotal: 0,
         total:    0,
@@ -62,6 +64,18 @@ function editSale() {
         },
 
         addProduct(product) {
+            // IMEI search result — the specific unit is already known
+            if (product.is_serialized && product.serial_number) {
+                this._pushSerialItem(product, product.serial_number, product.serial_id, product.price);
+                this.searchQuery   = '';
+                this.searchResults = [];
+                return;
+            }
+            // Serialized product tile — pick the unit from this order's shop
+            if (product.is_serialized) {
+                this.openSerialPicker(product);
+                return;
+            }
             if (product.colors && product.colors.length > 0) {
                 this.colorPickerProduct = product;
                 return;
@@ -69,6 +83,49 @@ function editSale() {
             this._pushItem(product, null, null);
             this.searchQuery   = '';
             this.searchResults = [];
+        },
+
+        async openSerialPicker(product) {
+            this.serialPickerLoading = true;
+            this.serialPicker = { product_id: product.id, product_name: product.name, price: product.price, serials: [] };
+            try {
+                const r = await fetch(`/pos/orders/${_orderData.id}/serials/${product.id}`);
+                const data = await r.json();
+                // Hide units already on a line of this edit
+                const used = this.items.map(i => i.serial_number).filter(Boolean);
+                this.serialPicker.serials = (data.serials || []).filter(s => !used.includes(s.serial_number));
+            } catch(e) { this.serialPicker.serials = []; }
+            this.serialPickerLoading = false;
+        },
+
+        confirmSerialAdd(s) {
+            this._pushSerialItem(
+                { id: this.serialPicker.product_id, name: this.serialPicker.product_name },
+                s.serial_number, s.id,
+                s.selling_price || this.serialPicker.price
+            );
+            this.serialPicker  = null;
+            this.searchQuery   = '';
+            this.searchResults = [];
+        },
+
+        _pushSerialItem(product, serialNumber, serialId, price) {
+            if (this.items.some(i => i.serial_number === serialNumber)) {
+                this.errorMsg = `Serial ${serialNumber} is already on this sale.`;
+                return;
+            }
+            this.items.push({
+                product_id:    product.id,
+                product_name:  product.name,
+                color_id:      null,
+                color_name:    null,
+                qty:           1,
+                unit_price:    Number(price) || 0,
+                cost_price:    Number(product.cost_price) || 0,
+                serial_id:     serialId || null,
+                serial_number: serialNumber,
+            });
+            this.recalc();
         },
 
         confirmColorAdd(color) {
@@ -80,7 +137,7 @@ function editSale() {
 
         _pushItem(product, colorId, colorName) {
             const existing = this.items.find(
-                i => i.product_id === product.id && i.color_id === colorId
+                i => i.product_id === product.id && i.color_id === colorId && !i.serial_number
             );
             if (existing) { existing.qty++; this.recalc(); return; }
             this.items.push({
@@ -91,6 +148,8 @@ function editSale() {
                 qty:          1,
                 unit_price:   product.price,
                 cost_price:   product.cost_price,
+                serial_id:     null,
+                serial_number: null,
             });
             this.recalc();
         },
@@ -122,10 +181,11 @@ function editSale() {
                     },
                     body: JSON.stringify({
                         items: this.items.map(i => ({
-                            product_id: i.product_id,
-                            quantity:   i.qty,
-                            unit_price: i.unit_price,
-                            color_id:   i.color_id || null,
+                            product_id:    i.product_id,
+                            quantity:      i.qty,
+                            unit_price:    i.unit_price,
+                            color_id:      i.color_id || null,
+                            serial_number: i.serial_number || null,
                         })),
                         payment_method:  this.paymentMethod,
                         discount:        this.discount,
@@ -213,14 +273,25 @@ function editSale() {
                                         <i class="fas fa-circle text-[8px]"></i>
                                         <span x-text="item.color_name"></span>
                                     </div>
+                                    <div x-show="item.serial_number"
+                                         class="text-xs font-mono text-indigo-600 mt-0.5 flex items-center gap-1">
+                                        <i class="fas fa-barcode text-[10px]"></i>
+                                        <span x-text="item.serial_number"></span>
+                                    </div>
                                 </td>
                                 <td class="px-4 py-3 text-center">
-                                    <input type="number"
-                                           x-model.number="item.qty"
-                                           @input="item.qty = Math.max(1, parseInt(item.qty) || 1); recalc()"
-                                           min="1"
-                                           class="w-16 text-center border border-gray-300 rounded-lg px-2 py-1.5 text-sm
-                                                  focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent">
+                                    {{-- Serialized: one physical unit per line --}}
+                                    <template x-if="item.serial_number">
+                                        <span class="inline-block w-16 text-center text-sm text-gray-500 font-semibold">1</span>
+                                    </template>
+                                    <template x-if="!item.serial_number">
+                                        <input type="number"
+                                               x-model.number="item.qty"
+                                               @input="item.qty = Math.max(1, parseInt(item.qty) || 1); recalc()"
+                                               min="1"
+                                               class="w-16 text-center border border-gray-300 rounded-lg px-2 py-1.5 text-sm
+                                                      focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent">
+                                    </template>
                                 </td>
                                 <td class="px-4 py-3">
                                     <div class="flex items-center justify-end gap-1">
@@ -478,6 +549,46 @@ function editSale() {
 
     </div>
 </div>
+
+{{-- Serial picker modal (units at this order's shop) --}}
+<template x-teleport="body">
+    <div x-show="serialPicker" x-transition
+         class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+         @keydown.escape.window="serialPicker = null">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-96 max-h-[80vh] flex flex-col"
+             @click.outside="serialPicker = null">
+            <h3 class="font-bold text-gray-900 text-base mb-1" x-text="serialPicker?.product_name"></h3>
+            <p class="text-xs text-gray-500 mb-4">Select the unit (IMEI / Serial):</p>
+
+            <div x-show="serialPickerLoading" class="text-center py-8 text-gray-300">
+                <i class="fas fa-spinner fa-spin text-2xl"></i>
+            </div>
+            <div x-show="!serialPickerLoading && (serialPicker?.serials || []).length === 0"
+                 class="text-center py-8 text-sm text-gray-400">
+                No units in stock for this product.
+            </div>
+
+            <div class="space-y-2 overflow-y-auto flex-1">
+                <template x-for="s in serialPicker?.serials || []" :key="s.id">
+                    <button @click="confirmSerialAdd(s)"
+                            class="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-300
+                                   hover:border-indigo-400 hover:bg-indigo-50 transition-all text-left">
+                        <div class="min-w-0">
+                            <div class="text-sm font-mono font-medium text-gray-800 truncate" x-text="s.serial_number"></div>
+                            <div class="text-xs text-gray-400 mt-0.5 truncate"
+                                 x-text="Object.entries(s.attributes || {}).map(([k,v]) => `${k}: ${v}`).join(' · ')"></div>
+                        </div>
+                        <span class="text-sm font-bold text-indigo-700 shrink-0 ml-3"
+                              x-text="`Rs. ${Number(s.selling_price).toLocaleString()}`"></span>
+                    </button>
+                </template>
+            </div>
+
+            <button @click="serialPicker = null"
+                    class="btn-outline w-full mt-4 justify-center text-sm">Cancel</button>
+        </div>
+    </div>
+</template>
 
 {{-- Color picker modal --}}
 <template x-teleport="body">
