@@ -81,6 +81,7 @@ class ReportController extends Controller
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->whereBetween(DB::raw('DATE(orders.created_at)'), [$from, $to])
             ->where('orders.status', 'delivered')
+            ->whereNull('orders.deleted_at')
             ->when($shopFilter === 'main', fn($q) => $q->whereNull('orders.shop_id'))
             ->when($shopFilter !== '' && $shopFilter !== 'main', fn($q) => $q->where('orders.shop_id', (int) $shopFilter));
 
@@ -138,7 +139,8 @@ class ReportController extends Controller
                 ->join('products',  'products.id',  '=', 'order_items.product_id')
                 ->join('categories as cats', 'cats.id', '=', 'products.category_id')
                 ->whereBetween(DB::raw('DATE(orders.created_at)'), [$from, $to])
-                ->where('orders.status', 'delivered'));
+                ->where('orders.status', 'delivered')
+                ->whereNull('orders.deleted_at'));
 
             if ($sectionId)  $baseItems->where('cats.section_id', $sectionId);
             if ($categoryId) $baseItems->where(fn($q) =>
@@ -173,12 +175,16 @@ class ReportController extends Controller
             $totalCogs = $shopRaw(DB::table('order_items')
                 ->join('orders', 'orders.id', '=', 'order_items.order_id')
                 ->whereBetween(DB::raw('DATE(orders.created_at)'), [$from, $to])
-                ->where('orders.status', 'delivered'))
+                ->where('orders.status', 'delivered')
+                // Raw join bypasses soft deletes — without this, deleted sales
+                // contribute cost but no revenue and drag the report into loss
+                ->whereNull('orders.deleted_at'))
                 ->sum(DB::raw('order_items.quantity * COALESCE(order_items.cost_price, 0)'));
 
             $monthlyData = $shopRaw(DB::table('orders')
                 ->whereBetween(DB::raw('DATE(created_at)'), [$from, $to])
-                ->where('status', 'delivered'), 'orders.shop_id')
+                ->where('status', 'delivered')
+                ->whereNull('deleted_at'), 'orders.shop_id')
                 ->select(
                     DB::raw('MONTH(created_at) as month'),
                     DB::raw('SUM(total) as revenue')
