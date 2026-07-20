@@ -82,6 +82,7 @@ class PosController extends Controller
         $todayPaymentsList = \App\Models\AccountLedger::whereDate('created_at', today())
             ->where('type', 'credit')
             ->whereNull('return_id')
+            ->whereNull('order_id')
             ->whereHas('customer', fn($q) => $q->forShop($shopId))
             ->when(!$isAdmin && !$shopId, fn($q) => $q->where('user_id', $user->id))
             ->with(['customer', 'user'])
@@ -204,6 +205,7 @@ class PosController extends Controller
         $todayPaymentsList = \App\Models\AccountLedger::whereDate('created_at', today())
             ->where('type', 'credit')
             ->whereNull('return_id')
+            ->whereNull('order_id')
             ->whereHas('customer', fn($q) => $q->forShop($shopId))
             ->when(!$isAdmin && !$shopId, fn($q) => $q->where('user_id', $user->id))
             ->get(['amount']);
@@ -297,6 +299,7 @@ class PosController extends Controller
         $payments = \App\Models\AccountLedger::whereDate('created_at', today())
             ->where('type', 'credit')
             ->whereNull('return_id')
+            ->whereNull('order_id')
             ->whereHas('customer', fn($q) => $q->forShop($shopId))
             ->when(!$isAdmin && !$shopId, fn($q) => $q->where('user_id', $user->id))
             ->latest()
@@ -1088,6 +1091,7 @@ class PosController extends Controller
                     : "POS Sale — {$order->order_number} | Total: Rs.{$total} | Items: {$itemsList}";
                 AccountLedger::create([
                     'customer_id'   => $customer->id,
+                    'order_id'      => $order->id,
                     'type'          => 'debit',
                     'amount'        => $khataDue,
                     'balance_after' => $newBal,
@@ -1098,7 +1102,9 @@ class PosController extends Controller
                 ]);
                 $customer->update(['credit_balance' => $newBal]);
             } elseif ($khataDue == 0 && $customer) {
-                // Full cash/bank payment — record sale + payment in ledger without changing balance
+                // Full cash/bank payment — record sale + payment in ledger without changing balance.
+                // These rows carry order_id: the money is already counted through the order
+                // itself, so every "khata collections" query excludes order-linked rows.
                 $bal = $customer->credit_balance;
                 $payLabel = match($payMethod) {
                     'bank_transfer' => 'Bank Transfer',
@@ -1109,6 +1115,7 @@ class PosController extends Controller
 
                 AccountLedger::create([
                     'customer_id'    => $customer->id,
+                    'order_id'       => $order->id,
                     'type'           => 'debit',
                     'amount'         => $total,
                     'balance_after'  => $bal - $total,
@@ -1118,6 +1125,7 @@ class PosController extends Controller
                 ]);
                 AccountLedger::create([
                     'customer_id'    => $customer->id,
+                    'order_id'       => $order->id,
                     'type'           => 'credit',
                     'payment_method' => in_array($payMethod, ['cash', 'split']) ? 'cash' : 'bank_transfer',
                     'bank_account_id' => $bankAccId,
@@ -1169,6 +1177,28 @@ class PosController extends Controller
             'footer'       => $shop?->receipt_footer ?? Setting::get('receipt_footer'),
         ];
         return view('pos.receipt', compact('order', 'settings'));
+    }
+
+    /**
+     * All machine-written customer ledger rows belonging to an order:
+     * matched by order_id, with a reference+description fallback for rows
+     * written before the order_id column existed. Return-linked rows are
+     * never included (returns own their reversal).
+     */
+    private function orderLedgerRows(Order $order, int $customerId)
+    {
+        return AccountLedger::where('customer_id', $customerId)
+            ->whereNull('return_id')
+            ->where(fn($q) => $q
+                ->where('order_id', $order->id)
+                ->orWhere(fn($qq) => $qq
+                    ->where('reference', $order->order_number)
+                    ->where(fn($d) => $d
+                        ->where('description', 'like', 'Sale —%')
+                        ->orWhere('description', 'like', 'Edited Sale —%')
+                        ->orWhere('description', 'like', 'Payment Received —%')
+                        ->orWhere('description', 'like', 'POS Sale —%')
+                        ->orWhere('description', 'like', 'Partial Payment —%'))));
     }
 
     // ── Delete Sale ───────────────────────────────────────────────────────
@@ -1231,15 +1261,17 @@ class PosController extends Controller
                     $ledgers->each->delete();
                     $oldVendor->increment('balance', $ledgerTotal);
                 }
-            } elseif ($oldCustomer && in_array($oldMethod, ['khata', 'partial'])) {
-                $ledgers     = AccountLedger::where('reference', $order->order_number)
-                    ->where('type', 'debit')
-                    ->where('customer_id', $oldCustomer->id)
-                    ->get();
-                $ledgerTotal = $ledgers->sum('amount');
-                if ($ledgerTotal > 0) {
-                    $ledgers->each->delete();
-                    $oldCustomer->increment('credit_balance', $ledgerTotal);
+            } elseif ($oldCustomer) {
+                // Remove ALL of this order's ledger rows (khata debits AND the
+                // sale/payment info pair) and reverse their net balance effect
+                $ledgers = $this->orderLedgerRows($order, $oldCustomer->id)->get();
+                if ($ledgers->isNotEmpty()) {
+                    $net = (float) $ledgers->where('type', 'debit')->sum('amount')
+                         - (float) $ledgers->where('type', 'credit')->sum('amount');
+                    AccountLedger::whereIn('id', $ledgers->pluck('id'))->delete();
+                    if (abs($net) > 0.001) {
+                        $oldCustomer->increment('credit_balance', $net);
+                    }
                 }
             }
 
@@ -1447,15 +1479,19 @@ class PosController extends Controller
                     $oldVendor->increment('balance', $ledgerTotal);
                     $oldVendor->refresh();
                 }
-            } elseif ($oldCustomer && in_array($oldMethod, ['khata', 'partial'])) {
-                $oldLedgers  = AccountLedger::where('reference', $order->order_number)
-                    ->where('type', 'debit')
-                    ->where('customer_id', $oldCustomer->id)
-                    ->get();
-                $ledgerTotal = $oldLedgers->sum('amount');
-                if ($ledgerTotal > 0) {
-                    $oldLedgers->each->delete();
-                    $oldCustomer->increment('credit_balance', $ledgerTotal);
+            } elseif ($oldCustomer) {
+                // Remove ALL of this order's ledger rows — khata debits AND the
+                // sale/payment info pair — and reverse their net balance effect.
+                // (Pairs net to zero; a payment-method change used to leave the
+                // old pair behind, double-counting khata collections.)
+                $oldLedgers = $this->orderLedgerRows($order, $oldCustomer->id)->get();
+                if ($oldLedgers->isNotEmpty()) {
+                    $net = (float) $oldLedgers->where('type', 'debit')->sum('amount')
+                         - (float) $oldLedgers->where('type', 'credit')->sum('amount');
+                    AccountLedger::whereIn('id', $oldLedgers->pluck('id'))->delete();
+                    if (abs($net) > 0.001) {
+                        $oldCustomer->increment('credit_balance', $net);
+                    }
                     $oldCustomer->refresh();
                 }
             }
@@ -1632,6 +1668,7 @@ class PosController extends Controller
 
                 AccountLedger::create([
                     'customer_id'   => $customer->id,
+                    'order_id'      => $order->id,
                     'type'          => 'debit',
                     'amount'        => $khataDue,
                     'balance_after' => $newBal,
@@ -1654,6 +1691,7 @@ class PosController extends Controller
 
                 AccountLedger::create([
                     'customer_id'    => $customer->id,
+                    'order_id'       => $order->id,
                     'type'           => 'debit',
                     'amount'         => $newTotal,
                     'balance_after'  => $bal - $newTotal,
@@ -1663,6 +1701,7 @@ class PosController extends Controller
                 ]);
                 AccountLedger::create([
                     'customer_id'    => $customer->id,
+                    'order_id'       => $order->id,
                     'type'           => 'credit',
                     'payment_method' => in_array($payMethod, ['cash', 'split']) ? 'cash' : 'bank_transfer',
                     'bank_account_id' => $bankAccId,

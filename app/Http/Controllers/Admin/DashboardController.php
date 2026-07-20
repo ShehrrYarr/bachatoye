@@ -90,7 +90,7 @@ class DashboardController extends Controller
 
         $khataEntries = $ledgerScope(AccountLedger::whereDate('created_at', today()))
             ->where('type', 'credit')
-            ->whereNull('return_id')
+            ->whereNull('return_id')->whereNull('order_id')
             ->get(['payment_method', 'amount']);
 
         $khataCash  = $khataEntries->where('payment_method', 'cash')->sum('amount');
@@ -177,7 +177,7 @@ class DashboardController extends Controller
 
         $todayKhataEntries = $ledgerScope(AccountLedger::whereDate('created_at', today()))
             ->where('type', 'credit')
-            ->whereNull('return_id')
+            ->whereNull('return_id')->whereNull('order_id')
             ->with(['customer', 'user', 'bankAccount'])->latest()->get();
 
         $todayExpensesList = Expense::forShopFilter($shopFilter)->whereDate('expense_date', today())
@@ -223,7 +223,7 @@ class DashboardController extends Controller
         });
 
         $khataEntries = AccountLedger::whereDate('created_at', today())->where('type', 'credit')
-            ->whereNull('return_id')
+            ->whereNull('return_id')->whereNull('order_id')
             ->with('bankAccount')
             ->get(['id', 'payment_method', 'bank_account_id', 'amount']);
 
@@ -343,7 +343,7 @@ class DashboardController extends Controller
 
         $khataEntries = AccountLedger::where('user_id', $user->id)
             ->whereDate('created_at', today())->where('type', 'credit')
-            ->whereNull('return_id')
+            ->whereNull('return_id')->whereNull('order_id')
             ->get(['payment_method', 'amount']);
         $khataTotal = (float) $khataEntries->sum('amount');
         $khataCash  = (float) $khataEntries->where('payment_method', 'cash')->sum('amount');
@@ -420,7 +420,7 @@ class DashboardController extends Controller
 
         // ── Khata receipts ───────────────────────────────────────────────────
         $khataEntries = AccountLedger::where('type', 'credit')
-            ->whereNull('return_id')
+            ->whereNull('return_id')->whereNull('order_id')
             ->whereBetween('created_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
             ->get(['payment_method', 'amount']);
 
@@ -578,7 +578,7 @@ class DashboardController extends Controller
         $khataEntries = AccountLedger::where('user_id', $user->id)
             ->whereDate('created_at', today())
             ->where('type', 'credit')
-            ->whereNull('return_id')
+            ->whereNull('return_id')->whereNull('order_id')
             ->get(['payment_method', 'amount']);
         $khataTotal = (float) $khataEntries->sum('amount');
         $khataCash  = (float) $khataEntries->where('payment_method', 'cash')->sum('amount');
@@ -639,7 +639,7 @@ class DashboardController extends Controller
         $todayKhataEntries = AccountLedger::where('user_id', $user->id)
             ->whereDate('created_at', today())
             ->where('type', 'credit')
-            ->whereNull('return_id')
+            ->whereNull('return_id')->whereNull('order_id')
             ->with(['customer', 'bankAccount'])->latest()->get();
 
         $todayPurchasesList = $user->can('purchases.view')
@@ -751,7 +751,7 @@ class DashboardController extends Controller
 
         $khataEntries = AccountLedger::whereHas('customer', fn($q) => $q->forShop($shopId))
             ->whereDate('created_at', today())->where('type', 'credit')
-            ->whereNull('return_id')
+            ->whereNull('return_id')->whereNull('order_id')
             ->get(['payment_method', 'amount']);
         $khataTotal = (float) $khataEntries->sum('amount');
         $khataCash  = (float) $khataEntries->where('payment_method', 'cash')->sum('amount');

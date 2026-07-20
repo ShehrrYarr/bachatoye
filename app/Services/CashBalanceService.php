@@ -42,8 +42,11 @@ class CashBalanceService
             ->whereNull('deleted_at')
             ->sum('total');
 
+        // Genuine repayments only — sale-linked rows (order_id set) are already
+        // counted through the order itself
         $cashInKhata = (float) AccountLedger::where('type', 'credit')
             ->whereNull('return_id')
+            ->whereNull('order_id')
             ->where('payment_method', 'cash')
             ->whereHas('customer', fn($q) => $q->forShop($shopId))
             ->sum('amount');
@@ -108,6 +111,7 @@ class CashBalanceService
 
             $bankInKhata = (float) AccountLedger::where('type', 'credit')
                 ->whereNull('return_id')
+                ->whereNull('order_id')
                 ->where('payment_method', 'bank_transfer')
                 ->where('bank_account_id', $bank->id)
                 ->sum('amount');
