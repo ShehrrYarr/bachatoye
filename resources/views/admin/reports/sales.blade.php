@@ -234,8 +234,33 @@
                     $orderCogs      = $order->items->sum(fn($i) => (float) $i->cost_price * (int) $i->quantity);
                     $orderProfit    = (float) $order->total - $orderCogs;
                     $orderMarginPct = (float) $order->total > 0 ? round($orderProfit / (float) $order->total * 100, 1) : 0;
+                    $orderData = [
+                        'number'   => $order->order_number,
+                        'date'     => $order->created_at->format('d M Y, h:i A'),
+                        'customer' => $order->customer_name ?: 'Walk-in',
+                        'salesman' => $order->servedBy?->name ?? '—',
+                        'payment'  => ucfirst(str_replace('_', ' ', $order->payment_method)),
+                        'is_split' => $order->payment_method === 'split',
+                        'cash'     => (float) $order->cash_amount,
+                        'bank'     => (float) $order->bank_amount,
+                        'total'    => (float) $order->total,
+                        'discount' => (float) $order->discount_amount,
+                        'cogs'     => $orderCogs,
+                        'profit'   => $orderProfit,
+                        'margin'   => $orderMarginPct,
+                        'items'    => $order->items->map(fn($i) => [
+                            'name'       => $i->product_name . ($i->color_name ? ' (' . $i->color_name . ')' : ''),
+                            'qty'        => (int) $i->quantity,
+                            'unit_price' => (float) $i->unit_price,
+                            'cost_price' => (float) $i->cost_price,
+                            'total'      => (float) $i->unit_price * (int) $i->quantity,
+                            'profit'     => ((float) $i->unit_price - (float) $i->cost_price) * (int) $i->quantity,
+                        ])->values()->toArray(),
+                    ];
                 @endphp
-                <tr>
+                <tr class="cursor-pointer hover:bg-primary-50 transition-colors"
+                    data-order="{{ json_encode($orderData) }}"
+                    onclick="openOrderModal(JSON.parse(this.dataset.order))">
                     <td class="font-mono">{{ $order->order_number }}</td>
                     <td>{{ $order->customer_name }}</td>
                     <td><span class="badge {{ $order->source === 'pos' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">{{ strtoupper($order->source) }}</span></td>
@@ -294,6 +319,78 @@
     @endif
 </div>
 
+{{-- Order detail modal --}}
+<div id="orderModalBackdrop"
+     class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 hidden"
+     onclick="if(event.target===this) closeOrderModal()">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+        {{-- Header --}}
+        <div class="flex items-start justify-between px-6 py-4 border-b border-gray-200">
+            <div>
+                <h3 class="text-lg font-bold text-gray-900 font-mono" id="omOrderNumber"></h3>
+                <p class="text-xs text-gray-400 mt-0.5" id="omDate"></p>
+            </div>
+            <button onclick="closeOrderModal()"
+                    class="text-gray-400 hover:text-gray-700 text-2xl leading-none ml-4 mt-0.5 transition-colors">&times;</button>
+        </div>
+        {{-- Meta info --}}
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 px-6 py-3 border-b border-gray-100 text-sm">
+            <div>
+                <div class="text-xs text-gray-400 uppercase tracking-wide font-semibold">Customer</div>
+                <div class="font-medium text-gray-800 mt-0.5" id="omCustomer"></div>
+            </div>
+            <div>
+                <div class="text-xs text-gray-400 uppercase tracking-wide font-semibold">Salesman</div>
+                <div class="font-medium text-gray-800 mt-0.5" id="omSalesman"></div>
+            </div>
+            <div>
+                <div class="text-xs text-gray-400 uppercase tracking-wide font-semibold">Payment</div>
+                <div class="font-medium text-gray-800 mt-0.5" id="omPayment"></div>
+            </div>
+            <div id="omDiscountWrap" class="hidden">
+                <div class="text-xs text-gray-400 uppercase tracking-wide font-semibold">Discount</div>
+                <div class="font-medium text-red-600 mt-0.5" id="omDiscount"></div>
+            </div>
+        </div>
+        {{-- Split payment breakdown (shown only for split orders) --}}
+        <div id="omSplitWrap" class="hidden px-6 py-2 bg-blue-50 border-b border-blue-100 text-sm flex gap-6">
+            <span class="text-gray-600">Cash: <span class="font-semibold text-gray-900" id="omCashAmt"></span></span>
+            <span class="text-gray-600">Bank: <span class="font-semibold text-gray-900" id="omBankAmt"></span></span>
+        </div>
+        {{-- Items table --}}
+        <div class="overflow-y-auto flex-1 px-6 py-4">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b-2 border-gray-200 text-xs text-gray-400 uppercase tracking-wide">
+                        <th class="text-left pb-2 font-semibold">Item</th>
+                        <th class="text-center pb-2 font-semibold">Qty</th>
+                        <th class="text-right pb-2 font-semibold">Unit Price</th>
+                        <th class="text-right pb-2 font-semibold">Cost</th>
+                        <th class="text-right pb-2 font-semibold">Total</th>
+                        <th class="text-right pb-2 font-semibold">Profit</th>
+                    </tr>
+                </thead>
+                <tbody id="omItemsBody"></tbody>
+            </table>
+        </div>
+        {{-- Footer totals --}}
+        <div class="border-t-2 border-gray-200 px-6 py-4 bg-gray-50 grid grid-cols-3 gap-4 text-sm">
+            <div class="text-center">
+                <div class="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-1">Revenue</div>
+                <div class="font-bold text-gray-900 text-base" id="omTotal"></div>
+            </div>
+            <div class="text-center">
+                <div class="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-1">Cost (COGS)</div>
+                <div class="font-semibold text-gray-600 text-base" id="omCogs"></div>
+            </div>
+            <div class="text-center">
+                <div class="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-1">Profit</div>
+                <div class="font-bold text-base" id="omProfit"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script>
 function salesFilter() {
@@ -345,6 +442,63 @@ function salesFilter() {
         },
     };
 }
+
+const _fmt = n => 'Rs. ' + Math.round(Math.abs(n)).toLocaleString('en-PK');
+
+function openOrderModal(data) {
+    document.getElementById('omOrderNumber').textContent = data.number;
+    document.getElementById('omDate').textContent = data.date;
+    document.getElementById('omCustomer').textContent = data.customer;
+    document.getElementById('omSalesman').textContent = data.salesman;
+    document.getElementById('omPayment').textContent = data.payment;
+
+    const discountWrap = document.getElementById('omDiscountWrap');
+    if (data.discount > 0) {
+        discountWrap.classList.remove('hidden');
+        document.getElementById('omDiscount').textContent = '− ' + _fmt(data.discount);
+    } else {
+        discountWrap.classList.add('hidden');
+    }
+
+    const splitWrap = document.getElementById('omSplitWrap');
+    if (data.is_split) {
+        splitWrap.classList.remove('hidden');
+        document.getElementById('omCashAmt').textContent = _fmt(data.cash);
+        document.getElementById('omBankAmt').textContent = _fmt(data.bank);
+    } else {
+        splitWrap.classList.add('hidden');
+    }
+
+    const tbody = document.getElementById('omItemsBody');
+    tbody.innerHTML = data.items.map(item => {
+        const profitColor = item.profit >= 0 ? 'text-emerald-600' : 'text-red-600';
+        return `<tr class="border-b border-gray-100 hover:bg-gray-50">
+            <td class="py-2 pr-3 font-medium text-gray-800">${item.name}</td>
+            <td class="py-2 text-center text-gray-600">${item.qty}</td>
+            <td class="py-2 text-right text-gray-700">${_fmt(item.unit_price)}</td>
+            <td class="py-2 text-right text-gray-500">${_fmt(item.cost_price)}</td>
+            <td class="py-2 text-right font-semibold text-gray-900">${_fmt(item.total)}</td>
+            <td class="py-2 text-right font-semibold ${profitColor}">${_fmt(item.profit)}</td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('omTotal').textContent = _fmt(data.total);
+    document.getElementById('omCogs').textContent  = _fmt(data.cogs);
+
+    const profitEl = document.getElementById('omProfit');
+    profitEl.textContent = _fmt(data.profit) + ' (' + data.margin + '%)';
+    profitEl.className   = 'font-bold text-base ' + (data.profit >= 0 ? 'text-emerald-600' : 'text-red-600');
+
+    document.getElementById('orderModalBackdrop').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeOrderModal() {
+    document.getElementById('orderModalBackdrop').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeOrderModal(); });
 </script>
 @endpush
 @endsection

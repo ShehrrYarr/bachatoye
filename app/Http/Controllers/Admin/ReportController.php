@@ -63,7 +63,7 @@ class ReportController extends Controller
             );
         }
 
-        $orders = $query->with('items')->latest()->get();
+        $orders = $query->with(['items', 'servedBy'])->latest()->get();
 
         $totalRevenue       = $orders->sum('total');
         $totalOrders        = $orders->count();
