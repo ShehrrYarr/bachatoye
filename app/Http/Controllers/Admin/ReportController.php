@@ -70,6 +70,9 @@ class ReportController extends Controller
         $avgOrderValue      = $totalOrders ? round($totalRevenue / $totalOrders, 2) : 0;
         $itemsSold          = $orders->sum(fn($o) => $o->items->sum('quantity'));
         $totalExchangeValue = $orders->whereNotNull('exchange_value')->sum('exchange_value');
+        $totalCogs          = $orders->sum(fn($o) => $o->items->sum(fn($i) => (float) $i->cost_price * (int) $i->quantity));
+        $totalProfit        = $totalRevenue - $totalCogs;
+        $totalMarginPct     = $totalRevenue > 0 ? round($totalProfit / $totalRevenue * 100, 1) : 0;
 
         $dailyData = $orders->groupBy(fn($o) => $o->created_at->toDateString())
                             ->map(fn($g, $date) => ['date' => $date, 'total' => $g->sum('total')])
@@ -108,7 +111,8 @@ class ReportController extends Controller
 
         return view('admin.reports.sales', compact(
             'orders', 'totalRevenue', 'totalOrders', 'avgOrderValue', 'itemsSold',
-            'totalExchangeValue', 'dailyData', 'topProducts', 'byPayment', 'from', 'to',
+            'totalExchangeValue', 'totalCogs', 'totalProfit', 'totalMarginPct',
+            'dailyData', 'topProducts', 'byPayment', 'from', 'to',
             'sections', 'sectionId', 'shops', 'shopFilter'
         ));
     }

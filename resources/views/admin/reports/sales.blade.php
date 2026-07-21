@@ -82,7 +82,7 @@
 </div>
 
 {{-- Summary stats --}}
-<div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
+<div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 mb-2">
     <div class="stat-card">
         <div class="stat-icon bg-primary-100"><i class="fas fa-chart-line text-primary-600"></i></div>
         <div>
@@ -111,11 +111,36 @@
             <div class="text-sm text-gray-500">Items Sold</div>
         </div>
     </div>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-4 mb-6">
     <div class="stat-card">
         <div class="stat-icon bg-orange-100"><i class="fas fa-sync-alt text-orange-600"></i></div>
         <div>
             <div class="text-2xl font-extrabold text-gray-900">Rs. {{ number_format($totalExchangeValue) }}</div>
             <div class="text-sm text-gray-500">Exchange Value</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon bg-red-100"><i class="fas fa-shopping-cart text-red-600"></i></div>
+        <div>
+            <div class="text-2xl font-extrabold text-gray-900">Rs. {{ number_format($totalCogs) }}</div>
+            <div class="text-sm text-gray-500">Total Cost (COGS)</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon {{ $totalProfit >= 0 ? 'bg-emerald-100' : 'bg-red-100' }}">
+            <i class="fas fa-hand-holding-usd {{ $totalProfit >= 0 ? 'text-emerald-600' : 'text-red-600' }}"></i>
+        </div>
+        <div>
+            <div class="text-2xl font-extrabold {{ $totalProfit >= 0 ? 'text-emerald-600' : 'text-red-600' }}">
+                Rs. {{ number_format(abs($totalProfit)) }}
+            </div>
+            <div class="text-sm text-gray-500">
+                {{ $totalProfit >= 0 ? 'Total Profit' : 'Total Loss' }}
+                <span class="ml-1 text-xs font-bold {{ $totalProfit >= 0 ? 'text-emerald-500' : 'text-red-500' }}">
+                    ({{ $totalMarginPct }}%)
+                </span>
+            </div>
         </div>
     </div>
 </div>
@@ -196,6 +221,8 @@
                     <th>Source</th>
                     <th>Payment</th>
                     <th class="text-right">Amount</th>
+                    <th class="text-right">Cost</th>
+                    <th class="text-right">Margin</th>
                     <th class="text-right">Exchange</th>
                     <th>Status</th>
                     <th>Date</th>
@@ -203,12 +230,26 @@
             </thead>
             <tbody>
                 @forelse($orders as $order)
+                @php
+                    $orderCogs      = $order->items->sum(fn($i) => (float) $i->cost_price * (int) $i->quantity);
+                    $orderProfit    = (float) $order->total - $orderCogs;
+                    $orderMarginPct = (float) $order->total > 0 ? round($orderProfit / (float) $order->total * 100, 1) : 0;
+                @endphp
                 <tr>
                     <td class="font-mono">{{ $order->order_number }}</td>
                     <td>{{ $order->customer_name }}</td>
                     <td><span class="badge {{ $order->source === 'pos' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">{{ strtoupper($order->source) }}</span></td>
                     <td>{{ ucfirst(str_replace('_', ' ', $order->payment_method)) }}</td>
                     <td class="text-right font-semibold">Rs. {{ number_format($order->total) }}</td>
+                    <td class="text-right text-gray-600">Rs. {{ number_format($orderCogs) }}</td>
+                    <td class="text-right">
+                        <div class="font-semibold {{ $orderProfit >= 0 ? 'text-emerald-600' : 'text-red-600' }}">
+                            Rs. {{ number_format(abs($orderProfit)) }}
+                        </div>
+                        <div class="text-xs {{ $orderMarginPct >= 0 ? 'text-emerald-500' : 'text-red-400' }}">
+                            {{ $orderMarginPct }}%
+                        </div>
+                    </td>
                     <td class="text-right">
                         @if($order->exchange_value > 0)
                             <div class="text-xs font-semibold text-orange-600">Rs. {{ number_format($order->exchange_value) }}</div>
@@ -223,9 +264,29 @@
                     <td class="text-xs text-gray-500">{{ $order->created_at->format('d M Y') }}</td>
                 </tr>
                 @empty
-                <tr><td colspan="8" class="text-center py-8 text-gray-400">No orders in this period.</td></tr>
+                <tr><td colspan="10" class="text-center py-8 text-gray-400">No orders in this period.</td></tr>
                 @endforelse
             </tbody>
+            @if($orders->count() > 1)
+            <tfoot class="bg-gray-50 border-t-2 border-gray-200 font-semibold text-sm">
+                <tr>
+                    <td colspan="4" class="px-4 py-3 text-gray-700">
+                        {{ $totalOrders }} orders total
+                    </td>
+                    <td class="px-4 py-3 text-right text-gray-900">Rs. {{ number_format($totalRevenue) }}</td>
+                    <td class="px-4 py-3 text-right text-gray-600">Rs. {{ number_format($totalCogs) }}</td>
+                    <td class="px-4 py-3 text-right">
+                        <div class="{{ $totalProfit >= 0 ? 'text-emerald-600' : 'text-red-600' }}">
+                            Rs. {{ number_format(abs($totalProfit)) }}
+                        </div>
+                        <div class="text-xs font-normal {{ $totalMarginPct >= 0 ? 'text-emerald-500' : 'text-red-400' }}">
+                            {{ $totalMarginPct }}%
+                        </div>
+                    </td>
+                    <td colspan="3"></td>
+                </tr>
+            </tfoot>
+            @endif
         </table>
     </div>
     @if(method_exists($orders, 'links'))
