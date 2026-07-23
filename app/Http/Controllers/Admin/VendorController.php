@@ -155,7 +155,7 @@ class VendorController extends Controller
      */
     public function updateLedgerEntry(Request $request, Vendor $vendor, VendorLedger $entry)
     {
-        abort_unless($entry->vendor_id === $vendor->id, 404);
+        abort_unless((int) $entry->vendor_id === (int) $vendor->id, 404);
         abort_unless($entry->isManual(), 403, 'Only manual entries can be edited.');
 
         $data = $request->validate([
@@ -201,7 +201,7 @@ class VendorController extends Controller
     /** Delete a MANUAL vendor ledger entry and roll it out of the balance chain. */
     public function deleteLedgerEntry(Vendor $vendor, VendorLedger $entry)
     {
-        abort_unless($entry->vendor_id === $vendor->id, 404);
+        abort_unless((int) $entry->vendor_id === (int) $vendor->id, 404);
         abort_unless($entry->isManual(), 403, 'Only manual entries can be deleted.');
 
         DB::transaction(function () use ($vendor, $entry) {

@@ -262,7 +262,7 @@ class CustomerController extends Controller
     public function updateLedgerEntry(Request $request, Customer $customer, AccountLedger $entry)
     {
         $this->guardShop($customer);
-        abort_unless($entry->customer_id === $customer->id, 404);
+        abort_unless((int) $entry->customer_id === (int) $customer->id, 404);
         abort_unless($entry->isManual(), 403, 'Only manual entries can be edited.');
 
         $data = $request->validate([
@@ -318,7 +318,7 @@ class CustomerController extends Controller
     public function deleteLedgerEntry(Customer $customer, AccountLedger $entry)
     {
         $this->guardShop($customer);
-        abort_unless($entry->customer_id === $customer->id, 404);
+        abort_unless((int) $entry->customer_id === (int) $customer->id, 404);
         abort_unless($entry->isManual(), 403, 'Only manual entries can be deleted.');
 
         DB::transaction(function () use ($customer, $entry) {
