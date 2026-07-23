@@ -129,6 +129,24 @@
     </div>
     @endif
 
+    {{-- Vendor Received --}}
+    @if(($report['vendor_recv_total'] ?? 0) > 0)
+    <div class="card p-4 border-l-4 border-teal-400">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-semibold text-teal-700"><i class="fas fa-hand-holding-dollar mr-1.5"></i>Vendor Received (In)</span>
+            <span class="text-lg font-bold text-teal-900">+ Rs. {{ number_format($report['vendor_recv_total']) }}</span>
+        </div>
+        <div class="flex flex-wrap gap-3 text-xs text-teal-700">
+            @if($report['vendor_recv_cash'] > 0)
+            <span><i class="fas fa-money-bill-wave mr-1"></i>Cash: Rs. {{ number_format($report['vendor_recv_cash']) }}</span>
+            @endif
+            @if($report['vendor_recv_bank'] > 0)
+            <span><i class="fas fa-university mr-1"></i>Bank: Rs. {{ number_format($report['vendor_recv_bank']) }}</span>
+            @endif
+        </div>
+    </div>
+    @endif
+
     {{-- Customer Payouts --}}
     @if(($report['payout_total'] ?? 0) > 0)
     <div class="card p-4 border-l-4 border-purple-400">

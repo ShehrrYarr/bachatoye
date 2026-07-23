@@ -1465,6 +1465,19 @@
             </div>
         </template>
 
+        {{-- Vendor received chip (refunds/damage returns; only shown when there are any) --}}
+        <template x-if="stats.vendor_recv_total > 0">
+            <div class="flex items-center gap-1.5 shrink-0">
+                <div class="w-px h-4 bg-gray-700 shrink-0"></div>
+                <button @click="activeTab = 'vendor_recv'; showDailyModal = true"
+                        class="flex items-center gap-1.5 bg-teal-900/60 hover:bg-teal-800 text-teal-300 px-2.5 py-1 rounded-lg transition-colors">
+                    <i class="fas fa-hand-holding-dollar"></i>
+                    <span class="font-semibold" x-text="'+ Rs. ' + fmt(stats.vendor_recv_total)"></span>
+                    <span class="text-teal-400" x-text="stats.vendor_recv_count + ' recv'"></span>
+                </button>
+            </div>
+        </template>
+
         {{-- Customer payouts chip (manual khata cash-outs; only shown when there are any) --}}
         <template x-if="stats.payout_total > 0">
             <div class="flex items-center gap-1.5 shrink-0">
@@ -1547,6 +1560,14 @@
                             class="py-2.5 px-4 text-sm transition-colors">
                         <i class="fas fa-handshake mr-1.5"></i>
                         Vendor Paid <span class="ml-1 text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full font-semibold" x-text="stats.vendor_pay_count"></span>
+                    </button>
+                </template>
+                <template x-if="stats.vendor_recv_count > 0">
+                    <button @click="activeTab = 'vendor_recv'"
+                            :class="activeTab === 'vendor_recv' ? 'border-b-2 border-teal-500 text-teal-700 font-semibold' : 'text-gray-500 hover:text-gray-700'"
+                            class="py-2.5 px-4 text-sm transition-colors">
+                        <i class="fas fa-hand-holding-dollar mr-1.5"></i>
+                        Vendor Recv <span class="ml-1 text-xs bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded-full font-semibold" x-text="stats.vendor_recv_count"></span>
                     </button>
                 </template>
                 <template x-if="stats.payout_count > 0">
@@ -1925,6 +1946,88 @@
                     </div>
                 </div>
 
+                {{-- ======== VENDOR RECEIPTS TABLE (vendor refunds/damage returns) ======== --}}
+                <div x-show="activeTab === 'vendor_recv'" class="p-4">
+
+                    <div class="grid grid-cols-3 gap-3 mb-4">
+                        <div class="bg-teal-50 border border-teal-100 rounded-xl px-4 py-3 text-center">
+                            <div class="text-lg font-bold text-teal-700" x-text="'Rs. ' + fmt(stats.vendor_recv_total)"></div>
+                            <div class="text-xs text-teal-600">Total Received</div>
+                        </div>
+                        <div class="bg-green-50 border border-green-100 rounded-xl px-4 py-3 text-center">
+                            <div class="text-lg font-bold text-green-700" x-text="'Rs. ' + fmt(stats.vendor_recv_cash)"></div>
+                            <div class="text-xs text-green-600">Cash Received</div>
+                        </div>
+                        <div class="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-center">
+                            <div class="text-lg font-bold text-blue-700" x-text="'Rs. ' + fmt(stats.vendor_recv_bank)"></div>
+                            <div class="text-xs text-blue-600">Bank Received</div>
+                        </div>
+                    </div>
+
+                    <div x-show="activityLoading" class="text-center py-16 text-gray-300">
+                        <i class="fas fa-spinner fa-spin text-4xl mb-3"></i>
+                        <p class="text-sm text-gray-400">Loading...</p>
+                    </div>
+                    <div x-show="!activityLoading && vendor_receipts.length === 0" class="text-center py-16 text-gray-300">
+                        <i class="fas fa-hand-holding-dollar text-4xl mb-3"></i>
+                        <p class="text-sm text-gray-400">No vendor receipts recorded today</p>
+                    </div>
+                    <div x-show="!activityLoading && vendor_receipts.length > 0" class="overflow-x-auto rounded-xl border border-gray-100">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                                <tr>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Time</th>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Vendor</th>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Description</th>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Method</th>
+                                    <th class="text-right px-4 py-2.5 font-semibold">Received</th>
+                                    <th class="text-right px-4 py-2.5 font-semibold">Balance After</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-50">
+                                <template x-for="(v, idx) in vendor_receipts" :key="idx">
+                                    <tr class="hover:bg-gray-50 transition-colors">
+                                        <td class="px-4 py-3 text-xs text-gray-500 whitespace-nowrap" x-text="v.time"></td>
+                                        <td class="px-4 py-3">
+                                            <div class="font-medium text-sm text-gray-800" x-text="v.vendor_name"></div>
+                                        </td>
+                                        <td class="px-4 py-3 text-xs text-gray-600 max-w-xs" x-text="v.description || '—'"></td>
+                                        <td class="px-4 py-3 text-xs">
+                                            <span x-show="v.payment_method === 'cash'"
+                                                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
+                                                <i class="fas fa-money-bill-wave text-[10px]"></i> Cash
+                                            </span>
+                                            <span x-show="v.payment_method === 'bank_transfer'"
+                                                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">
+                                                <i class="fas fa-university text-[10px]"></i>
+                                                <span x-text="v.bank_label || 'Bank'"></span>
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right">
+                                            <span class="font-bold text-teal-600 text-sm" x-text="'+ Rs. ' + fmt(v.amount)"></span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right text-xs">
+                                            <span class="font-semibold"
+                                                  :class="v.balance_after > 0 ? 'text-red-500' : 'text-gray-500'"
+                                                  x-text="v.balance_after > 0 ? 'Rs. ' + fmt(v.balance_after) + ' owed' : 'Settled'">
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                            <tfoot class="bg-gray-50 border-t-2 border-gray-200">
+                                <tr>
+                                    <td colspan="3" class="px-4 py-3 text-sm font-bold text-gray-700"
+                                        x-text="`Total — ${vendor_receipts.length} receipt(s)`"></td>
+                                    <td colspan="2"></td>
+                                    <td class="px-4 py-3 text-right font-bold text-lg text-teal-600"
+                                        x-text="'+ Rs. ' + fmt(vendor_receipts.reduce((s,v) => s + v.amount, 0))"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
                 {{-- ======== CUSTOMER PAYOUTS TABLE (manual khata cash-outs) ======== --}}
                 <div x-show="activeTab === 'payouts'" class="p-4">
 
@@ -2019,11 +2122,15 @@ $_posStats = [
     'total_refunded'   => $todayReturns->total_refunded ?? 0,
     'payment_count'    => $todayPayments->payment_count ?? 0,
     'total_collected'  => $todayPayments->total_collected ?? 0,
-    'vendor_pay_count' => $todayVendorPayments->vendor_pay_count ?? 0,
-    'vendor_pay_total' => $todayVendorPayments->vendor_pay_total ?? 0,
-    'vendor_pay_cash'  => $todayVendorPayments->vendor_pay_cash ?? 0,
-    'vendor_pay_bank'  => $todayVendorPayments->vendor_pay_bank ?? 0,
-    'payout_count'     => $todayCustomerPayouts->payout_count ?? 0,
+    'vendor_pay_count'  => $todayVendorPayments->vendor_pay_count ?? 0,
+    'vendor_pay_total'  => $todayVendorPayments->vendor_pay_total ?? 0,
+    'vendor_pay_cash'   => $todayVendorPayments->vendor_pay_cash ?? 0,
+    'vendor_pay_bank'   => $todayVendorPayments->vendor_pay_bank ?? 0,
+    'vendor_recv_count' => $todayVendorReceipts->vendor_recv_count ?? 0,
+    'vendor_recv_total' => $todayVendorReceipts->vendor_recv_total ?? 0,
+    'vendor_recv_cash'  => $todayVendorReceipts->vendor_recv_cash ?? 0,
+    'vendor_recv_bank'  => $todayVendorReceipts->vendor_recv_bank ?? 0,
+    'payout_count'      => $todayCustomerPayouts->payout_count ?? 0,
     'payout_total'     => $todayCustomerPayouts->payout_total ?? 0,
     'payout_cash'      => $todayCustomerPayouts->payout_cash ?? 0,
     'payout_bank'      => $todayCustomerPayouts->payout_bank ?? 0,
@@ -3245,12 +3352,14 @@ function posStats() {
         returns: [],
         payments: [],
         vendor_payments: [],
+        vendor_receipts: [],
         customer_payouts: [],
         activityLoading: false,
 
         get netRevenue() {
             return this.stats.total_revenue - this.stats.total_refunded
-                 - this.stats.vendor_pay_total - (this.stats.payout_total || 0);
+                 - this.stats.vendor_pay_total + (this.stats.vendor_recv_total || 0)
+                 - (this.stats.payout_total || 0);
         },
 
         init() {
@@ -3275,6 +3384,7 @@ function posStats() {
                     this.returns          = data.returns          ?? [];
                     this.payments         = data.payments         ?? [];
                     this.vendor_payments  = data.vendor_payments  ?? [];
+                    this.vendor_receipts  = data.vendor_receipts  ?? [];
                     this.customer_payouts = data.customer_payouts ?? [];
                 }
             } catch(e) { console.error('Activity load failed', e); }

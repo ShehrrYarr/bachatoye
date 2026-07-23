@@ -198,6 +198,24 @@
     </div>
     @endif
 
+    {{-- Vendor Received --}}
+    @if(($todayReport['vendor_recv_total'] ?? 0) > 0)
+    <div class="section income">
+        <div class="section-header">
+            <span class="section-title">&#128176; Vendor Received (In)</span>
+            <span class="section-total">+ Rs. {{ number_format($todayReport['vendor_recv_total']) }}</span>
+        </div>
+        <div class="breakdown">
+            @if($todayReport['vendor_recv_cash'] > 0)
+            <span><span class="dot dot-green"></span>Cash: Rs. {{ number_format($todayReport['vendor_recv_cash']) }}</span>
+            @endif
+            @if($todayReport['vendor_recv_bank'] > 0)
+            <span><span class="dot dot-blue"></span>Bank: Rs. {{ number_format($todayReport['vendor_recv_bank']) }}</span>
+            @endif
+        </div>
+    </div>
+    @endif
+
     {{-- Customer Payouts --}}
     @if(($todayReport['payout_total'] ?? 0) > 0)
     <div class="section expense">
@@ -254,6 +272,12 @@
         <div class="total-row">
             <span>Total Returns (Out)</span>
             <strong style="color:#c2410c;">– Rs. {{ number_format($todayReport['return_total']) }}</strong>
+        </div>
+        @endif
+        @if(($todayReport['vendor_recv_total'] ?? 0) > 0)
+        <div class="total-row">
+            <span>Vendor Received (In)</span>
+            <strong style="color:#0d9488;">+ Rs. {{ number_format($todayReport['vendor_recv_total']) }}</strong>
         </div>
         @endif
         @if(($todayReport['vendor_pay_total'] ?? 0) > 0)

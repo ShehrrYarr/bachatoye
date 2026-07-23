@@ -74,17 +74,24 @@ class CashBalanceService
                 ->where('payment_method', 'cash')
                 ->sum('amount');
 
+        // Cash received from vendors (refunds, damage returns, etc.)
+        $cashInVendor = $shopId ? 0.0
+            : (float) VendorLedger::where('type', 'credit')
+                ->where('payment_method', 'cash')
+                ->sum('amount');
+
         $cashSummary = [
             'opening'    => $cashOpening,
             'in_pos'     => $cashInPos,
             'in_ecom'    => $cashInEcom,
             'in_khata'   => $cashInKhata,
+            'in_vendor'  => $cashInVendor,
             'out_exp'    => $cashOutExpenses,
             'out_pur'    => $cashOutPurchases,
             'out_ret'    => $cashOutReturns,
             'out_khata'  => $cashOutKhata,
             'out_vendor' => $cashOutVendor,
-            'balance'    => $cashOpening + $cashInPos + $cashInEcom + $cashInKhata
+            'balance'    => $cashOpening + $cashInPos + $cashInEcom + $cashInKhata + $cashInVendor
                           - $cashOutExpenses - $cashOutPurchases - $cashOutReturns
                           - $cashOutKhata - $cashOutVendor,
         ];
@@ -139,7 +146,12 @@ class CashBalanceService
                 ->where('bank_account_id', $bank->id)
                 ->sum('amount');
 
-            $bank->computed_in           = $bankInSales + $bankInSplit + $bankInPartial + $bankInKhata;
+            $bankInVendor = (float) VendorLedger::where('type', 'credit')
+                ->where('payment_method', 'bank_transfer')
+                ->where('bank_account_id', $bank->id)
+                ->sum('amount');
+
+            $bank->computed_in           = $bankInSales + $bankInSplit + $bankInPartial + $bankInKhata + $bankInVendor;
             $bank->computed_out          = $bankOutPurchases + $bankOutReturns + $bankOutExpenses + $bankOutKhata + $bankOutVendor;
             $bank->computed_out_expenses = $bankOutExpenses;
             $bank->computed_balance      = (float) $bank->opening_balance + $bank->computed_in - $bank->computed_out;

@@ -100,6 +100,16 @@ class PosController extends Controller
                 ->get()
             : collect();
 
+        // Cash/bank received from vendors today (refunds, damage returns — credit entries with payment method)
+        $todayVendorRecvList = $isAdmin
+            ? VendorLedger::whereDate('created_at', today())
+                ->where('type', 'credit')
+                ->whereNotNull('payment_method')
+                ->with(['vendor', 'bankAccount'])
+                ->latest()
+                ->get()
+            : collect();
+
         // Cash/bank paid out to customers today (manual khata debit entries with a payment method)
         $todayPayoutList = \App\Models\AccountLedger::whereDate('created_at', today())
             ->where('type', 'debit')
@@ -148,6 +158,12 @@ class PosController extends Controller
             'vendor_pay_cash'  => (float) $todayVendorPayList->where('payment_method', 'cash')->sum('amount'),
             'vendor_pay_bank'  => (float) $todayVendorPayList->where('payment_method', 'bank_transfer')->sum('amount'),
         ];
+        $todayVendorReceipts = (object)[
+            'vendor_recv_count' => $todayVendorRecvList->count(),
+            'vendor_recv_total' => (float) $todayVendorRecvList->sum('amount'),
+            'vendor_recv_cash'  => (float) $todayVendorRecvList->where('payment_method', 'cash')->sum('amount'),
+            'vendor_recv_bank'  => (float) $todayVendorRecvList->where('payment_method', 'bank_transfer')->sum('amount'),
+        ];
         $todayCustomerPayouts = (object)[
             'payout_count' => $todayPayoutList->count(),
             'payout_total' => (float) $todayPayoutList->sum('amount'),
@@ -161,8 +177,8 @@ class PosController extends Controller
 
         return view('pos.index', compact(
             'session', 'categories', 'featuredProducts',
-            'todaySales', 'todayReturns', 'todayPayments', 'todayVendorPayments', 'todayCustomerPayouts',
-            'todaySalesOrders', 'todayReturnsList', 'todayPaymentsList', 'todayVendorPayList', 'todayPayoutList',
+            'todaySales', 'todayReturns', 'todayPayments', 'todayVendorPayments', 'todayVendorReceipts', 'todayCustomerPayouts',
+            'todaySalesOrders', 'todayReturnsList', 'todayPaymentsList', 'todayVendorPayList', 'todayVendorRecvList', 'todayPayoutList',
             'bankAccounts', 'canViewCost', 'currentShop'
         ));
     }
@@ -216,6 +232,12 @@ class PosController extends Controller
                 ->get(['payment_method', 'amount'])
             : collect();
 
+        $vendorRecvData = $isAdmin
+            ? VendorLedger::whereDate('created_at', today())
+                ->where('type', 'credit')->whereNotNull('payment_method')
+                ->get(['payment_method', 'amount'])
+            : collect();
+
         $payoutData = \App\Models\AccountLedger::whereDate('created_at', today())
             ->where('type', 'debit')
             ->whereNotNull('payment_method')
@@ -232,11 +254,15 @@ class PosController extends Controller
             'total_refunded'   => (float) $todayReturnsList->sum('refund_amount'),
             'payment_count'    => $todayPaymentsList->count(),
             'total_collected'  => (float) $todayPaymentsList->sum('amount'),
-            'vendor_pay_count' => $vendorPayData->count(),
-            'vendor_pay_total' => (float) $vendorPayData->sum('amount'),
-            'vendor_pay_cash'  => (float) $vendorPayData->where('payment_method', 'cash')->sum('amount'),
-            'vendor_pay_bank'  => (float) $vendorPayData->where('payment_method', 'bank_transfer')->sum('amount'),
-            'payout_count'     => $payoutData->count(),
+            'vendor_pay_count'  => $vendorPayData->count(),
+            'vendor_pay_total'  => (float) $vendorPayData->sum('amount'),
+            'vendor_pay_cash'   => (float) $vendorPayData->where('payment_method', 'cash')->sum('amount'),
+            'vendor_pay_bank'   => (float) $vendorPayData->where('payment_method', 'bank_transfer')->sum('amount'),
+            'vendor_recv_count' => $vendorRecvData->count(),
+            'vendor_recv_total' => (float) $vendorRecvData->sum('amount'),
+            'vendor_recv_cash'  => (float) $vendorRecvData->where('payment_method', 'cash')->sum('amount'),
+            'vendor_recv_bank'  => (float) $vendorRecvData->where('payment_method', 'bank_transfer')->sum('amount'),
+            'payout_count'      => $payoutData->count(),
             'payout_total'     => (float) $payoutData->sum('amount'),
             'payout_cash'      => (float) $payoutData->where('payment_method', 'cash')->sum('amount'),
             'payout_bank'      => (float) $payoutData->where('payment_method', 'bank_transfer')->sum('amount'),
@@ -332,6 +358,22 @@ class PosController extends Controller
                 ])->values()
             : collect()->values();
 
+        $vendor_receipts = $isAdmin
+            ? VendorLedger::whereDate('created_at', today())
+                ->where('type', 'credit')->whereNotNull('payment_method')
+                ->latest()->with(['vendor', 'bankAccount'])
+                ->get()
+                ->map(fn($v) => [
+                    'time'            => $v->created_at->format('H:i'),
+                    'vendor_name'     => $v->vendor?->name ?? '—',
+                    'description'     => $v->description ?? null,
+                    'payment_method'  => $v->payment_method,
+                    'bank_label'      => $v->bankAccount?->label ?? null,
+                    'amount'          => (float) $v->amount,
+                    'balance_after'   => (float) $v->balance_after,
+                ])->values()
+            : collect()->values();
+
         $customer_payouts = \App\Models\AccountLedger::whereDate('created_at', today())
             ->where('type', 'debit')
             ->whereNotNull('payment_method')
@@ -351,7 +393,7 @@ class PosController extends Controller
                 'balance_after'  => (float) ($p->balance_after ?? 0),
             ])->values();
 
-        return response()->json(compact('orders', 'returns', 'payments', 'vendor_payments', 'customer_payouts'));
+        return response()->json(compact('orders', 'returns', 'payments', 'vendor_payments', 'vendor_receipts', 'customer_payouts'));
     }
 
     public function openSession(Request $request)

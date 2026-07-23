@@ -130,6 +130,16 @@ class DashboardController extends Controller
         $vendorPayBank  = (float) $vendorPayData->where('payment_method', 'bank_transfer')->sum('amount');
         $vendorPayTotal = (float) $vendorPayData->sum('amount');
 
+        // Cash/bank received from vendors (refunds, damage returns, etc.)
+        $vendorRecvData  = $includePurchases
+            ? VendorLedger::whereDate('created_at', today())
+                ->where('type', 'credit')->whereNotNull('payment_method')
+                ->get(['payment_method', 'amount'])
+            : collect();
+        $vendorRecvCash  = (float) $vendorRecvData->where('payment_method', 'cash')->sum('amount');
+        $vendorRecvBank  = (float) $vendorRecvData->where('payment_method', 'bank_transfer')->sum('amount');
+        $vendorRecvTotal = (float) $vendorRecvData->sum('amount');
+
         // Cash/bank paid out to customers (manual khata debits with a payment method)
         $payoutData  = $ledgerScope(AccountLedger::whereDate('created_at', today()))
             ->where('type', 'debit')->whereNotNull('payment_method')
@@ -155,12 +165,15 @@ class DashboardController extends Controller
             'vendor_pay_total'    => $vendorPayTotal,
             'vendor_pay_cash'     => $vendorPayCash,
             'vendor_pay_bank'     => $vendorPayBank,
+            'vendor_recv_total'   => $vendorRecvTotal,
+            'vendor_recv_cash'    => $vendorRecvCash,
+            'vendor_recv_bank'    => $vendorRecvBank,
             'payout_total'        => $payoutTotal,
             'payout_cash'         => $payoutCash,
             'payout_bank'         => $payoutBank,
-            'total_cash'          => $posCash + $khataCash - $returnCash - $purchasesCashPaid - $expenseCash - $vendorPayCash - $payoutCash,
-            'total_bank'          => $posBank + $khataBank - $returnBank - $purchasesBankPaid - $expenseBank - $vendorPayBank - $payoutBank,
-            'grand_total'         => $posCash + $posBank + $khataTotal - $returnTotal - $purchasesPaid - $todayExpenses - $vendorPayTotal - $payoutTotal,
+            'total_cash'          => $posCash + $khataCash + $vendorRecvCash - $returnCash - $purchasesCashPaid - $expenseCash - $vendorPayCash - $payoutCash,
+            'total_bank'          => $posBank + $khataBank + $vendorRecvBank - $returnBank - $purchasesBankPaid - $expenseBank - $vendorPayBank - $payoutBank,
+            'grand_total'         => $posCash + $posBank + $khataTotal + $vendorRecvTotal - $returnTotal - $purchasesPaid - $todayExpenses - $vendorPayTotal - $payoutTotal,
             'purchases_total'     => $purchasesTotal,
             'purchases_paid'      => $purchasesPaid,
             'purchases_due'       => $purchasesDue,
@@ -257,6 +270,13 @@ class DashboardController extends Controller
         $printVendorPayBank  = (float) $printVendorPay->where('payment_method', 'bank_transfer')->sum('amount');
         $printVendorPayTotal = (float) $printVendorPay->sum('amount');
 
+        $printVendorRecv     = VendorLedger::whereDate('created_at', today())
+            ->where('type', 'credit')->whereNotNull('payment_method')
+            ->get(['payment_method', 'amount']);
+        $printVendorRecvCash  = (float) $printVendorRecv->where('payment_method', 'cash')->sum('amount');
+        $printVendorRecvBank  = (float) $printVendorRecv->where('payment_method', 'bank_transfer')->sum('amount');
+        $printVendorRecvTotal = (float) $printVendorRecv->sum('amount');
+
         // Cash/bank paid out to customers (manual khata debits with a payment method)
         $printPayouts     = AccountLedger::whereDate('created_at', today())
             ->where('type', 'debit')->whereNotNull('payment_method')
@@ -302,12 +322,15 @@ class DashboardController extends Controller
             'vendor_pay_total'    => $printVendorPayTotal,
             'vendor_pay_cash'     => $printVendorPayCash,
             'vendor_pay_bank'     => $printVendorPayBank,
+            'vendor_recv_total'   => $printVendorRecvTotal,
+            'vendor_recv_cash'    => $printVendorRecvCash,
+            'vendor_recv_bank'    => $printVendorRecvBank,
             'payout_total'        => $printPayoutTotal,
             'payout_cash'         => $printPayoutCash,
             'payout_bank'         => $printPayoutBank,
-            'total_cash'          => $posCash + $khataCash - $returnCash - $purchasesCashPrint - $printExpenseCash - $printVendorPayCash - $printPayoutCash,
-            'total_bank'          => $posBank + $khataBank - $returnBank - $purchasesBankPrint - $printExpenseBank - $printVendorPayBank - $printPayoutBank,
-            'grand_total'         => $posOrders->sum('total') + $khataTotal - $returnTotal - $purchasesPaidPrint - $printExpenseTotal - $printVendorPayTotal - $printPayoutTotal,
+            'total_cash'          => $posCash + $khataCash + $printVendorRecvCash - $returnCash - $purchasesCashPrint - $printExpenseCash - $printVendorPayCash - $printPayoutCash,
+            'total_bank'          => $posBank + $khataBank + $printVendorRecvBank - $returnBank - $purchasesBankPrint - $printExpenseBank - $printVendorPayBank - $printPayoutBank,
+            'grand_total'         => $posOrders->sum('total') + $khataTotal + $printVendorRecvTotal - $returnTotal - $purchasesPaidPrint - $printExpenseTotal - $printVendorPayTotal - $printPayoutTotal,
             'store_name'          => Setting::get('shop_name', config('app.name')),
             'store_phone'         => Setting::get('shop_phone', ''),
             'date'                => today()->format('d M Y'),
@@ -375,6 +398,9 @@ class DashboardController extends Controller
             'purchases_due'   => 0,
             'purchases_cash'  => 0,
             'purchases_bank'  => 0,
+            'vendor_pay_total' => 0, 'vendor_pay_cash' => 0, 'vendor_pay_bank' => 0,
+            'vendor_recv_total' => 0, 'vendor_recv_cash' => 0, 'vendor_recv_bank' => 0,
+            'payout_total' => 0, 'payout_cash' => 0, 'payout_bank' => 0,
             'store_name'   => Setting::get('shop_name', config('app.name')),
             'store_phone'  => Setting::get('shop_phone', ''),
             'salesman_name'=> $user->name,
@@ -461,6 +487,14 @@ class DashboardController extends Controller
         $rangeVendorPayBank  = (float) $rangeVendorPay->where('payment_method', 'bank_transfer')->sum('amount');
         $rangeVendorPayTotal = (float) $rangeVendorPay->sum('amount');
 
+        // ── Cash/bank received from vendors (refunds, damage returns) ────────
+        $rangeVendorRecv     = VendorLedger::whereBetween('created_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
+            ->where('type', 'credit')->whereNotNull('payment_method')
+            ->get(['payment_method', 'amount']);
+        $rangeVendorRecvCash  = (float) $rangeVendorRecv->where('payment_method', 'cash')->sum('amount');
+        $rangeVendorRecvBank  = (float) $rangeVendorRecv->where('payment_method', 'bank_transfer')->sum('amount');
+        $rangeVendorRecvTotal = (float) $rangeVendorRecv->sum('amount');
+
         // ── Customer payouts (manual khata debits with a payment method) ─────
         $rangePayouts     = AccountLedger::whereBetween('created_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
             ->where('type', 'debit')->whereNotNull('payment_method')
@@ -508,12 +542,15 @@ class DashboardController extends Controller
             'vendor_pay_total'   => $rangeVendorPayTotal,
             'vendor_pay_cash'    => $rangeVendorPayCash,
             'vendor_pay_bank'    => $rangeVendorPayBank,
+            'vendor_recv_total'  => $rangeVendorRecvTotal,
+            'vendor_recv_cash'   => $rangeVendorRecvCash,
+            'vendor_recv_bank'   => $rangeVendorRecvBank,
             'payout_total'       => $rangePayoutTotal,
             'payout_cash'        => $rangePayoutCash,
             'payout_bank'        => $rangePayoutBank,
-            'total_cash'         => $posCash + $khataCash - $returnCash - $purchasesCash - $expenseCash - $rangeVendorPayCash - $rangePayoutCash,
-            'total_bank'         => $posBank + $khataBank - $returnBank - $purchasesBank - $expenseBank - $rangeVendorPayBank - $rangePayoutBank,
-            'grand_total'        => $posTotal + $khataTotal - $returnTotal - $purchasesPaid - $expenseTotal - $rangeVendorPayTotal - $rangePayoutTotal,
+            'total_cash'         => $posCash + $khataCash + $rangeVendorRecvCash - $returnCash - $purchasesCash - $expenseCash - $rangeVendorPayCash - $rangePayoutCash,
+            'total_bank'         => $posBank + $khataBank + $rangeVendorRecvBank - $returnBank - $purchasesBank - $expenseBank - $rangeVendorPayBank - $rangePayoutBank,
+            'grand_total'        => $posTotal + $khataTotal + $rangeVendorRecvTotal - $returnTotal - $purchasesPaid - $expenseTotal - $rangeVendorPayTotal - $rangePayoutTotal,
             'total_orders'       => $posOrders->count(),
             'date_from'          => $from->format('d M Y'),
             'date_to'            => $to->format('d M Y'),
@@ -792,6 +829,8 @@ class DashboardController extends Controller
             'grand_total'  => (float) $posOrders->sum('total') + $khataTotal - $returnTotal - $expenseTotal - $payoutTotal,
             'purchases_total' => 0, 'purchases_paid' => 0, 'purchases_due' => 0,
             'purchases_cash'  => 0, 'purchases_bank' => 0,
+            'vendor_pay_total' => 0, 'vendor_pay_cash' => 0, 'vendor_pay_bank' => 0,
+            'vendor_recv_total' => 0, 'vendor_recv_cash' => 0, 'vendor_recv_bank' => 0,
             'date'         => today()->format('d M Y'),
         ];
     }

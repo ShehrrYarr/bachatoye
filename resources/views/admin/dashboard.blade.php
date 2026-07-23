@@ -272,6 +272,26 @@
                 </div>
                 @endif
 
+                {{-- Vendor Received (refunds/damage returns) --}}
+                @if(($todayReport['vendor_recv_total'] ?? 0) > 0)
+                <div class="w-full text-left bg-teal-50 rounded-xl p-3">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-sm font-semibold text-teal-800">
+                            <i class="fas fa-hand-holding-dollar mr-1.5"></i>Vendor Received (In)
+                        </span>
+                        <span class="font-bold text-teal-900">+ Rs. {{ number_format($todayReport['vendor_recv_total']) }}</span>
+                    </div>
+                    <div class="flex gap-4 text-xs text-teal-700 flex-wrap">
+                        @if($todayReport['vendor_recv_cash'] > 0)
+                        <span><i class="fas fa-money-bill-wave mr-1"></i>Cash: Rs. {{ number_format($todayReport['vendor_recv_cash']) }}</span>
+                        @endif
+                        @if($todayReport['vendor_recv_bank'] > 0)
+                        <span><i class="fas fa-university mr-1"></i>Bank: Rs. {{ number_format($todayReport['vendor_recv_bank']) }}</span>
+                        @endif
+                    </div>
+                </div>
+                @endif
+
                 {{-- Customer Payouts --}}
                 @if(($todayReport['payout_total'] ?? 0) > 0)
                 <div class="w-full text-left bg-purple-50 rounded-xl p-3">
@@ -328,6 +348,12 @@
                     <div class="flex justify-between text-sm text-gray-600">
                         <span><i class="fas fa-truck text-purple-500 mr-1.5"></i>Purchases (Out)</span>
                         <span class="font-semibold text-purple-700">– Rs. {{ number_format($todayReport['purchases_paid']) }}</span>
+                    </div>
+                    @endif
+                    @if(($todayReport['vendor_recv_total'] ?? 0) > 0)
+                    <div class="flex justify-between text-sm text-gray-600">
+                        <span><i class="fas fa-hand-holding-dollar text-teal-500 mr-1.5"></i>Vendor Received (In)</span>
+                        <span class="font-semibold text-teal-700">+ Rs. {{ number_format($todayReport['vendor_recv_total']) }}</span>
                     </div>
                     @endif
                     @if(($todayReport['vendor_pay_total'] ?? 0) > 0)

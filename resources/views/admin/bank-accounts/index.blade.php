@@ -51,7 +51,7 @@
             <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
                 <div class="bg-green-50 rounded-lg px-3 py-2">
                     <p class="text-green-700 font-medium">Total In</p>
-                    <p class="text-green-900 font-bold text-sm">Rs. {{ number_format($cashSummary['in_pos'] + $cashSummary['in_ecom'] + $cashSummary['in_khata']) }}</p>
+                    <p class="text-green-900 font-bold text-sm">Rs. {{ number_format($cashSummary['in_pos'] + $cashSummary['in_ecom'] + $cashSummary['in_khata'] + ($cashSummary['in_vendor'] ?? 0)) }}</p>
                 </div>
                 <div class="bg-red-50 rounded-lg px-3 py-2">
                     <p class="text-red-700 font-medium">Total Out</p>
@@ -86,6 +86,12 @@
                 <div class="flex justify-between text-green-700">
                     <span>+ Khata repayments (cash)</span>
                     <span>Rs. {{ number_format($cashSummary['in_khata']) }}</span>
+                </div>
+                @endif
+                @if($cashSummary['in_vendor'] ?? 0)
+                <div class="flex justify-between text-green-700">
+                    <span>+ Vendor received (cash)</span>
+                    <span>Rs. {{ number_format($cashSummary['in_vendor']) }}</span>
                 </div>
                 @endif
                 <div class="border-t border-gray-100 my-1"></div>

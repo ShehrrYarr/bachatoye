@@ -125,7 +125,7 @@ class VendorController extends Controller
         ]);
 
         $isDebit   = $data['type'] === 'debit';
-        $payMethod = $isDebit ? ($data['payment_method'] ?? null) : null;
+        $payMethod = $data['payment_method'] ?? null;
         $bankAccId = ($payMethod === 'bank_transfer') ? ($data['bank_account_id'] ?? null) : null;
 
         DB::transaction(function () use ($data, $vendor, $payMethod, $bankAccId, $isDebit) {
@@ -167,7 +167,7 @@ class VendorController extends Controller
         ]);
 
         $isDebit   = $data['type'] === 'debit';
-        $payMethod = $isDebit ? ($data['payment_method'] ?? null) : null;
+        $payMethod = $data['payment_method'] ?? null;
         $bankAccId = ($payMethod === 'bank_transfer') ? ($data['bank_account_id'] ?? null) : null;
 
         DB::transaction(function () use ($data, $vendor, $entry, $isDebit, $payMethod, $bankAccId) {

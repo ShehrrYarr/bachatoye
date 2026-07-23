@@ -163,9 +163,9 @@
                         </select>
                     </div>
 
-                    {{-- Payment method — only for debit (we paid) --}}
-                    <div x-show="entryType === 'debit'" x-transition>
-                        <label class="form-label">Paid Via *</label>
+                    {{-- Payment method --}}
+                    <div x-transition>
+                        <label class="form-label" x-text="entryType === 'debit' ? 'Paid Via *' : 'Received Via (optional)'"></label>
                         <div class="flex gap-2">
                             <label class="flex-1 flex items-center justify-center gap-2 p-2 border-2 rounded-xl cursor-pointer transition-all has-[:checked]:border-green-500 has-[:checked]:bg-green-50 border-gray-200">
                                 <input type="radio" name="payment_method" value="cash" x-model="payMethod" class="sr-only">
@@ -177,6 +177,11 @@
                                 <i class="fas fa-university text-blue-600"></i>
                                 <span class="text-sm font-medium">Bank</span>
                             </label>
+                            <button type="button" x-show="entryType === 'credit' && payMethod !== ''"
+                                    @click="payMethod = ''"
+                                    class="px-2 py-1 text-xs text-gray-400 hover:text-red-500 transition-colors" title="Clear">
+                                <i class="fas fa-times"></i>
+                            </button>
                         </div>
                         <p x-show="entryType === 'debit' && payMethod === ''"
                            class="text-xs text-red-500 mt-1 font-medium">
@@ -185,10 +190,10 @@
                     </div>
 
                     {{-- Bank account selector --}}
-                    <div x-show="entryType === 'debit' && payMethod === 'bank_transfer'" x-transition style="display:none;">
+                    <div x-show="payMethod === 'bank_transfer'" x-transition style="display:none;">
                         <label class="form-label">Bank Account *</label>
                         <select name="bank_account_id" class="form-select"
-                                :required="entryType === 'debit' && payMethod === 'bank_transfer'">
+                                :required="payMethod === 'bank_transfer'">
                             <option value="">— Select account —</option>
                             @foreach($bankAccounts as $bank)
                                 <option value="{{ $bank->id }}">
@@ -262,8 +267,8 @@
                         <option value="credit">Debt Added (Vendor supplied on credit)</option>
                     </select>
                 </div>
-                <div x-show="form.type === 'debit'" x-transition>
-                    <label class="form-label">Paid Via *</label>
+                <div x-transition>
+                    <label class="form-label" x-text="form.type === 'debit' ? 'Paid Via *' : 'Received Via (optional)'"></label>
                     <div class="flex gap-2">
                         <label class="flex-1 flex items-center justify-center gap-2 p-2 border-2 rounded-xl cursor-pointer transition-all"
                                :class="form.payment_method === 'cash' ? 'border-green-500 bg-green-50' : 'border-gray-200'">
@@ -277,12 +282,17 @@
                             <i class="fas fa-university text-blue-600"></i>
                             <span class="text-sm font-medium">Bank</span>
                         </label>
+                        <button type="button" x-show="form.type === 'credit' && form.payment_method !== ''"
+                                @click="form.payment_method = ''"
+                                class="px-2 py-1 text-xs text-gray-400 hover:text-red-500 transition-colors" title="Clear">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
                 </div>
-                <div x-show="form.type === 'debit' && form.payment_method === 'bank_transfer'" x-transition>
+                <div x-show="form.payment_method === 'bank_transfer'" x-transition>
                     <label class="form-label">Bank Account *</label>
                     <select name="bank_account_id" x-model="form.bank_account_id" class="form-select"
-                            :required="form.type === 'debit' && form.payment_method === 'bank_transfer'">
+                            :required="form.payment_method === 'bank_transfer'">
                         <option value="">— Select account —</option>
                         @foreach($bankAccounts as $bank)
                             <option value="{{ $bank->id }}">
