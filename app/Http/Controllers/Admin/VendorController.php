@@ -63,7 +63,7 @@ class VendorController extends Controller
 
     public function khata(Vendor $vendor)
     {
-        $entries      = $vendor->ledgerEntries()->with(['createdBy', 'bankAccount'])->latest()->paginate(30);
+        $entries      = $vendor->ledgerEntries()->with(['createdBy', 'bankAccount', 'editedBy'])->latest()->paginate(30);
         $bankAccounts = BankAccount::active()->orderBy('sort_order')->orderBy('id')->get();
         return view('admin.vendors.khata', compact('vendor', 'entries', 'bankAccounts'));
     }
@@ -146,5 +146,76 @@ class VendorController extends Controller
         });
 
         return back()->with('success', 'Ledger entry added.');
+    }
+
+    /**
+     * Edit a MANUAL vendor ledger entry. Auto rows (linked to a purchase or
+     * order) are refused. Shifts this row's balance and every later row (by id)
+     * plus the vendor's current balance by the delta difference.
+     */
+    public function updateLedgerEntry(Request $request, Vendor $vendor, VendorLedger $entry)
+    {
+        abort_unless($entry->vendor_id === $vendor->id, 404);
+        abort_unless($entry->isManual(), 403, 'Only manual entries can be edited.');
+
+        $data = $request->validate([
+            'type'            => 'required|in:credit,debit',
+            'amount'          => 'required|numeric|min:0.01',
+            'description'     => 'nullable|string|max:255',
+            'payment_method'  => 'required_if:type,debit|nullable|in:cash,bank_transfer',
+            'bank_account_id' => 'required_if:payment_method,bank_transfer|nullable|exists:bank_accounts,id',
+        ]);
+
+        $isDebit   = $data['type'] === 'debit';
+        $payMethod = $isDebit ? ($data['payment_method'] ?? null) : null;
+        $bankAccId = ($payMethod === 'bank_transfer') ? ($data['bank_account_id'] ?? null) : null;
+
+        DB::transaction(function () use ($data, $vendor, $entry, $isDebit, $payMethod, $bankAccId) {
+            $oldDelta = $entry->type === 'debit' ? -$entry->amount : $entry->amount;
+            $newDelta = $isDebit ? -$data['amount'] : $data['amount'];
+            $diff     = round($newDelta - $oldDelta, 2);
+
+            $entry->update([
+                'type'            => $data['type'],
+                'amount'          => $data['amount'],
+                'balance_after'   => round($entry->balance_after + $diff, 2),
+                'description'     => $data['description'] ?? 'Manual entry',
+                'payment_method'  => $payMethod,
+                'bank_account_id' => $bankAccId,
+                'edited_at'       => now(),
+                'edited_by'       => auth()->id(),
+            ]);
+
+            if (abs($diff) > 0.0001) {
+                VendorLedger::where('vendor_id', $vendor->id)
+                    ->where('id', '>', $entry->id)
+                    ->update(['balance_after' => DB::raw('balance_after + (' . $diff . ')')]);
+
+                $vendor->update(['balance' => round($vendor->balance + $diff, 2)]);
+            }
+        });
+
+        return back()->with('success', 'Ledger entry updated.');
+    }
+
+    /** Delete a MANUAL vendor ledger entry and roll it out of the balance chain. */
+    public function deleteLedgerEntry(Vendor $vendor, VendorLedger $entry)
+    {
+        abort_unless($entry->vendor_id === $vendor->id, 404);
+        abort_unless($entry->isManual(), 403, 'Only manual entries can be deleted.');
+
+        DB::transaction(function () use ($vendor, $entry) {
+            $oldDelta = $entry->type === 'debit' ? -$entry->amount : $entry->amount;
+            $diff     = round(-$oldDelta, 2);
+
+            VendorLedger::where('vendor_id', $vendor->id)
+                ->where('id', '>', $entry->id)
+                ->update(['balance_after' => DB::raw('balance_after + (' . $diff . ')')]);
+
+            $vendor->update(['balance' => round($vendor->balance + $diff, 2)]);
+            $entry->delete();
+        });
+
+        return back()->with('success', 'Ledger entry deleted.');
     }
 }

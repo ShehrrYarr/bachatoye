@@ -8,14 +8,21 @@ class VendorLedger extends Model
 {
     protected $table = 'vendor_ledger';
 
-    protected $fillable = ['vendor_id', 'purchase_id', 'order_id', 'type', 'amount', 'balance_after', 'description', 'reference', 'payment_method', 'bank_account_id', 'created_by'];
+    protected $fillable = ['vendor_id', 'purchase_id', 'order_id', 'type', 'amount', 'balance_after', 'description', 'reference', 'payment_method', 'bank_account_id', 'created_by', 'edited_at', 'edited_by'];
 
     protected function casts(): array
     {
         return [
             'amount'        => 'decimal:2',
             'balance_after' => 'decimal:2',
+            'edited_at'     => 'datetime',
         ];
+    }
+
+    /** Manual entries carry no purchase/order link and may be edited or deleted. */
+    public function isManual(): bool
+    {
+        return is_null($this->purchase_id) && is_null($this->order_id);
     }
 
     public function vendor()
@@ -41,5 +48,10 @@ class VendorLedger extends Model
     public function createdBy()
     {
         return $this->belongsTo(\App\Models\User::class, 'created_by');
+    }
+
+    public function editedBy()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'edited_by');
     }
 }

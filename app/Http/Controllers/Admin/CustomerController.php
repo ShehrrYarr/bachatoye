@@ -182,7 +182,7 @@ class CustomerController extends Controller
     public function ledger(Customer $customer)
     {
         $this->guardShop($customer);
-        $entries      = $customer->ledgerEntries()->with(['user', 'bankAccount'])->latest()->paginate(30);
+        $entries      = $customer->ledgerEntries()->with(['user', 'bankAccount', 'editedBy'])->latest()->paginate(30);
         $bankAccounts = BankAccount::active()->forShop($customer->shop_id)->orderBy('sort_order')->get();
         return view('admin.customers.ledger', compact('customer', 'entries', 'bankAccounts'));
     }
@@ -251,6 +251,89 @@ class CustomerController extends Controller
         });
 
         return back()->with('success', 'Ledger entry added.');
+    }
+
+    /**
+     * Edit a MANUAL ledger entry. Auto rows (linked to a sale or return) are
+     * refused. Editing shifts this row's running balance and every later row
+     * (by id) plus the customer's current balance by the delta difference — no
+     * full replay needed since the balance chain is cumulative in id order.
+     */
+    public function updateLedgerEntry(Request $request, Customer $customer, AccountLedger $entry)
+    {
+        $this->guardShop($customer);
+        abort_unless($entry->customer_id === $customer->id, 404);
+        abort_unless($entry->isManual(), 403, 'Only manual entries can be edited.');
+
+        $data = $request->validate([
+            'type'            => 'required|in:debit,credit',
+            'payment_method'  => 'required|in:cash,bank_transfer',
+            'bank_account_id' => [
+                'required_if:payment_method,bank_transfer',
+                'nullable',
+                \Illuminate\Validation\Rule::exists('bank_accounts', 'id')->where(
+                    fn($q) => $customer->shop_id ? $q->where('shop_id', $customer->shop_id) : $q->whereNull('shop_id')
+                ),
+            ],
+            'amount'          => 'required|numeric|min:0.01',
+            'description'     => 'required|string|max:255',
+            'reference'       => 'nullable|string|max:100',
+        ], [
+            'bank_account_id.required_if' => 'Select a bank account for the bank payment.',
+        ]);
+
+        $paymentMethod = $data['payment_method'];
+        $bankAccountId = $paymentMethod === 'bank_transfer' ? ($data['bank_account_id'] ?? null) : null;
+
+        DB::transaction(function () use ($data, $customer, $entry, $paymentMethod, $bankAccountId) {
+            $oldDelta = $entry->type === 'debit' ? -$entry->amount : $entry->amount;
+            $newDelta = $data['type'] === 'debit' ? -$data['amount'] : $data['amount'];
+            $diff     = round($newDelta - $oldDelta, 2);
+
+            $entry->update([
+                'type'            => $data['type'],
+                'payment_method'  => $paymentMethod,
+                'bank_account_id' => $bankAccountId,
+                'amount'          => $data['amount'],
+                'balance_after'   => round($entry->balance_after + $diff, 2),
+                'description'     => $data['description'],
+                'reference'       => $data['reference'] ?? null,
+                'edited_at'       => now(),
+                'edited_by'       => Auth::id(),
+            ]);
+
+            if (abs($diff) > 0.0001) {
+                AccountLedger::where('customer_id', $customer->id)
+                    ->where('id', '>', $entry->id)
+                    ->update(['balance_after' => DB::raw('balance_after + (' . $diff . ')')]);
+
+                $customer->update(['credit_balance' => round($customer->credit_balance + $diff, 2)]);
+            }
+        });
+
+        return back()->with('success', 'Ledger entry updated.');
+    }
+
+    /** Delete a MANUAL ledger entry and roll its effect out of the balance chain. */
+    public function deleteLedgerEntry(Customer $customer, AccountLedger $entry)
+    {
+        $this->guardShop($customer);
+        abort_unless($entry->customer_id === $customer->id, 404);
+        abort_unless($entry->isManual(), 403, 'Only manual entries can be deleted.');
+
+        DB::transaction(function () use ($customer, $entry) {
+            $oldDelta = $entry->type === 'debit' ? -$entry->amount : $entry->amount;
+            $diff     = round(-$oldDelta, 2);
+
+            AccountLedger::where('customer_id', $customer->id)
+                ->where('id', '>', $entry->id)
+                ->update(['balance_after' => DB::raw('balance_after + (' . $diff . ')')]);
+
+            $customer->update(['credit_balance' => round($customer->credit_balance + $diff, 2)]);
+            $entry->delete();
+        });
+
+        return back()->with('success', 'Ledger entry deleted.');
     }
 
     public function dismissPromise(AccountLedger $entry)

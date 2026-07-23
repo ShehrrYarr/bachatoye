@@ -177,6 +177,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::patch('customer-accounts/{account}/toggle', [Admin\CustomerAccountController::class, 'toggle'])->name('customer-accounts.toggle');
     Route::get('customers/{customer}/ledger/print', [Admin\CustomerController::class, 'ledgerPrint'])->name('customers.ledger.print');
     Route::post('customers/{customer}/ledger', [Admin\CustomerController::class, 'addLedgerEntry'])->name('customers.ledger.add');
+    Route::patch('customers/{customer}/ledger/{entry}', [Admin\CustomerController::class, 'updateLedgerEntry'])->name('customers.ledger.update');
+    Route::delete('customers/{customer}/ledger/{entry}', [Admin\CustomerController::class, 'deleteLedgerEntry'])->name('customers.ledger.delete');
     Route::patch('ledger/{entry}/dismiss-promise', [Admin\CustomerController::class, 'dismissPromise'])->name('ledger.dismiss_promise');
 
     // Delivery Platforms
@@ -193,6 +195,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::get('vendors/{vendor}/khata', [Admin\VendorController::class, 'khata'])->name('vendors.khata');
     Route::get('vendors/{vendor}/khata/print', [Admin\VendorController::class, 'khataPrint'])->name('vendors.khata.print');
     Route::post('vendors/{vendor}/ledger', [Admin\VendorController::class, 'addLedgerEntry'])->name('vendors.ledger.add');
+    Route::patch('vendors/{vendor}/ledger/{entry}', [Admin\VendorController::class, 'updateLedgerEntry'])->name('vendors.ledger.update');
+    Route::delete('vendors/{vendor}/ledger/{entry}', [Admin\VendorController::class, 'deleteLedgerEntry'])->name('vendors.ledger.delete');
     Route::get('api/vendors/{vendor}/balance', fn(\App\Models\Vendor $vendor) => response()->json(['balance' => $vendor->balance]))->name('api.vendor.balance');
     Route::get('api/serials/check', function (\Illuminate\Http\Request $request) {
         $serial = trim($request->input('serial', ''));
@@ -348,6 +352,10 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
         ->middleware('permission:accounts.view')->name('customers.ledger.print');
     Route::post('customers/{customer}/ledger', [Admin\CustomerController::class, 'addLedgerEntry'])
         ->middleware('permission:accounts.manage')->name('customers.ledger.add');
+    Route::patch('customers/{customer}/ledger/{entry}', [Admin\CustomerController::class, 'updateLedgerEntry'])
+        ->middleware('permission:accounts.manage')->name('customers.ledger.update');
+    Route::delete('customers/{customer}/ledger/{entry}', [Admin\CustomerController::class, 'deleteLedgerEntry'])
+        ->middleware('permission:accounts.manage')->name('customers.ledger.delete');
     Route::patch('ledger/{entry}/dismiss-promise', [Admin\CustomerController::class, 'dismissPromise'])
         ->middleware('permission:accounts.manage')->name('ledger.dismiss_promise');
 
@@ -512,6 +520,10 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
         ->middleware('permission:vendors.view')->name('vendors.show');
     Route::post('vendors/{vendor}/ledger', [Admin\VendorController::class, 'addLedgerEntry'])
         ->middleware('permission:vendors.manage')->name('vendors.ledger.add');
+    Route::patch('vendors/{vendor}/ledger/{entry}', [Admin\VendorController::class, 'updateLedgerEntry'])
+        ->middleware('permission:vendors.manage')->name('vendors.ledger.update');
+    Route::delete('vendors/{vendor}/ledger/{entry}', [Admin\VendorController::class, 'deleteLedgerEntry'])
+        ->middleware('permission:vendors.manage')->name('vendors.ledger.delete');
 
     // Section routes for salesmen
     Route::get('sections', [Admin\SectionController::class, 'index'])
@@ -570,6 +582,8 @@ Route::prefix('shop')->name('shop.')->middleware(['auth', 'role:subshop'])->grou
     Route::get('customers/{customer}/ledger', [Admin\CustomerController::class, 'ledger'])->name('customers.ledger');
     Route::get('customers/{customer}/ledger/print', [Admin\CustomerController::class, 'ledgerPrint'])->name('customers.ledger.print');
     Route::post('customers/{customer}/ledger', [Admin\CustomerController::class, 'addLedgerEntry'])->name('customers.ledger.add');
+    Route::patch('customers/{customer}/ledger/{entry}', [Admin\CustomerController::class, 'updateLedgerEntry'])->name('customers.ledger.update');
+    Route::delete('customers/{customer}/ledger/{entry}', [Admin\CustomerController::class, 'deleteLedgerEntry'])->name('customers.ledger.delete');
     Route::patch('ledger/{entry}/dismiss-promise', [Admin\CustomerController::class, 'dismissPromise'])->name('ledger.dismiss_promise');
 
     // Banks & cash
