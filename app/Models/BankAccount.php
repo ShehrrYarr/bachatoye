@@ -11,7 +11,7 @@ class BankAccount extends Model
 
     protected $fillable = [
         'shop_id', 'label', 'bank_name', 'account_title', 'account_number', 'iban',
-        'is_active', 'sort_order',
+        'is_active', 'sort_order', 'opening_balance',
     ];
 
     protected function casts(): array
