@@ -16,6 +16,19 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class ApplyEcomTheme
 {
+    /**
+     * Route-name prefixes that must never be themed, checked before anything
+     * else. The allowlist below already excludes them; this is a second lock so
+     * a future storefront-shaped route name inside a panel cannot slip through.
+     */
+    private const PANEL_ROUTES = [
+        'admin.',
+        'pos.',
+        'salesman.',
+        'shop.',
+        'auth.',
+    ];
+
     /** Route-name prefixes that render the customer-facing storefront. */
     private const STOREFRONT_ROUTES = [
         'home',
@@ -71,6 +84,12 @@ class ApplyEcomTheme
 
         if (!$name) {
             return false;
+        }
+
+        foreach (self::PANEL_ROUTES as $prefix) {
+            if (str_starts_with($name, $prefix)) {
+                return false;
+            }
         }
 
         foreach (self::STOREFRONT_ROUTES as $prefix) {

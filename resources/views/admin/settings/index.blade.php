@@ -600,7 +600,7 @@
 </form>
 {{-- ===== Storefront View ===== --}}
 @php use App\Support\EcomTheme; @endphp
-<div id="storefront-view" class="scroll-mt-6">
+<div id="storefront-view" class="max-w-2xl scroll-mt-6">
 
     <div class="flex flex-wrap items-end justify-between gap-3 mt-10 mb-1">
         <div>
@@ -631,7 +631,7 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
         @foreach($themes as $slug => $meta)
         @php
             $c        = $themeColors[$slug];
@@ -652,7 +652,7 @@
                 </span>
                 @endif
 
-                <div class="p-4" style="height: 190px; overflow: hidden;">
+                <div class="p-3" style="height: 150px; overflow: hidden;">
                     @if($slug === 'marketplace')
                         {{-- Dense marketplace: utility bar, search, category dots, tight grid --}}
                         <div style="height:8px; border-radius:3px; background:{{ $grad }};"></div>
@@ -749,35 +749,34 @@
             </div>
 
             {{-- Meta + actions --}}
-            <div class="p-4">
-                <div class="flex items-start justify-between gap-3">
+            <div class="p-3.5">
+                <div class="flex items-start justify-between gap-2">
                     <div class="min-w-0">
-                        <h3 class="font-bold text-gray-900">{{ $meta['name'] }}</h3>
-                        <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">{{ $meta['tagline'] }}</p>
-                        <p class="text-[11px] text-gray-400 mt-1">
+                        <h3 class="font-bold text-gray-900 text-sm leading-tight">{{ $meta['name'] }}</h3>
+                        <p class="text-[11px] text-gray-500 mt-1 leading-snug">{{ $meta['tagline'] }}</p>
+                        <p class="text-[11px] text-gray-400 mt-1.5 leading-snug">
                             <i class="fas fa-font mr-1"></i>{{ trim($meta['heading_font'], "'") }}
                             @if($meta['heading_font'] !== $meta['body_font'])
                                 + {{ trim($meta['body_font'], "'") }}
                             @endif
-                            · inspired by {{ $meta['like'] }}
                         </p>
                     </div>
                     <div class="flex gap-1 shrink-0">
                         @foreach($meta['swatch'] as $sw)
-                        <span class="w-4 h-4 rounded-full border border-gray-200" style="background: {{ $sw }};"></span>
+                        <span class="w-3.5 h-3.5 rounded-full border border-gray-200" style="background: {{ $sw }};"></span>
                         @endforeach
                     </div>
                 </div>
 
-                <div class="flex flex-wrap items-center gap-2 mt-4">
+                <div class="flex items-center gap-1.5 mt-3">
                     <a href="{{ route('home') }}?{{ EcomTheme::PREVIEW_PARAM }}={{ $slug }}"
                        target="_blank" rel="noopener"
-                       class="btn-outline btn-sm">
-                        <i class="fas fa-eye mr-1.5"></i> Preview
+                       class="btn-outline btn-sm px-2.5" title="Preview privately in a new tab">
+                        <i class="fas fa-eye"></i> Preview
                     </a>
 
                     @if($isLive)
-                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-lg">
+                    <span class="inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-2.5 py-1.5 rounded-lg">
                         <i class="fas fa-circle-check"></i> Applied
                     </span>
                     @else
@@ -785,47 +784,46 @@
                           onsubmit="return confirm('Switch your storefront to “{{ $meta['name'] }}”? Customers will see this immediately.');">
                         @csrf
                         <input type="hidden" name="theme" value="{{ $slug }}">
-                        <button type="submit" class="btn-primary btn-sm">
-                            <i class="fas fa-wand-magic-sparkles mr-1.5"></i> Apply
+                        <button type="submit" class="btn-primary btn-sm px-2.5">
+                            <i class="fas fa-wand-magic-sparkles"></i> Apply
                         </button>
                     </form>
                     @endif
 
                     <button type="button" @click="editColors = !editColors"
-                            class="btn-outline btn-sm ml-auto">
-                        <i class="fas fa-palette mr-1.5"></i>
-                        Colours
+                            class="btn-outline btn-sm ml-auto px-2.5" title="Override this view's colours">
+                        <i class="fas fa-palette"></i>
                         @if($c['overridden'])
-                        <span class="ml-1 w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" title="Customised"></span>
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" title="Customised"></span>
                         @endif
                     </button>
                 </div>
 
                 {{-- Per-view colour override --}}
                 <div x-show="editColors" x-cloak x-transition
-                     class="mt-4 pt-4 border-t border-gray-100">
+                     class="mt-3 pt-3 border-t border-gray-100">
                     <form method="POST" action="{{ route('admin.settings.theme.colors') }}"
-                          class="flex flex-wrap items-end gap-3">
+                          class="flex flex-wrap items-end gap-2">
                         @csrf
                         <input type="hidden" name="theme" value="{{ $slug }}">
                         <div>
-                            <label class="form-label text-xs">Primary</label>
+                            <label class="form-label text-xs mb-0.5">Primary</label>
                             <input type="color" name="primary" value="{{ $prim }}"
-                                   class="w-16 h-9 rounded-lg border border-gray-300 cursor-pointer p-0.5">
+                                   class="w-12 h-8 rounded-lg border border-gray-300 cursor-pointer p-0.5">
                         </div>
                         <div>
-                            <label class="form-label text-xs">Secondary</label>
+                            <label class="form-label text-xs mb-0.5">Secondary</label>
                             <input type="color" name="secondary" value="{{ $sec }}"
-                                   class="w-16 h-9 rounded-lg border border-gray-300 cursor-pointer p-0.5">
+                                   class="w-12 h-8 rounded-lg border border-gray-300 cursor-pointer p-0.5">
                         </div>
-                        <button type="submit" class="btn-primary btn-sm">Save colours</button>
+                        <button type="submit" class="btn-primary btn-sm px-2.5">Save</button>
                         @if($c['overridden'])
                         <button type="submit" name="restore_defaults" value="1"
-                                class="btn-outline btn-sm">Restore design colours</button>
+                                class="btn-outline btn-sm px-2.5">Restore</button>
                         @endif
                     </form>
-                    <p class="text-[11px] text-gray-400 mt-2">
-                        Affects the storefront only — your admin panel and POS keep the colours set above.
+                    <p class="text-[11px] text-gray-400 mt-2 leading-snug">
+                        Storefront only — the admin panel and POS keep the colours set above.
                     </p>
                 </div>
             </div>
