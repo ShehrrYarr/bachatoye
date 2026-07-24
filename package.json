@@ -3,8 +3,9 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "vite build",
-        "dev": "vite"
+        "build": "php artisan view:cache && vite build",
+        "build:only": "vite build",
+        "dev": "php artisan view:cache && vite"
     },
     "devDependencies": {
         "@tailwindcss/forms": "^0.5.11",

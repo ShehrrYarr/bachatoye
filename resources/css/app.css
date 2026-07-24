@@ -4,6 +4,11 @@
 [x-cloak] { display: none !important; }
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+
+/* Compiled Blade output is a real class source here — some utilities only ever
+   appear after Blade renders them. Run `npm run build` (which does view:cache
+   first), never `vite build` on its own: with this directory cold the bundle
+   silently loses classes the admin panel relies on. */
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';
