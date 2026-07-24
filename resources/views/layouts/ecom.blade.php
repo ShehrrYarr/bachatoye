@@ -158,6 +158,8 @@
     </div>
 </header>
 
+@include('layouts.partials.theme-preview-bar')
+
 {{-- Flash messages --}}
 @if(session('success'))
 <div class="fixed top-20 right-4 z-50 max-w-sm" x-data x-init="setTimeout(()=>$el.remove(),4000)">

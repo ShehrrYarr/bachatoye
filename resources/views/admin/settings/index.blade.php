@@ -598,6 +598,266 @@
         </button>
     </div>
 </form>
+{{-- ===== Storefront View ===== --}}
+@php use App\Support\EcomTheme; @endphp
+<div id="storefront-view" class="scroll-mt-6">
+
+    <div class="flex flex-wrap items-end justify-between gap-3 mt-10 mb-1">
+        <div>
+            <h2 class="text-lg font-bold text-gray-900">Storefront View</h2>
+            <p class="text-sm text-gray-500">
+                Choose how your online store looks to customers. Preview any view privately first —
+                nothing changes for shoppers until you press <strong>Apply</strong>.
+                Your admin panel and POS are never affected.
+            </p>
+        </div>
+
+        <div class="flex items-center gap-2">
+            @if($activeTheme === EcomTheme::CLASSIC)
+            <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full">
+                <i class="fas fa-circle text-[6px]"></i> Currently: Default view
+            </span>
+            @else
+            <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-full">
+                <i class="fas fa-circle text-[6px]"></i> Live: {{ $themes[$activeTheme]['name'] }}
+            </span>
+            @endif
+
+            <a href="{{ route('home') }}?{{ EcomTheme::PREVIEW_PARAM }}={{ EcomTheme::CLASSIC }}"
+               target="_blank" rel="noopener"
+               class="btn-outline btn-sm">
+                <i class="fas fa-store mr-1.5"></i> View store
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
+        @foreach($themes as $slug => $meta)
+        @php
+            $c        = $themeColors[$slug];
+            $isLive   = $activeTheme === $slug;
+            $prim     = $c['primary'];
+            $sec      = $c['secondary'];
+            $tok      = $meta['tokens'];
+            $grad     = $meta['gradient'] ? "linear-gradient(135deg, {$prim} 0%, {$sec} 100%)" : $prim;
+        @endphp
+        <div class="card overflow-hidden transition-all {{ $isLive ? 'ring-2 ring-green-500 border-green-300' : 'hover:shadow-lg' }}"
+             x-data="{ editColors: false }">
+
+            {{-- Mini mockup --}}
+            <div class="relative border-b border-gray-100" style="background: {{ $tok['bg'] }};">
+                @if($isLive)
+                <span class="absolute top-3 right-3 z-10 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-white bg-green-600 px-2 py-1 rounded-full shadow">
+                    <i class="fas fa-check"></i> Live
+                </span>
+                @endif
+
+                <div class="p-4" style="height: 190px; overflow: hidden;">
+                    @if($slug === 'marketplace')
+                        {{-- Dense marketplace: utility bar, search, category dots, tight grid --}}
+                        <div style="height:8px; border-radius:3px; background:{{ $grad }};"></div>
+                        <div class="flex items-center gap-2 mt-2">
+                            <div style="width:26px;height:12px;border-radius:3px;background:{{ $prim }};"></div>
+                            <div style="flex:1;height:12px;border-radius:999px;background:{{ $tok['surface'] }};border:1px solid {{ $tok['border'] }};"></div>
+                            <div style="width:12px;height:12px;border-radius:3px;background:{{ $tok['border'] }};"></div>
+                        </div>
+                        <div class="flex gap-1.5 mt-2">
+                            @for($i = 0; $i < 6; $i++)
+                            <div style="width:20px;height:20px;border-radius:6px;background:{{ $tok['surface'] }};border:1px solid {{ $tok['border'] }};"></div>
+                            @endfor
+                        </div>
+                        <div class="mt-2" style="height:38px;border-radius:6px;background:{{ $grad }};opacity:.9;"></div>
+                        <div class="grid grid-cols-4 gap-1.5 mt-2">
+                            @for($i = 0; $i < 4; $i++)
+                            <div style="height:52px;border-radius:6px;background:{{ $tok['surface'] }};border:1px solid {{ $tok['border'] }};padding:4px;">
+                                <div style="height:26px;border-radius:3px;background:{{ $tok['surface-2'] }};"></div>
+                                <div style="height:4px;width:80%;border-radius:2px;background:{{ $tok['border'] }};margin-top:4px;"></div>
+                                <div style="height:5px;width:50%;border-radius:2px;background:{{ $prim }};margin-top:3px;"></div>
+                            </div>
+                            @endfor
+                        </div>
+
+                    @elseif($slug === 'boutique')
+                        {{-- Airy boutique: centred wordmark, tall hero, 3 roomy tiles --}}
+                        <div class="flex items-center justify-center gap-3 mb-3">
+                            <div style="width:8px;height:4px;background:{{ $tok['border'] }};"></div>
+                            <div style="width:44px;height:9px;background:{{ $tok['text'] }};"></div>
+                            <div style="width:8px;height:4px;background:{{ $tok['border'] }};"></div>
+                        </div>
+                        <div style="height:62px;background:{{ $tok['surface-2'] }};border:1px solid {{ $tok['border'] }};display:flex;align-items:center;justify-content:center;">
+                            <div style="width:96px;height:7px;background:{{ $tok['text'] }};opacity:.75;"></div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4 mt-4">
+                            @for($i = 0; $i < 3; $i++)
+                            <div>
+                                <div style="height:44px;background:{{ $tok['surface'] }};border:1px solid {{ $tok['border'] }};"></div>
+                                <div style="height:4px;width:70%;background:{{ $tok['border'] }};margin:6px auto 0;"></div>
+                                <div style="height:4px;width:40%;background:{{ $tok['muted'] }};margin:4px auto 0;"></div>
+                            </div>
+                            @endfor
+                        </div>
+
+                    @elseif($slug === 'dark')
+                        {{-- Dark premium: glowing accent, glassy cards --}}
+                        <div class="flex items-center gap-2">
+                            <div style="width:22px;height:10px;border-radius:4px;background:{{ $grad }};box-shadow:0 0 12px {{ $prim }}88;"></div>
+                            <div style="flex:1"></div>
+                            @for($i = 0; $i < 3; $i++)
+                            <div style="width:16px;height:4px;border-radius:2px;background:{{ $tok['muted'] }};opacity:.6;"></div>
+                            @endfor
+                        </div>
+                        <div class="mt-3" style="height:58px;border-radius:12px;background:{{ $tok['surface'] }};border:1px solid {{ $tok['border'] }};position:relative;overflow:hidden;">
+                            <div style="position:absolute;inset:-30% 40% 40% -10%;background:radial-gradient(circle,{{ $prim }}66 0%,transparent 70%);"></div>
+                            <div style="position:absolute;left:12px;top:18px;width:70px;height:7px;border-radius:3px;background:{{ $tok['text'] }};opacity:.85;"></div>
+                            <div style="position:absolute;left:12px;top:32px;width:40px;height:5px;border-radius:3px;background:{{ $prim }};"></div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 mt-3">
+                            @for($i = 0; $i < 3; $i++)
+                            <div style="height:60px;border-radius:10px;background:{{ $tok['surface'] }};border:1px solid {{ $tok['border'] }};padding:6px;">
+                                <div style="height:30px;border-radius:6px;background:{{ $tok['surface-2'] }};"></div>
+                                <div style="height:4px;width:75%;border-radius:2px;background:{{ $tok['muted'] }};margin-top:6px;opacity:.7;"></div>
+                                <div style="height:5px;width:45%;border-radius:2px;background:{{ $prim }};margin-top:4px;box-shadow:0 0 8px {{ $prim }}99;"></div>
+                            </div>
+                            @endfor
+                        </div>
+
+                    @else
+                        {{-- Bold deals: gradient hero, countdown, chunky ribbons --}}
+                        <div class="flex items-center gap-2">
+                            <div style="width:24px;height:11px;border-radius:6px;background:{{ $grad }};"></div>
+                            <div style="flex:1;height:11px;border-radius:999px;background:{{ $tok['surface'] }};border:1px solid {{ $tok['border'] }};"></div>
+                        </div>
+                        <div class="mt-2" style="height:54px;border-radius:16px;background:{{ $grad }};position:relative;overflow:hidden;">
+                            <div style="position:absolute;left:10px;top:12px;width:78px;height:8px;border-radius:4px;background:rgba(255,255,255,.9);"></div>
+                            <div style="position:absolute;left:10px;top:26px;display:flex;gap:4px;">
+                                @for($i = 0; $i < 4; $i++)
+                                <div style="width:16px;height:16px;border-radius:5px;background:rgba(255,255,255,.28);"></div>
+                                @endfor
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 mt-3">
+                            @for($i = 0; $i < 3; $i++)
+                            <div style="height:64px;border-radius:14px;background:{{ $tok['surface'] }};border:1px solid {{ $tok['border'] }};padding:6px;position:relative;">
+                                <div style="position:absolute;top:5px;left:5px;padding:1px 5px;border-radius:999px;background:{{ $sec }};color:#fff;font-size:6px;font-weight:800;">-30%</div>
+                                <div style="height:30px;border-radius:8px;background:{{ $tok['surface-2'] }};margin-top:12px;"></div>
+                                <div style="height:6px;width:55%;border-radius:3px;background:{{ $prim }};margin-top:5px;"></div>
+                            </div>
+                            @endfor
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Meta + actions --}}
+            <div class="p-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <h3 class="font-bold text-gray-900">{{ $meta['name'] }}</h3>
+                        <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">{{ $meta['tagline'] }}</p>
+                        <p class="text-[11px] text-gray-400 mt-1">
+                            <i class="fas fa-font mr-1"></i>{{ trim($meta['heading_font'], "'") }}
+                            @if($meta['heading_font'] !== $meta['body_font'])
+                                + {{ trim($meta['body_font'], "'") }}
+                            @endif
+                            · inspired by {{ $meta['like'] }}
+                        </p>
+                    </div>
+                    <div class="flex gap-1 shrink-0">
+                        @foreach($meta['swatch'] as $sw)
+                        <span class="w-4 h-4 rounded-full border border-gray-200" style="background: {{ $sw }};"></span>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 mt-4">
+                    <a href="{{ route('home') }}?{{ EcomTheme::PREVIEW_PARAM }}={{ $slug }}"
+                       target="_blank" rel="noopener"
+                       class="btn-outline btn-sm">
+                        <i class="fas fa-eye mr-1.5"></i> Preview
+                    </a>
+
+                    @if($isLive)
+                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-lg">
+                        <i class="fas fa-circle-check"></i> Applied
+                    </span>
+                    @else
+                    <form method="POST" action="{{ route('admin.settings.theme.apply') }}"
+                          onsubmit="return confirm('Switch your storefront to “{{ $meta['name'] }}”? Customers will see this immediately.');">
+                        @csrf
+                        <input type="hidden" name="theme" value="{{ $slug }}">
+                        <button type="submit" class="btn-primary btn-sm">
+                            <i class="fas fa-wand-magic-sparkles mr-1.5"></i> Apply
+                        </button>
+                    </form>
+                    @endif
+
+                    <button type="button" @click="editColors = !editColors"
+                            class="btn-outline btn-sm ml-auto">
+                        <i class="fas fa-palette mr-1.5"></i>
+                        Colours
+                        @if($c['overridden'])
+                        <span class="ml-1 w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" title="Customised"></span>
+                        @endif
+                    </button>
+                </div>
+
+                {{-- Per-view colour override --}}
+                <div x-show="editColors" x-cloak x-transition
+                     class="mt-4 pt-4 border-t border-gray-100">
+                    <form method="POST" action="{{ route('admin.settings.theme.colors') }}"
+                          class="flex flex-wrap items-end gap-3">
+                        @csrf
+                        <input type="hidden" name="theme" value="{{ $slug }}">
+                        <div>
+                            <label class="form-label text-xs">Primary</label>
+                            <input type="color" name="primary" value="{{ $prim }}"
+                                   class="w-16 h-9 rounded-lg border border-gray-300 cursor-pointer p-0.5">
+                        </div>
+                        <div>
+                            <label class="form-label text-xs">Secondary</label>
+                            <input type="color" name="secondary" value="{{ $sec }}"
+                                   class="w-16 h-9 rounded-lg border border-gray-300 cursor-pointer p-0.5">
+                        </div>
+                        <button type="submit" class="btn-primary btn-sm">Save colours</button>
+                        @if($c['overridden'])
+                        <button type="submit" name="restore_defaults" value="1"
+                                class="btn-outline btn-sm">Restore design colours</button>
+                        @endif
+                    </form>
+                    <p class="text-[11px] text-gray-400 mt-2">
+                        Affects the storefront only — your admin panel and POS keep the colours set above.
+                    </p>
+                </div>
+            </div>
+        </div>
+        @endforeach
+    </div>
+
+    {{-- Reset --}}
+    <div class="card p-4 mt-5 flex flex-wrap items-center gap-4 border-l-4 border-gray-800">
+        <div class="min-w-0 flex-1">
+            <h3 class="font-bold text-gray-900 text-sm">
+                <i class="fas fa-rotate-left text-gray-400 mr-1.5"></i>Reset to default view
+            </h3>
+            <p class="text-xs text-gray-500 mt-0.5">
+                Puts the storefront back to the original design your customers had before views were added.
+                Nothing else — products, orders, colours in the panel — is touched.
+            </p>
+        </div>
+        <a href="{{ route('home') }}?{{ EcomTheme::PREVIEW_PARAM }}={{ EcomTheme::CLASSIC }}"
+           target="_blank" rel="noopener" class="btn-outline btn-sm">
+            <i class="fas fa-eye mr-1.5"></i> Preview default
+        </a>
+        <form method="POST" action="{{ route('admin.settings.theme.reset') }}"
+              onsubmit="return confirm('Reset the storefront to its default view?');">
+            @csrf
+            <button type="submit" class="btn-secondary btn-sm" @if($activeTheme === EcomTheme::CLASSIC) disabled @endif>
+                <i class="fas fa-rotate-left mr-1.5"></i> Reset to Default
+            </button>
+        </form>
+    </div>
+</div>
+
 {{-- ===== System Tools ===== --}}
 <h2 class="text-lg font-bold text-gray-900 mt-10 mb-1">System Tools</h2>
 <p class="text-sm text-gray-500 mb-4">Run server-side maintenance commands directly from the browser. Output is shown below each command.</p>

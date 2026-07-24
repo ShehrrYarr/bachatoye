@@ -313,6 +313,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('settings/logo', [Admin\SettingController::class, 'uploadLogo'])->name('settings.logo');
     Route::post('settings/account', [Admin\SettingController::class, 'updateAccount'])->name('settings.account');
     Route::post('settings/sections', [Admin\SettingController::class, 'updateSectionPermissions'])->name('settings.sections');
+    Route::post('settings/theme', [Admin\SettingController::class, 'applyTheme'])->name('settings.theme.apply');
+    Route::post('settings/theme/reset', [Admin\SettingController::class, 'resetTheme'])->name('settings.theme.reset');
+    Route::post('settings/theme/colors', [Admin\SettingController::class, 'updateThemeColors'])->name('settings.theme.colors');
     Route::get('settings/barcode-canvas', [Admin\SettingController::class, 'barcodeCanvas'])->name('settings.barcode-canvas');
     Route::post('settings/barcode-canvas', [Admin\SettingController::class, 'saveBarcodeCanvas'])->name('settings.barcode-canvas.save');
 

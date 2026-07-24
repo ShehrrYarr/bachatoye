@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Section;
 use App\Models\Setting;
+use App\Support\EcomTheme;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
@@ -105,7 +106,71 @@ class SettingController extends Controller
             'use_gradient'        => Setting::get('use_gradient',    '1'),
         ];
         $sections = Section::orderBy('sort_order')->orderBy('name')->get();
-        return view('admin.settings.index', compact('settings', 'sections'));
+
+        $themes       = EcomTheme::all();
+        $activeTheme  = EcomTheme::applied();
+        $themeColors  = [];
+        foreach ($themes as $slug => $meta) {
+            $themeColors[$slug] = EcomTheme::colors($slug) + [
+                'overridden' => EcomTheme::colorsOverridden($slug),
+            ];
+        }
+
+        return view('admin.settings.index', compact(
+            'settings', 'sections', 'themes', 'activeTheme', 'themeColors'
+        ));
+    }
+
+    /* ===================== Storefront views (themes) ===================== */
+
+    /** Make a view live for every customer. */
+    public function applyTheme(Request $request)
+    {
+        $data = $request->validate([
+            'theme' => 'required|string|in:' . implode(',', array_keys(EcomTheme::all())),
+        ]);
+
+        EcomTheme::apply($data['theme']);
+
+        return redirect()
+            ->route('admin.settings.index')
+            ->withFragment('storefront-view')
+            ->with('success', EcomTheme::meta($data['theme'])['name'] . ' is now live on your store.');
+    }
+
+    /** Restore the storefront the shop had before views existed. */
+    public function resetTheme()
+    {
+        EcomTheme::reset();
+
+        return redirect()
+            ->route('admin.settings.index')
+            ->withFragment('storefront-view')
+            ->with('success', 'Storefront reset to the default view.');
+    }
+
+    /** Override (or clear) a single view's colours without changing its design. */
+    public function updateThemeColors(Request $request)
+    {
+        $data = $request->validate([
+            'theme'     => 'required|string|in:' . implode(',', array_keys(EcomTheme::all())),
+            'primary'   => 'nullable|regex:/^#[0-9a-fA-F]{6}$/',
+            'secondary' => 'nullable|regex:/^#[0-9a-fA-F]{6}$/',
+        ]);
+
+        if ($request->boolean('restore_defaults')) {
+            EcomTheme::resetColors($data['theme']);
+            $message = 'Colours restored to the view\'s original design.';
+        } else {
+            Setting::set(EcomTheme::colorKey($data['theme'], 'primary'),   $data['primary']   ?? null);
+            Setting::set(EcomTheme::colorKey($data['theme'], 'secondary'), $data['secondary'] ?? null);
+            $message = 'Storefront colours updated.';
+        }
+
+        return redirect()
+            ->route('admin.settings.index')
+            ->withFragment('storefront-view')
+            ->with('success', $message);
     }
 
     public function updateSectionPermissions(Request $request)

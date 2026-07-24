@@ -24,6 +24,11 @@ return Application::configure(basePath: dirname(__DIR__))
                 : route('salesman.dashboard');
         });
 
+        // Storefront theming — no-ops on admin, POS, salesman and shop routes.
+        $middleware->web(append: [
+            \App\Http\Middleware\ApplyEcomTheme::class,
+        ]);
+
         $middleware->alias([
             'role'               => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission'         => \Spatie\Permission\Middleware\PermissionMiddleware::class,
