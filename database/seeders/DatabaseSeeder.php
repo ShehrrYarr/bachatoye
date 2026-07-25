@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             'pos.edit_sale',
             'pos.delete_sale',
             'pos.process_returns',
+            'pos.process_buyback',
             'orders.view',
             'orders.manage',
             'products.view',
@@ -63,6 +64,7 @@ class DatabaseSeeder extends Seeder
         // Salesman gets basic permissions by default
         $salesman->syncPermissions([
             'pos.access',
+            'pos.process_buyback',
             'orders.view',
             'products.view',
             'inventory.view',
@@ -82,6 +84,7 @@ class DatabaseSeeder extends Seeder
             'pos.edit_sale',
             'pos.delete_sale',
             'pos.process_returns',
+            'pos.process_buyback',
             'customers.view',
             'customers.manage',
             'accounts.view',

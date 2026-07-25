@@ -165,6 +165,24 @@
     </div>
     @endif
 
+    {{-- Buybacks (used-phone trade-ins) --}}
+    @if(($report['buyback_total'] ?? 0) > 0)
+    <div class="card p-4 border-l-4 border-orange-400">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-semibold text-orange-700"><i class="fas fa-mobile-alt mr-1.5"></i>Buybacks (Out)</span>
+            <span class="text-lg font-bold text-orange-900">– Rs. {{ number_format($report['buyback_total']) }}</span>
+        </div>
+        <div class="flex flex-wrap gap-3 text-xs text-orange-700">
+            @if($report['buyback_cash'] > 0)
+            <span><i class="fas fa-money-bill-wave mr-1"></i>Cash: Rs. {{ number_format($report['buyback_cash']) }}</span>
+            @endif
+            @if($report['buyback_bank'] > 0)
+            <span><i class="fas fa-university mr-1"></i>Bank: Rs. {{ number_format($report['buyback_bank']) }}</span>
+            @endif
+        </div>
+    </div>
+    @endif
+
     {{-- Net totals --}}
     <div class="card p-4 border-l-4 border-gray-800 bg-gray-50">
         <div class="flex items-center justify-between mb-3">

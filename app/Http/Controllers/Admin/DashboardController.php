@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AccountLedger;
+use App\Models\Buyback;
 use App\Models\Customer;
 use App\Models\Expense;
 use App\Models\Order;
@@ -148,6 +149,13 @@ class DashboardController extends Controller
         $payoutBank  = (float) $payoutData->where('payment_method', 'bank_transfer')->sum('amount');
         $payoutTotal = (float) $payoutData->sum('amount');
 
+        // Cash/bank paid out on buybacks (used-phone trade-ins) — any shop may process one
+        $buybackData  = Buyback::forShopFilter($shopFilter)->whereDate('created_at', today())
+            ->get(['payment_method', 'amount_total']);
+        $buybackCash  = (float) $buybackData->where('payment_method', 'cash')->sum('amount_total');
+        $buybackBank  = (float) $buybackData->where('payment_method', 'bank_transfer')->sum('amount_total');
+        $buybackTotal = (float) $buybackData->sum('amount_total');
+
         $todayReport = [
             'pos_total'           => $posOrders->sum('total'),
             'pos_cash'            => $posCash,
@@ -171,9 +179,12 @@ class DashboardController extends Controller
             'payout_total'        => $payoutTotal,
             'payout_cash'         => $payoutCash,
             'payout_bank'         => $payoutBank,
-            'total_cash'          => $posCash + $khataCash + $vendorRecvCash - $returnCash - $purchasesCashPaid - $expenseCash - $vendorPayCash - $payoutCash,
-            'total_bank'          => $posBank + $khataBank + $vendorRecvBank - $returnBank - $purchasesBankPaid - $expenseBank - $vendorPayBank - $payoutBank,
-            'grand_total'         => $posCash + $posBank + $khataTotal + $vendorRecvTotal - $returnTotal - $purchasesPaid - $todayExpenses - $vendorPayTotal - $payoutTotal,
+            'buyback_total'       => $buybackTotal,
+            'buyback_cash'        => $buybackCash,
+            'buyback_bank'        => $buybackBank,
+            'total_cash'          => $posCash + $khataCash + $vendorRecvCash - $returnCash - $purchasesCashPaid - $expenseCash - $vendorPayCash - $payoutCash - $buybackCash,
+            'total_bank'          => $posBank + $khataBank + $vendorRecvBank - $returnBank - $purchasesBankPaid - $expenseBank - $vendorPayBank - $payoutBank - $buybackBank,
+            'grand_total'         => $posCash + $posBank + $khataTotal + $vendorRecvTotal - $returnTotal - $purchasesPaid - $todayExpenses - $vendorPayTotal - $payoutTotal - $buybackTotal,
             'purchases_total'     => $purchasesTotal,
             'purchases_paid'      => $purchasesPaid,
             'purchases_due'       => $purchasesDue,
@@ -285,6 +296,11 @@ class DashboardController extends Controller
         $printPayoutBank  = (float) $printPayouts->where('payment_method', 'bank_transfer')->sum('amount');
         $printPayoutTotal = (float) $printPayouts->sum('amount');
 
+        $printBuybacks     = Buyback::whereDate('created_at', today())->get(['payment_method', 'amount_total']);
+        $printBuybackCash  = (float) $printBuybacks->where('payment_method', 'cash')->sum('amount_total');
+        $printBuybackBank  = (float) $printBuybacks->where('payment_method', 'bank_transfer')->sum('amount_total');
+        $printBuybackTotal = (float) $printBuybacks->sum('amount_total');
+
         // Per-bank breakdown for print
         $khataByBank = $khataEntries
             ->where('payment_method', 'bank_transfer')
@@ -328,9 +344,12 @@ class DashboardController extends Controller
             'payout_total'        => $printPayoutTotal,
             'payout_cash'         => $printPayoutCash,
             'payout_bank'         => $printPayoutBank,
-            'total_cash'          => $posCash + $khataCash + $printVendorRecvCash - $returnCash - $purchasesCashPrint - $printExpenseCash - $printVendorPayCash - $printPayoutCash,
-            'total_bank'          => $posBank + $khataBank + $printVendorRecvBank - $returnBank - $purchasesBankPrint - $printExpenseBank - $printVendorPayBank - $printPayoutBank,
-            'grand_total'         => $posOrders->sum('total') + $khataTotal + $printVendorRecvTotal - $returnTotal - $purchasesPaidPrint - $printExpenseTotal - $printVendorPayTotal - $printPayoutTotal,
+            'buyback_total'       => $printBuybackTotal,
+            'buyback_cash'        => $printBuybackCash,
+            'buyback_bank'        => $printBuybackBank,
+            'total_cash'          => $posCash + $khataCash + $printVendorRecvCash - $returnCash - $purchasesCashPrint - $printExpenseCash - $printVendorPayCash - $printPayoutCash - $printBuybackCash,
+            'total_bank'          => $posBank + $khataBank + $printVendorRecvBank - $returnBank - $purchasesBankPrint - $printExpenseBank - $printVendorPayBank - $printPayoutBank - $printBuybackBank,
+            'grand_total'         => $posOrders->sum('total') + $khataTotal + $printVendorRecvTotal - $returnTotal - $purchasesPaidPrint - $printExpenseTotal - $printVendorPayTotal - $printPayoutTotal - $printBuybackTotal,
             'store_name'          => Setting::get('shop_name', config('app.name')),
             'store_phone'         => Setting::get('shop_phone', ''),
             'date'                => today()->format('d M Y'),
@@ -377,6 +396,12 @@ class DashboardController extends Controller
         $printSalesmanExpenseCash  = (float) $printSalesmanExpenses->where('payment_method', 'cash')->sum('amount');
         $printSalesmanExpenseBank  = (float) $printSalesmanExpenses->where('payment_method', 'bank_transfer')->sum('amount');
 
+        $printSalesmanBuybacks     = Buyback::where('processed_by', $user->id)
+            ->whereDate('created_at', today())->get(['payment_method', 'amount_total']);
+        $printSalesmanBuybackTotal = (float) $printSalesmanBuybacks->sum('amount_total');
+        $printSalesmanBuybackCash  = (float) $printSalesmanBuybacks->where('payment_method', 'cash')->sum('amount_total');
+        $printSalesmanBuybackBank  = (float) $printSalesmanBuybacks->where('payment_method', 'bank_transfer')->sum('amount_total');
+
         $todayReport = [
             'pos_total'    => (float) $posOrders->sum('total'),
             'pos_cash'     => $posCash,
@@ -390,9 +415,12 @@ class DashboardController extends Controller
             'expenses'     => $printSalesmanExpenseTotal,
             'expense_cash' => $printSalesmanExpenseCash,
             'expense_bank' => $printSalesmanExpenseBank,
-            'total_cash'   => $posCash + $khataCash - $returnCash - $printSalesmanExpenseCash,
-            'total_bank'   => $posBank + $khataBank - $returnBank - $printSalesmanExpenseBank,
-            'grand_total'  => (float) $posOrders->sum('total') + $khataTotal - $returnTotal - $printSalesmanExpenseTotal,
+            'buyback_total' => $printSalesmanBuybackTotal,
+            'buyback_cash'  => $printSalesmanBuybackCash,
+            'buyback_bank'  => $printSalesmanBuybackBank,
+            'total_cash'   => $posCash + $khataCash - $returnCash - $printSalesmanExpenseCash - $printSalesmanBuybackCash,
+            'total_bank'   => $posBank + $khataBank - $returnBank - $printSalesmanExpenseBank - $printSalesmanBuybackBank,
+            'grand_total'  => (float) $posOrders->sum('total') + $khataTotal - $returnTotal - $printSalesmanExpenseTotal - $printSalesmanBuybackTotal,
             'purchases_total' => 0,
             'purchases_paid'  => 0,
             'purchases_due'   => 0,
@@ -503,6 +531,13 @@ class DashboardController extends Controller
         $rangePayoutBank  = (float) $rangePayouts->where('payment_method', 'bank_transfer')->sum('amount');
         $rangePayoutTotal = (float) $rangePayouts->sum('amount');
 
+        // ── Buybacks (used-phone trade-ins) ──────────────────────────────────
+        $rangeBuybacks     = Buyback::whereBetween('created_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
+            ->get(['payment_method', 'amount_total']);
+        $rangeBuybackCash  = (float) $rangeBuybacks->where('payment_method', 'cash')->sum('amount_total');
+        $rangeBuybackBank  = (float) $rangeBuybacks->where('payment_method', 'bank_transfer')->sum('amount_total');
+        $rangeBuybackTotal = (float) $rangeBuybacks->sum('amount_total');
+
         // ── Products sold ────────────────────────────────────────────────────
         $productsSold = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
@@ -548,9 +583,12 @@ class DashboardController extends Controller
             'payout_total'       => $rangePayoutTotal,
             'payout_cash'        => $rangePayoutCash,
             'payout_bank'        => $rangePayoutBank,
-            'total_cash'         => $posCash + $khataCash + $rangeVendorRecvCash - $returnCash - $purchasesCash - $expenseCash - $rangeVendorPayCash - $rangePayoutCash,
-            'total_bank'         => $posBank + $khataBank + $rangeVendorRecvBank - $returnBank - $purchasesBank - $expenseBank - $rangeVendorPayBank - $rangePayoutBank,
-            'grand_total'        => $posTotal + $khataTotal + $rangeVendorRecvTotal - $returnTotal - $purchasesPaid - $expenseTotal - $rangeVendorPayTotal - $rangePayoutTotal,
+            'buyback_total'      => $rangeBuybackTotal,
+            'buyback_cash'       => $rangeBuybackCash,
+            'buyback_bank'       => $rangeBuybackBank,
+            'total_cash'         => $posCash + $khataCash + $rangeVendorRecvCash - $returnCash - $purchasesCash - $expenseCash - $rangeVendorPayCash - $rangePayoutCash - $rangeBuybackCash,
+            'total_bank'         => $posBank + $khataBank + $rangeVendorRecvBank - $returnBank - $purchasesBank - $expenseBank - $rangeVendorPayBank - $rangePayoutBank - $rangeBuybackBank,
+            'grand_total'        => $posTotal + $khataTotal + $rangeVendorRecvTotal - $returnTotal - $purchasesPaid - $expenseTotal - $rangeVendorPayTotal - $rangePayoutTotal - $rangeBuybackTotal,
             'total_orders'       => $posOrders->count(),
             'date_from'          => $from->format('d M Y'),
             'date_to'            => $to->format('d M Y'),
@@ -808,6 +846,12 @@ class DashboardController extends Controller
         $payoutCash  = (float) $payouts->where('payment_method', 'cash')->sum('amount');
         $payoutBank  = (float) $payouts->where('payment_method', 'bank_transfer')->sum('amount');
 
+        // Sub shops CAN process buybacks (unlike vendor purchases, which are main-only)
+        $buybacks     = Buyback::forShop($shopId)->whereDate('created_at', today())->get(['payment_method', 'amount_total']);
+        $buybackTotal = (float) $buybacks->sum('amount_total');
+        $buybackCash  = (float) $buybacks->where('payment_method', 'cash')->sum('amount_total');
+        $buybackBank  = (float) $buybacks->where('payment_method', 'bank_transfer')->sum('amount_total');
+
         return [
             'pos_total'    => (float) $posOrders->sum('total'),
             'pos_cash'     => $posCash,
@@ -824,9 +868,12 @@ class DashboardController extends Controller
             'payout_total' => $payoutTotal,
             'payout_cash'  => $payoutCash,
             'payout_bank'  => $payoutBank,
-            'total_cash'   => $posCash + $khataCash - $returnCash - $expenseCash - $payoutCash,
-            'total_bank'   => $posBank + $khataBank - $returnBank - $expenseBank - $payoutBank,
-            'grand_total'  => (float) $posOrders->sum('total') + $khataTotal - $returnTotal - $expenseTotal - $payoutTotal,
+            'buyback_total' => $buybackTotal,
+            'buyback_cash'  => $buybackCash,
+            'buyback_bank'  => $buybackBank,
+            'total_cash'   => $posCash + $khataCash - $returnCash - $expenseCash - $payoutCash - $buybackCash,
+            'total_bank'   => $posBank + $khataBank - $returnBank - $expenseBank - $payoutBank - $buybackBank,
+            'grand_total'  => (float) $posOrders->sum('total') + $khataTotal - $returnTotal - $expenseTotal - $payoutTotal - $buybackTotal,
             'purchases_total' => 0, 'purchases_paid' => 0, 'purchases_due' => 0,
             'purchases_cash'  => 0, 'purchases_bank' => 0,
             'vendor_pay_total' => 0, 'vendor_pay_cash' => 0, 'vendor_pay_bank' => 0,

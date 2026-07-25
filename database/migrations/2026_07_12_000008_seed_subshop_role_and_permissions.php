@@ -16,6 +16,7 @@ return new class extends Migration
         'pos.edit_sale',
         'pos.delete_sale',
         'pos.process_returns',
+        'pos.process_buyback',
         'customers.view',
         'customers.manage',
         'accounts.view',

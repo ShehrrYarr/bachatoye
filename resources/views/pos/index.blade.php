@@ -116,6 +116,10 @@
                    class="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg font-medium transition-colors">
                     <i class="fas fa-sync-alt mr-1"></i>Exchange
                 </a>
+                <a href="{{ route('pos.buyback.index') }}"
+                   class="text-xs bg-teal-100 hover:bg-teal-200 text-teal-700 px-3 py-1.5 rounded-lg font-medium transition-colors">
+                    <i class="fas fa-hand-holding-usd mr-1"></i>Buyback
+                </a>
                 <a href="{{ route(auth()->user()->panelPrefix() . '.dashboard') }}"
                    class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg font-medium transition-colors">
                     <i class="fas fa-th-large mr-1"></i>Dashboard
@@ -189,6 +193,10 @@
                     <a href="{{ route('pos.exchange.index') }}"
                        class="block px-4 py-2.5 text-sm text-indigo-700 hover:bg-indigo-50 flex items-center gap-2.5">
                         <i class="fas fa-sync-alt w-4 text-center"></i> Exchange
+                    </a>
+                    <a href="{{ route('pos.buyback.index') }}"
+                       class="block px-4 py-2.5 text-sm text-teal-700 hover:bg-teal-50 flex items-center gap-2.5">
+                        <i class="fas fa-hand-holding-usd w-4 text-center"></i> Buyback
                     </a>
                     <a href="{{ route(auth()->user()->panelPrefix() . '.dashboard') }}"
                        class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 border-t border-gray-100">
@@ -1491,6 +1499,19 @@
             </div>
         </template>
 
+        {{-- Buyback chip (used-phone trade-ins; only shown when there are any) --}}
+        <template x-if="stats.buyback_total > 0">
+            <div class="flex items-center gap-1.5 shrink-0">
+                <div class="w-px h-4 bg-gray-700 shrink-0"></div>
+                <button @click="activeTab = 'buybacks'; showDailyModal = true"
+                        class="flex items-center gap-1.5 bg-orange-900/60 hover:bg-orange-800 text-orange-300 px-2.5 py-1 rounded-lg transition-colors">
+                    <i class="fas fa-mobile-alt"></i>
+                    <span class="font-semibold" x-text="'– Rs. ' + fmt(stats.buyback_total)"></span>
+                    <span class="text-orange-400" x-text="stats.buyback_count + ' buyback'"></span>
+                </button>
+            </div>
+        </template>
+
         <div class="w-px h-4 bg-gray-700 shrink-0"></div>
 
         {{-- Net --}}
@@ -1576,6 +1597,14 @@
                             class="py-2.5 px-4 text-sm transition-colors">
                         <i class="fas fa-hand-holding-dollar mr-1.5"></i>
                         Paid Out <span class="ml-1 text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-semibold" x-text="stats.payout_count"></span>
+                    </button>
+                </template>
+                <template x-if="stats.buyback_count > 0">
+                    <button @click="activeTab = 'buybacks'"
+                            :class="activeTab === 'buybacks' ? 'border-b-2 border-orange-500 text-orange-700 font-semibold' : 'text-gray-500 hover:text-gray-700'"
+                            class="py-2.5 px-4 text-sm transition-colors">
+                        <i class="fas fa-mobile-alt mr-1.5"></i>
+                        Buybacks <span class="ml-1 text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full font-semibold" x-text="stats.buyback_count"></span>
                     </button>
                 </template>
             </div>
@@ -2106,6 +2135,83 @@
                     </div>
                 </div>
 
+                {{-- ======== BUYBACKS TABLE (used-phone trade-ins) ======== --}}
+                <div x-show="activeTab === 'buybacks'" class="p-4">
+
+                    <div class="grid grid-cols-3 gap-3 mb-4">
+                        <div class="bg-orange-50 border border-orange-100 rounded-xl px-4 py-3 text-center">
+                            <div class="text-lg font-bold text-orange-700" x-text="'Rs. ' + fmt(stats.buyback_total)"></div>
+                            <div class="text-xs text-orange-600">Total Paid Out</div>
+                        </div>
+                        <div class="bg-green-50 border border-green-100 rounded-xl px-4 py-3 text-center">
+                            <div class="text-lg font-bold text-green-700" x-text="'Rs. ' + fmt(stats.buyback_cash)"></div>
+                            <div class="text-xs text-green-600">Cash Paid</div>
+                        </div>
+                        <div class="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-center">
+                            <div class="text-lg font-bold text-blue-700" x-text="'Rs. ' + fmt(stats.buyback_bank)"></div>
+                            <div class="text-xs text-blue-600">Bank Paid</div>
+                        </div>
+                    </div>
+
+                    <div x-show="activityLoading" class="text-center py-16 text-gray-300">
+                        <i class="fas fa-spinner fa-spin text-4xl mb-3"></i>
+                        <p class="text-sm text-gray-400">Loading...</p>
+                    </div>
+                    <div x-show="!activityLoading && buybacks.length === 0" class="text-center py-16 text-gray-300">
+                        <i class="fas fa-mobile-alt text-4xl mb-3"></i>
+                        <p class="text-sm text-gray-400">No buybacks recorded today</p>
+                    </div>
+                    <div x-show="!activityLoading && buybacks.length > 0" class="overflow-x-auto rounded-xl border border-gray-100">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                                <tr>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Time</th>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Seller</th>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Item(s)</th>
+                                    <th class="text-left px-4 py-2.5 font-semibold">Method</th>
+                                    <th class="text-right px-4 py-2.5 font-semibold">Paid</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-50">
+                                <template x-for="(b, idx) in buybacks" :key="idx">
+                                    <tr class="hover:bg-gray-50 transition-colors">
+                                        <td class="px-4 py-3 text-xs text-gray-500 whitespace-nowrap" x-text="b.time"></td>
+                                        <td class="px-4 py-3">
+                                            <div class="font-medium text-sm text-gray-800" x-text="b.seller_name"></div>
+                                            <div class="text-xs text-gray-400" x-text="b.seller_phone || ''"></div>
+                                        </td>
+                                        <td class="px-4 py-3 text-xs text-gray-600 max-w-xs"
+                                            x-text="b.items.map(i => i.product_name).join(', ') || '—'"></td>
+                                        <td class="px-4 py-3 text-xs">
+                                            <span x-show="b.payment_method === 'cash'"
+                                                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
+                                                <i class="fas fa-money-bill-wave text-[10px]"></i> Cash
+                                            </span>
+                                            <span x-show="b.payment_method === 'bank_transfer'"
+                                                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">
+                                                <i class="fas fa-university text-[10px]"></i>
+                                                <span x-text="b.bank_label || 'Bank'"></span>
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right">
+                                            <span class="font-bold text-orange-600 text-sm" x-text="'– Rs. ' + fmt(b.amount_total)"></span>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                            <tfoot class="bg-gray-50 border-t-2 border-gray-200">
+                                <tr>
+                                    <td colspan="3" class="px-4 py-3 text-sm font-bold text-gray-700"
+                                        x-text="`Total — ${buybacks.length} buyback(s)`"></td>
+                                    <td></td>
+                                    <td class="px-4 py-3 text-right font-bold text-lg text-orange-600"
+                                        x-text="'– Rs. ' + fmt(buybacks.reduce((s,b) => s + b.amount_total, 0))"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
             </div>{{-- end overflow-y-auto --}}
         </div>
     </div>
@@ -2134,6 +2240,10 @@ $_posStats = [
     'payout_total'     => $todayCustomerPayouts->payout_total ?? 0,
     'payout_cash'      => $todayCustomerPayouts->payout_cash ?? 0,
     'payout_bank'      => $todayCustomerPayouts->payout_bank ?? 0,
+    'buyback_count'     => $todayBuybacks->buyback_count ?? 0,
+    'buyback_total'     => $todayBuybacks->buyback_total ?? 0,
+    'buyback_cash'      => $todayBuybacks->buyback_cash ?? 0,
+    'buyback_bank'      => $todayBuybacks->buyback_bank ?? 0,
 ];
 $_posCategories = $categories->map(fn($c) => [
     'id'       => $c->id,
@@ -3354,12 +3464,13 @@ function posStats() {
         vendor_payments: [],
         vendor_receipts: [],
         customer_payouts: [],
+        buybacks: [],
         activityLoading: false,
 
         get netRevenue() {
             return this.stats.total_revenue - this.stats.total_refunded
                  - this.stats.vendor_pay_total + (this.stats.vendor_recv_total || 0)
-                 - (this.stats.payout_total || 0);
+                 - (this.stats.payout_total || 0) - (this.stats.buyback_total || 0);
         },
 
         init() {
@@ -3386,6 +3497,7 @@ function posStats() {
                     this.vendor_payments  = data.vendor_payments  ?? [];
                     this.vendor_receipts  = data.vendor_receipts  ?? [];
                     this.customer_payouts = data.customer_payouts ?? [];
+                    this.buybacks         = data.buybacks         ?? [];
                 }
             } catch(e) { console.error('Activity load failed', e); }
             this.activityLoading = false;

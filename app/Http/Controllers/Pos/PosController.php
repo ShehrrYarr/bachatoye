@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Pos;
 use App\Http\Controllers\Controller;
 use App\Models\AccountLedger;
 use App\Models\BankAccount;
+use App\Models\Buyback;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\ProductColor;
@@ -120,6 +121,14 @@ class PosController extends Controller
             ->latest()
             ->get();
 
+        // Buybacks processed today (used-phone trade-ins) — shop/salesman scoped like sales
+        $todayBuybackList = Buyback::forShop($shopId)
+            ->whereDate('created_at', today())
+            ->when(!$isAdmin && !$shopId, fn($q) => $q->where('processed_by', $user->id))
+            ->with(['items', 'bankAccount'])
+            ->latest()
+            ->get();
+
         // Aggregated totals for the summary bar
         $cashTotal = $todaySalesOrders->sum(function ($o) {
             return match ($o->payment_method) {
@@ -170,6 +179,12 @@ class PosController extends Controller
             'payout_cash'  => (float) $todayPayoutList->where('payment_method', 'cash')->sum('amount'),
             'payout_bank'  => (float) $todayPayoutList->where('payment_method', 'bank_transfer')->sum('amount'),
         ];
+        $todayBuybacks = (object)[
+            'buyback_count' => $todayBuybackList->count(),
+            'buyback_total' => (float) $todayBuybackList->sum('amount_total'),
+            'buyback_cash'  => (float) $todayBuybackList->where('payment_method', 'cash')->sum('amount_total'),
+            'buyback_bank'  => (float) $todayBuybackList->where('payment_method', 'bank_transfer')->sum('amount_total'),
+        ];
 
         $bankAccounts = BankAccount::active()->forShop($shopId)->orderBy('sort_order')->orderBy('id')->get();
         $canViewCost  = $user->can('products.view_cost');
@@ -177,8 +192,8 @@ class PosController extends Controller
 
         return view('pos.index', compact(
             'session', 'categories', 'featuredProducts',
-            'todaySales', 'todayReturns', 'todayPayments', 'todayVendorPayments', 'todayVendorReceipts', 'todayCustomerPayouts',
-            'todaySalesOrders', 'todayReturnsList', 'todayPaymentsList', 'todayVendorPayList', 'todayVendorRecvList', 'todayPayoutList',
+            'todaySales', 'todayReturns', 'todayPayments', 'todayVendorPayments', 'todayVendorReceipts', 'todayCustomerPayouts', 'todayBuybacks',
+            'todaySalesOrders', 'todayReturnsList', 'todayPaymentsList', 'todayVendorPayList', 'todayVendorRecvList', 'todayPayoutList', 'todayBuybackList',
             'bankAccounts', 'canViewCost', 'currentShop'
         ));
     }
@@ -245,6 +260,11 @@ class PosController extends Controller
             ->when(!$isAdmin && !$shopId, fn($q) => $q->where('user_id', $user->id))
             ->get(['payment_method', 'amount']);
 
+        $buybackData = Buyback::forShop($shopId)
+            ->whereDate('created_at', today())
+            ->when(!$isAdmin && !$shopId, fn($q) => $q->where('processed_by', $user->id))
+            ->get(['payment_method', 'amount_total']);
+
         return response()->json([
             'order_count'      => $todaySalesOrders->count(),
             'total_revenue'    => (float) $todaySalesOrders->sum('total'),
@@ -266,6 +286,10 @@ class PosController extends Controller
             'payout_total'     => (float) $payoutData->sum('amount'),
             'payout_cash'      => (float) $payoutData->where('payment_method', 'cash')->sum('amount'),
             'payout_bank'      => (float) $payoutData->where('payment_method', 'bank_transfer')->sum('amount'),
+            'buyback_count'     => $buybackData->count(),
+            'buyback_total'     => (float) $buybackData->sum('amount_total'),
+            'buyback_cash'      => (float) $buybackData->where('payment_method', 'cash')->sum('amount_total'),
+            'buyback_bank'      => (float) $buybackData->where('payment_method', 'bank_transfer')->sum('amount_total'),
         ]);
     }
 
@@ -393,7 +417,27 @@ class PosController extends Controller
                 'balance_after'  => (float) ($p->balance_after ?? 0),
             ])->values();
 
-        return response()->json(compact('orders', 'returns', 'payments', 'vendor_payments', 'vendor_receipts', 'customer_payouts'));
+        $buybacks = Buyback::forShop($shopId)
+            ->whereDate('created_at', today())
+            ->when(!$isAdmin && !$shopId, fn($q) => $q->where('processed_by', $user->id))
+            ->latest()
+            ->with(['items', 'bankAccount'])
+            ->get()
+            ->map(fn($b) => [
+                'time'            => $b->created_at->format('H:i'),
+                'buyback_number'  => $b->buyback_number,
+                'seller_name'     => $b->seller_name,
+                'seller_phone'    => $b->seller_phone,
+                'items'           => $b->items->map(fn($i) => [
+                    'product_name' => $i->product_name,
+                    'price_paid'   => (float) $i->price_paid,
+                ])->values(),
+                'payment_method'  => $b->payment_method,
+                'bank_label'      => $b->bankAccount?->label ?? null,
+                'amount_total'    => (float) $b->amount_total,
+            ])->values();
+
+        return response()->json(compact('orders', 'returns', 'payments', 'vendor_payments', 'vendor_receipts', 'customer_payouts', 'buybacks'));
     }
 
     public function openSession(Request $request)

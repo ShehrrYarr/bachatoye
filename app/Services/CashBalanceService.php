@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AccountLedger;
 use App\Models\BankAccount;
+use App\Models\Buyback;
 use App\Models\Expense;
 use App\Models\Order;
 use App\Models\Purchase;
@@ -80,20 +81,24 @@ class CashBalanceService
                 ->where('payment_method', 'cash')
                 ->sum('amount');
 
+        // Cash paid out on buybacks (used-phone trade-ins) — any shop may process one
+        $cashOutBuyback = (float) Buyback::forShop($shopId)->where('payment_method', 'cash')->sum('amount_total');
+
         $cashSummary = [
-            'opening'    => $cashOpening,
-            'in_pos'     => $cashInPos,
-            'in_ecom'    => $cashInEcom,
-            'in_khata'   => $cashInKhata,
-            'in_vendor'  => $cashInVendor,
-            'out_exp'    => $cashOutExpenses,
-            'out_pur'    => $cashOutPurchases,
-            'out_ret'    => $cashOutReturns,
-            'out_khata'  => $cashOutKhata,
-            'out_vendor' => $cashOutVendor,
-            'balance'    => $cashOpening + $cashInPos + $cashInEcom + $cashInKhata + $cashInVendor
-                          - $cashOutExpenses - $cashOutPurchases - $cashOutReturns
-                          - $cashOutKhata - $cashOutVendor,
+            'opening'      => $cashOpening,
+            'in_pos'       => $cashInPos,
+            'in_ecom'      => $cashInEcom,
+            'in_khata'     => $cashInKhata,
+            'in_vendor'    => $cashInVendor,
+            'out_exp'      => $cashOutExpenses,
+            'out_pur'      => $cashOutPurchases,
+            'out_ret'      => $cashOutReturns,
+            'out_khata'    => $cashOutKhata,
+            'out_vendor'   => $cashOutVendor,
+            'out_buyback'  => $cashOutBuyback,
+            'balance'      => $cashOpening + $cashInPos + $cashInEcom + $cashInKhata + $cashInVendor
+                            - $cashOutExpenses - $cashOutPurchases - $cashOutReturns
+                            - $cashOutKhata - $cashOutVendor - $cashOutBuyback,
         ];
 
         // ── Per-bank balances ───────────────────────────────────────────────
@@ -151,8 +156,12 @@ class CashBalanceService
                 ->where('bank_account_id', $bank->id)
                 ->sum('amount');
 
+            $bankOutBuyback = (float) Buyback::where('payment_method', 'bank_transfer')
+                ->where('bank_account_id', $bank->id)
+                ->sum('amount_total');
+
             $bank->computed_in           = $bankInSales + $bankInSplit + $bankInPartial + $bankInKhata + $bankInVendor;
-            $bank->computed_out          = $bankOutPurchases + $bankOutReturns + $bankOutExpenses + $bankOutKhata + $bankOutVendor;
+            $bank->computed_out          = $bankOutPurchases + $bankOutReturns + $bankOutExpenses + $bankOutKhata + $bankOutVendor + $bankOutBuyback;
             $bank->computed_out_expenses = $bankOutExpenses;
             $bank->computed_balance      = (float) $bank->opening_balance + $bank->computed_in - $bank->computed_out;
         }

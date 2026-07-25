@@ -664,4 +664,14 @@ Route::prefix('pos')->name('pos.')->middleware(['auth', 'permission:pos.access']
     Route::get('/exchange', [Pos\PosExchangeController::class, 'index'])->name('exchange.index');
     Route::get('/exchange/order/{orderNumber}', [Pos\PosExchangeController::class, 'findOrder'])->name('exchange.find');
     Route::post('/exchange', [Pos\PosExchangeController::class, 'processExchange'])->name('exchange.process');
+
+    // Buybacks (used-phone trade-ins)
+    Route::get('/buyback', [Pos\PosBuybackController::class, 'index'])
+        ->middleware('permission:pos.process_buyback')->name('buyback.index');
+    Route::get('/buyback/lookup', [Pos\PosBuybackController::class, 'lookup'])
+        ->middleware('permission:pos.process_buyback')->name('buyback.lookup');
+    Route::post('/buyback', [Pos\PosBuybackController::class, 'store'])
+        ->middleware('permission:pos.process_buyback')->name('buyback.store');
+    Route::get('/buyback/{buyback}/receipt', [Pos\PosBuybackController::class, 'receipt'])
+        ->middleware('permission:pos.process_buyback')->name('buyback.receipt');
 });

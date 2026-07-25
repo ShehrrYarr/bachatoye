@@ -248,6 +248,24 @@
         @endif
     </div>
 
+    {{-- Buybacks (used-phone trade-ins) --}}
+    @if(($todayReport['buyback_total'] ?? 0) > 0)
+    <div class="section returns">
+        <div class="section-header">
+            <span class="section-title">&#128241; Buybacks (Out)</span>
+            <span class="section-total">– Rs. {{ number_format($todayReport['buyback_total']) }}</span>
+        </div>
+        <div class="breakdown">
+            @if($todayReport['buyback_cash'] > 0)
+            <span><span class="dot dot-green"></span>Cash: Rs. {{ number_format($todayReport['buyback_cash']) }}</span>
+            @endif
+            @if($todayReport['buyback_bank'] > 0)
+            <span><span class="dot dot-blue"></span>Bank: Rs. {{ number_format($todayReport['buyback_bank']) }}</span>
+            @endif
+        </div>
+    </div>
+    @endif
+
     {{-- Grand Totals --}}
     <div class="totals">
         <div class="total-row">
@@ -290,6 +308,12 @@
         <div class="total-row">
             <span>Customer Payouts (Out)</span>
             <strong style="color:#6b21a8;">– Rs. {{ number_format($todayReport['payout_total']) }}</strong>
+        </div>
+        @endif
+        @if(($todayReport['buyback_total'] ?? 0) > 0)
+        <div class="total-row">
+            <span>Buybacks (Out)</span>
+            <strong style="color:#c2410c;">– Rs. {{ number_format($todayReport['buyback_total']) }}</strong>
         </div>
         @endif
         <div class="total-row grand">
