@@ -44,164 +44,103 @@
                 </button>
             </div>
 
-            {{-- Session info (desktop) --}}
-            <div class="shrink-0 hidden md:flex items-center gap-2">
-                {{-- Mode indicator (click to view offline data / queued sales) --}}
-                <button @click="showOfflineModal = true"
-                        class="text-xs px-2.5 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 shrink-0 transition-colors"
-                        :class="offlineMode ? 'bg-red-100 text-red-700 hover:bg-red-200' : (isOnline ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-amber-100 text-amber-700 hover:bg-amber-200')"
-                        title="View offline data & queued sales">
-                    <span class="w-2 h-2 rounded-full"
-                          :class="offlineMode ? 'bg-red-500 animate-pulse' : (isOnline ? 'bg-green-500' : 'bg-amber-500 animate-pulse')"></span>
-                    <span x-text="offlineMode ? 'Offline Mode' : (isOnline ? 'Online' : 'No Internet')"></span>
-                </button>
-
-                {{-- Go Offline / Go Online toggle --}}
-                <template x-if="!offlineMode">
-                    <button @click="goOffline()" :disabled="preparingOffline"
-                            class="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg font-semibold transition-colors flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-wait">
-                        <i class="fas" :class="preparingOffline ? 'fa-spinner fa-spin' : 'fa-download'"></i>
-                        <span x-text="preparingOffline ? 'Downloading…' : 'Go Offline'"></span>
-                    </button>
-                </template>
-                <template x-if="offlineMode">
-                    <button @click="goOnline()" :disabled="syncing"
-                            class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg font-semibold transition-colors flex items-center gap-1.5 disabled:opacity-70 disabled:cursor-wait">
-                        <i class="fas" :class="syncing ? 'fa-spinner fa-spin' : 'fa-cloud-upload-alt'"></i>
-                        <span x-text="syncing ? 'Syncing…' : ('Go Online' + (offlineOrders.length > 0 ? ' (' + offlineOrders.length + ')' : ''))"></span>
-                    </button>
-                </template>
-
-                {{-- Review queued offline sales --}}
-                <button x-show="offlineOrders.length > 0" @click="showOfflineModal = true"
-                        class="relative text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2.5 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5"
-                        title="Review queued offline sales">
-                    <i class="fas fa-receipt"></i>
-                    <span x-text="offlineOrders.length"></span>
-                </button>
-
-                {{-- View toggle --}}
-                <button @click="showViewModal = true"
-                        class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-2.5 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5"
-                        :title="posView === 'category' ? 'Category View — click to switch' : 'Product View — click to switch'">
-                    <i class="fas" :class="posView === 'category' ? 'fa-th-large' : 'fa-boxes'"></i>
-                    <span class="hidden xl:inline" x-text="posView === 'category' ? 'Categories' : 'Products'"></span>
-                </button>
-
-                @if($session)
-                <div class="text-xs text-gray-500 hidden md:block">
-                    Session: <span class="font-semibold text-green-600">Open</span>
-                </div>
-                <button @click="showCloseSession = true"
-                        class="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-lg font-medium transition-colors">
-                    Close Session
-                </button>
-                @else
-                <button @click="showOpenSession = true"
-                        class="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1.5 rounded-lg font-medium transition-colors">
-                    Open Session
-                </button>
-                @endif
-                {{-- Held Orders badge (shown when at least 1 order is held) --}}
-                <button x-show="heldOrders.length > 0" @click="showHeldOrders = true"
-                        class="relative text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5">
+            {{-- Core actions: Held Orders + Dashboard always visible, everything else in "More" --}}
+            <div class="shrink-0 flex items-center gap-1.5 sm:gap-2">
+                {{-- Held Orders (always visible) --}}
+                <button @click="showHeldOrders = true"
+                        class="relative text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 px-2.5 sm:px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5">
                     <i class="fas fa-layer-group"></i>
-                    <span x-text="'Held (' + heldOrders.length + ')'"></span>
+                    <span class="hidden sm:inline" x-text="'Held (' + heldOrders.length + ')'"></span>
+                    <span x-show="heldOrders.length > 0"
+                          class="sm:hidden absolute -top-1.5 -right-1.5 min-w-[1.1rem] h-[1.1rem] px-1 flex items-center justify-center text-[10px] leading-none bg-amber-600 text-white rounded-full border-2 border-white"
+                          x-text="heldOrders.length"></span>
                 </button>
-                <a href="{{ route('pos.return.index') }}"
-                   class="text-xs bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1.5 rounded-lg font-medium transition-colors">
-                    <i class="fas fa-undo mr-1"></i>Return
-                </a>
-                <a href="{{ route('pos.exchange.index') }}"
-                   class="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg font-medium transition-colors">
-                    <i class="fas fa-sync-alt mr-1"></i>Exchange
-                </a>
-                <a href="{{ route('pos.buyback.index') }}"
-                   class="text-xs bg-teal-100 hover:bg-teal-200 text-teal-700 px-3 py-1.5 rounded-lg font-medium transition-colors">
-                    <i class="fas fa-hand-holding-usd mr-1"></i>Buyback
-                </a>
-                <a href="{{ route(auth()->user()->panelPrefix() . '.dashboard') }}"
-                   class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg font-medium transition-colors">
-                    <i class="fas fa-th-large mr-1"></i>Dashboard
-                </a>
-            </div>
 
-            {{-- Hamburger menu (mobile) --}}
-            <div class="md:hidden relative shrink-0">
-                <button @click="showMobileMenu = !showMobileMenu"
-                        class="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors relative">
-                    <i class="fas fa-bars"></i>
-                    {{-- Pending offline orders dot (blue) takes priority over held (amber) --}}
-                    <span x-show="offlineOrders.length > 0"
-                          class="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white"></span>
-                    <span x-show="offlineOrders.length === 0 && heldOrders.length > 0"
-                          class="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white"></span>
-                </button>
-                <div x-show="showMobileMenu" @click.outside="showMobileMenu = false" x-transition
-                     class="absolute right-0 top-full mt-2 w-52 bg-white border border-gray-200 rounded-xl shadow-xl z-30 overflow-hidden py-1">
-                    {{-- Mode + offline controls (mobile) --}}
-                    <div class="px-4 py-2 flex items-center gap-2 border-b border-gray-100">
-                        <span class="w-2 h-2 rounded-full"
-                              :class="offlineMode ? 'bg-red-500 animate-pulse' : (isOnline ? 'bg-green-500' : 'bg-amber-500 animate-pulse')"></span>
-                        <span class="text-xs font-semibold"
-                              :class="offlineMode ? 'text-red-600' : (isOnline ? 'text-green-600' : 'text-amber-600')"
-                              x-text="offlineMode ? 'Offline Mode' : (isOnline ? 'Online' : 'No Internet')"></span>
+                {{-- Dashboard (always visible) --}}
+                <a href="{{ route(auth()->user()->panelPrefix() . '.dashboard') }}"
+                   class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2.5 sm:px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5">
+                    <i class="fas fa-th-large"></i>
+                    <span class="hidden sm:inline">Dashboard</span>
+                </a>
+
+                {{-- More: everything else lives in this popup --}}
+                <div class="relative shrink-0">
+                    <button @click="showMoreMenu = !showMoreMenu"
+                            class="relative text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2.5 sm:px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5">
+                        <i class="fas fa-ellipsis-h"></i>
+                        <span class="hidden sm:inline">More</span>
+                        {{-- Pending offline orders dot --}}
+                        <span x-show="offlineOrders.length > 0"
+                              class="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white"></span>
+                    </button>
+                    <div x-show="showMoreMenu" @click.outside="showMoreMenu = false" x-transition x-cloak
+                         class="absolute right-0 top-full mt-2 w-64 max-w-[90vw] bg-white border border-gray-200 rounded-xl shadow-2xl z-30 overflow-y-auto max-h-[80vh] py-1">
+
+                        {{-- Session --}}
+                        <div class="px-4 pt-3 pb-1 text-xs text-gray-400 font-semibold uppercase tracking-wide">Session</div>
+                        @if($session)
+                        <div class="px-4 py-1.5 text-xs text-gray-500">
+                            Status: <span class="font-semibold text-green-600">Open</span>
+                        </div>
+                        <button @click="showCloseSession = true; showMoreMenu = false"
+                                class="w-full text-left px-4 py-2.5 text-sm text-red-700 hover:bg-red-50 flex items-center gap-2.5">
+                            <i class="fas fa-door-closed w-4 text-center"></i> Close Session
+                        </button>
+                        @else
+                        <button @click="showOpenSession = true; showMoreMenu = false"
+                                class="w-full text-left px-4 py-2.5 text-sm text-green-700 hover:bg-green-50 flex items-center gap-2.5">
+                            <i class="fas fa-door-open w-4 text-center"></i> Open Session
+                        </button>
+                        @endif
+
+                        {{-- Connectivity --}}
+                        <div class="px-4 pt-3 pb-1 text-xs text-gray-400 font-semibold uppercase tracking-wide border-t border-gray-100">Connectivity</div>
+                        <button @click="showOfflineModal = true; showMoreMenu = false"
+                                class="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-2.5"
+                                :class="offlineMode ? 'text-red-700' : (isOnline ? 'text-green-700' : 'text-amber-700')">
+                            <span class="w-2 h-2 rounded-full shrink-0"
+                                  :class="offlineMode ? 'bg-red-500 animate-pulse' : (isOnline ? 'bg-green-500' : 'bg-amber-500 animate-pulse')"></span>
+                            <span x-text="offlineMode ? 'Offline Mode' : (isOnline ? 'Online' : 'No Internet')"></span>
+                        </button>
+                        <button x-show="!offlineMode" @click="goOffline()" :disabled="preparingOffline"
+                                class="w-full text-left px-4 py-2.5 text-sm text-indigo-700 hover:bg-indigo-50 flex items-center gap-2.5 disabled:opacity-60">
+                            <i class="fas w-4 text-center" :class="preparingOffline ? 'fa-spinner fa-spin' : 'fa-download'"></i>
+                            <span x-text="preparingOffline ? 'Downloading…' : 'Go Offline'"></span>
+                        </button>
+                        <button x-show="offlineMode" @click="goOnline()" :disabled="syncing"
+                                class="w-full text-left px-4 py-2.5 text-sm text-green-700 hover:bg-green-50 flex items-center gap-2.5 disabled:opacity-60">
+                            <i class="fas w-4 text-center" :class="syncing ? 'fa-spinner fa-spin' : 'fa-cloud-upload-alt'"></i>
+                            <span x-text="syncing ? 'Syncing…' : ('Go Online' + (offlineOrders.length > 0 ? ' (' + offlineOrders.length + ')' : ''))"></span>
+                        </button>
+                        <button x-show="offlineOrders.length > 0" @click="showOfflineModal = true; showMoreMenu = false"
+                                class="w-full text-left px-4 py-2.5 text-sm text-blue-700 hover:bg-blue-50 flex items-center gap-2.5">
+                            <i class="fas fa-receipt w-4 text-center"></i>
+                            <span x-text="'Queued Sales (' + offlineOrders.length + ')'"></span>
+                        </button>
+
+                        {{-- View --}}
+                        <div class="px-4 pt-3 pb-1 text-xs text-gray-400 font-semibold uppercase tracking-wide border-t border-gray-100">View</div>
+                        <button @click="showViewModal = true; showMoreMenu = false"
+                                class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5">
+                            <i class="fas w-4 text-center" :class="posView === 'category' ? 'fa-th-large' : 'fa-boxes'"></i>
+                            <span x-text="posView === 'category' ? 'Category View' : 'Product View'"></span>
+                        </button>
+
+                        {{-- Transactions --}}
+                        <div class="px-4 pt-3 pb-1 text-xs text-gray-400 font-semibold uppercase tracking-wide border-t border-gray-100">Transactions</div>
+                        <a href="{{ route('pos.return.index') }}" @click="showMoreMenu = false"
+                           class="block px-4 py-2.5 text-sm text-purple-700 hover:bg-purple-50 flex items-center gap-2.5">
+                            <i class="fas fa-undo w-4 text-center"></i> Return
+                        </a>
+                        <a href="{{ route('pos.exchange.index') }}" @click="showMoreMenu = false"
+                           class="block px-4 py-2.5 text-sm text-indigo-700 hover:bg-indigo-50 flex items-center gap-2.5">
+                            <i class="fas fa-sync-alt w-4 text-center"></i> Exchange
+                        </a>
+                        <a href="{{ route('pos.buyback.index') }}" @click="showMoreMenu = false"
+                           class="block px-4 py-2.5 text-sm text-teal-700 hover:bg-teal-50 flex items-center gap-2.5">
+                            <i class="fas fa-hand-holding-usd w-4 text-center"></i> Buyback
+                        </a>
                     </div>
-                    <button x-show="!offlineMode" @click="goOffline()" :disabled="preparingOffline"
-                            class="w-full text-left px-4 py-2.5 text-sm text-indigo-700 hover:bg-indigo-50 flex items-center gap-2.5 disabled:opacity-60">
-                        <i class="fas w-4 text-center" :class="preparingOffline ? 'fa-spinner fa-spin' : 'fa-download'"></i>
-                        <span x-text="preparingOffline ? 'Downloading…' : 'Go Offline'"></span>
-                    </button>
-                    <button x-show="offlineMode" @click="goOnline()" :disabled="syncing"
-                            class="w-full text-left px-4 py-2.5 text-sm text-green-700 hover:bg-green-50 flex items-center gap-2.5 disabled:opacity-60">
-                        <i class="fas w-4 text-center" :class="syncing ? 'fa-spinner fa-spin' : 'fa-cloud-upload-alt'"></i>
-                        <span x-text="syncing ? 'Syncing…' : ('Go Online' + (offlineOrders.length > 0 ? ' (' + offlineOrders.length + ')' : ''))"></span>
-                    </button>
-                    <button x-show="offlineOrders.length > 0" @click="showOfflineModal = true; showMobileMenu = false"
-                            class="w-full text-left px-4 py-2.5 text-sm text-blue-700 hover:bg-blue-50 flex items-center gap-2.5">
-                        <i class="fas fa-receipt w-4 text-center"></i>
-                        <span x-text="'Queued Sales (' + offlineOrders.length + ')'"></span>
-                    </button>
-                    <button @click="showViewModal = true; showMobileMenu = false"
-                            class="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 border-b border-gray-100">
-                        <i class="fas w-4 text-center" :class="posView === 'category' ? 'fa-th-large' : 'fa-boxes'"></i>
-                        <span x-text="posView === 'category' ? 'Category View' : 'Product View'"></span>
-                    </button>
-                    @if($session)
-                    <div class="px-4 py-2 text-xs text-gray-400 border-b border-gray-100">
-                        Session: <span class="font-semibold text-green-600">Open</span>
-                    </div>
-                    <button @click="showCloseSession = true; showMobileMenu = false"
-                            class="w-full text-left px-4 py-2.5 text-sm text-red-700 hover:bg-red-50 flex items-center gap-2.5">
-                        <i class="fas fa-door-closed w-4 text-center"></i> Close Session
-                    </button>
-                    @else
-                    <button @click="showOpenSession = true; showMobileMenu = false"
-                            class="w-full text-left px-4 py-2.5 text-sm text-green-700 hover:bg-green-50 flex items-center gap-2.5">
-                        <i class="fas fa-door-open w-4 text-center"></i> Open Session
-                    </button>
-                    @endif
-                    <button x-show="heldOrders.length > 0" @click="showHeldOrders = true; showMobileMenu = false"
-                            class="w-full text-left px-4 py-2.5 text-sm text-amber-700 hover:bg-amber-50 flex items-center gap-2.5">
-                        <i class="fas fa-layer-group w-4 text-center"></i>
-                        <span x-text="'Held Orders (' + heldOrders.length + ')'"></span>
-                    </button>
-                    <a href="{{ route('pos.return.index') }}"
-                       class="block px-4 py-2.5 text-sm text-purple-700 hover:bg-purple-50 flex items-center gap-2.5">
-                        <i class="fas fa-undo w-4 text-center"></i> Return
-                    </a>
-                    <a href="{{ route('pos.exchange.index') }}"
-                       class="block px-4 py-2.5 text-sm text-indigo-700 hover:bg-indigo-50 flex items-center gap-2.5">
-                        <i class="fas fa-sync-alt w-4 text-center"></i> Exchange
-                    </a>
-                    <a href="{{ route('pos.buyback.index') }}"
-                       class="block px-4 py-2.5 text-sm text-teal-700 hover:bg-teal-50 flex items-center gap-2.5">
-                        <i class="fas fa-hand-holding-usd w-4 text-center"></i> Buyback
-                    </a>
-                    <a href="{{ route(auth()->user()->panelPrefix() . '.dashboard') }}"
-                       class="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 border-t border-gray-100">
-                        <i class="fas fa-th-large w-4 text-center"></i> Dashboard
-                    </a>
                 </div>
             </div>
         </div>
@@ -2280,7 +2219,7 @@ function posApp() {
 
         // Mobile UI state
         showMobileCart: false,
-        showMobileMenu: false,
+        showMoreMenu: false,
         discountType: 'flat',
         discountValue: 0,
         discountAmount: 0,
@@ -2476,7 +2415,7 @@ function posApp() {
         // ── Manual offline mode ────────────────────────────────────────────────
         // Download everything needed and switch the POS into offline mode.
         async goOffline() {
-            this.showMobileMenu = false;
+            this.showMoreMenu = false;
             this.catalogError = '';
 
             // Always TRY to download the latest data (don't trust the heartbeat —
@@ -2515,7 +2454,7 @@ function posApp() {
 
         // Sync all queued sales and switch back to online mode.
         async goOnline() {
-            this.showMobileMenu = false;
+            this.showMoreMenu = false;
             await this.checkConnection();
             if (!this.isOnline) {
                 alert('Still no internet connection. Connect to the internet first, then click Go Online.');
