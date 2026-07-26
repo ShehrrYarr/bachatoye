@@ -248,6 +248,10 @@ class PosReturnController extends Controller
                 $refund = (float) $request->custom_refund_amount;
             }
 
+            // Allocate the (possibly overridden) refund across lines by line_total
+            // weight, so profit reporting knows what was actually refunded per item.
+            $items = ReturnItem::allocateRefunds($items, $refund);
+
             $returnOrder = ReturnOrder::create([
                 'order_id'        => $order->id,
                 'customer_id'     => $order->customer_id,

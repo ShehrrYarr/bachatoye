@@ -11,6 +11,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Section;
 use App\Models\User;
+use App\Services\OrderProfitCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -63,14 +64,36 @@ class ReportController extends Controller
             );
         }
 
-        $orders = $query->with(['items', 'servedBy'])->latest()->get();
+        $orders = $query->with(['items.returnItems.returnOrder', 'items.product.category', 'servedBy'])->latest()->get();
 
-        $totalRevenue       = $orders->sum('total');
+        // Item-level, returns-aware revenue/COGS/profit — the same calculation
+        // the Profit & Loss report uses, so the two reports can never diverge.
+        $profitData = OrderProfitCalculator::summarize($orders, $sectionId, null);
+
+        if ($sectionId) {
+            // Discounts/exchange/delivery apply to the whole order, not a single
+            // section — not attributable per-item, same disclosed limitation as P&L.
+            $totalRevenue = $profitData['netRevenue'];
+        } else {
+            // Same waterfall as the unfiltered Profit & Loss report: orders.total
+            // already nets discount_amount/exchange_value (POS) and
+            // delivery_charge/coupon_discount (ecommerce) in — subtract those (once)
+            // from item-level gross revenue, then net out returns, so both reports
+            // land on the exact same figure.
+            $totalRevenue = $profitData['grossRevenue']
+                - $orders->sum('discount_amount')
+                - $orders->sum('coupon_discount')
+                - $orders->sum('exchange_value')
+                + $orders->sum('delivery_charge')
+                - $profitData['totalRefunds'];
+        }
+
+        $totalRefunds       = $profitData['totalRefunds'];
         $totalOrders        = $orders->count();
         $avgOrderValue      = $totalOrders ? round($totalRevenue / $totalOrders, 2) : 0;
         $itemsSold          = $orders->sum(fn($o) => $o->items->sum('quantity'));
         $totalExchangeValue = $orders->whereNotNull('exchange_value')->sum('exchange_value');
-        $totalCogs          = $orders->sum(fn($o) => $o->items->sum(fn($i) => (float) $i->cost_price * (int) $i->quantity));
+        $totalCogs          = $profitData['totalCogs'];
         $totalProfit        = $totalRevenue - $totalCogs;
         $totalMarginPct     = $totalRevenue > 0 ? round($totalProfit / $totalRevenue * 100, 1) : 0;
 
@@ -110,7 +133,7 @@ class ReportController extends Controller
                             ->map(fn($g) => ['total' => $g->sum('total'), 'count' => $g->count()]);
 
         return view('admin.reports.sales', compact(
-            'orders', 'totalRevenue', 'totalOrders', 'avgOrderValue', 'itemsSold',
+            'orders', 'totalRevenue', 'totalRefunds', 'totalOrders', 'avgOrderValue', 'itemsSold',
             'totalExchangeValue', 'totalCogs', 'totalProfit', 'totalMarginPct',
             'dailyData', 'topProducts', 'byPayment', 'from', 'to',
             'sections', 'sectionId', 'shops', 'shopFilter'
@@ -134,80 +157,81 @@ class ReportController extends Controller
 
         $shopFilter = (string) $request->input('shop', '');
         $shops      = \App\Models\Shop::orderBy('name')->get();
-        $shopRaw    = fn($q, $col = 'orders.shop_id') => $shopFilter === '' ? $q
-            : ($shopFilter === 'main' ? $q->whereNull($col) : $q->where($col, (int) $shopFilter));
+
+        // Same base order set either way — status/date/shop scoping never differs
+        // between the filtered and unfiltered view, only which items count.
+        $ordersBase = Order::forShopFilter($shopFilter)
+                            ->whereBetween(DB::raw('DATE(created_at)'), [$from, $to])
+                            ->where('status', 'delivered');
+
+        $orders = (clone $ordersBase)
+            ->with(['items.returnItems.returnOrder', 'items.product.category'])
+            ->get();
+
+        // Item-level, returns-aware revenue/COGS/profit — the same calculation
+        // the Sales report uses, so the two reports can never diverge.
+        $profitData = OrderProfitCalculator::summarize($orders, $sectionId, $categoryId);
+        $totalCogs    = $profitData['totalCogs'];
+        $totalRefunds = $profitData['totalRefunds'];
 
         if ($isFiltered) {
-            $baseItems = $shopRaw(DB::table('order_items')
-                ->join('orders',    'orders.id',    '=', 'order_items.order_id')
-                ->join('products',  'products.id',  '=', 'order_items.product_id')
-                ->join('categories as cats', 'cats.id', '=', 'products.category_id')
-                ->whereBetween(DB::raw('DATE(orders.created_at)'), [$from, $to])
-                ->where('orders.status', 'delivered')
-                ->whereNull('orders.deleted_at'));
-
-            if ($sectionId)  $baseItems->where('cats.section_id', $sectionId);
-            if ($categoryId) $baseItems->where(fn($q) =>
-                $q->where('products.category_id', $categoryId)
-                  ->orWhere('products.subcategory_id', $categoryId)
-            );
-
-            $grossRevenue   = (clone $baseItems)->sum(DB::raw('order_items.quantity * order_items.unit_price'));
-            $totalDiscounts = (clone $baseItems)->sum('order_items.discount_amount');
-            $totalCogs      = (clone $baseItems)->sum(DB::raw('order_items.quantity * COALESCE(order_items.cost_price, 0)'));
+            // Discounts/delivery/exchange apply to the whole order, not a single
+            // category — they aren't attributable per-item, so they're left out
+            // of this view's numbers (disclosed in the UI) rather than guessed at.
+            $grossRevenue   = $profitData['grossRevenue'];
+            $totalDiscounts = 0;
+            $exchangeValue  = 0;
             $deliveryIncome = 0;
+            $netRevenue     = $profitData['netRevenue'];
 
-            $monthlyData = (clone $baseItems)
-                ->select(
-                    DB::raw('MONTH(orders.created_at) as month'),
-                    DB::raw('SUM(order_items.quantity * order_items.unit_price) as revenue')
-                )
-                ->groupBy(DB::raw('MONTH(orders.created_at)'))
-                ->orderBy(DB::raw('MONTH(orders.created_at)'))
-                ->get()
-                ->map(fn($r) => ['month' => $r->month, 'revenue' => $r->revenue, 'cogs' => 0])
+            $monthlyData = $orders->groupBy(fn($o) => $o->created_at->month)
+                ->map(fn($group, $month) => [
+                    'month'   => $month,
+                    'revenue' => OrderProfitCalculator::summarize($group, $sectionId, $categoryId)['grossRevenue'],
+                    'cogs'    => 0,
+                ])
+                ->sortKeys()
+                ->values()
                 ->toArray();
         } else {
-            $ordersBase = Order::forShopFilter($shopFilter)
-                                ->whereBetween(DB::raw('DATE(created_at)'), [$from, $to])
-                                ->where('status', 'delivered');
+            // orders.total already nets discount_amount/exchange_value (POS) and
+            // delivery_charge/coupon_discount (ecommerce) in at creation time, so
+            // building the same figure back up from components (subtotal minus
+            // discounts minus exchange plus delivery) must equal orders.sum('total')
+            // — that's the whole waterfall, done exactly once.
+            $totals = (clone $ordersBase)->selectRaw('
+                    COALESCE(SUM(subtotal), 0)         as subtotal,
+                    COALESCE(SUM(discount_amount), 0)  as discount_amount,
+                    COALESCE(SUM(coupon_discount), 0)  as coupon_discount,
+                    COALESCE(SUM(exchange_value), 0)   as exchange_value,
+                    COALESCE(SUM(delivery_charge), 0)  as delivery_charge
+                ')->first();
 
-            $grossRevenue   = $ordersBase->sum('total');
-            $totalDiscounts = $ordersBase->sum('discount_amount');
-            $deliveryIncome = $ordersBase->sum('delivery_charge');
+            $grossRevenue   = (float) $totals->subtotal;
+            $totalDiscounts = (float) $totals->discount_amount + (float) $totals->coupon_discount;
+            $exchangeValue  = (float) $totals->exchange_value;
+            $deliveryIncome = (float) $totals->delivery_charge;
 
-            $totalCogs = $shopRaw(DB::table('order_items')
-                ->join('orders', 'orders.id', '=', 'order_items.order_id')
-                ->whereBetween(DB::raw('DATE(orders.created_at)'), [$from, $to])
-                ->where('orders.status', 'delivered')
-                // Raw join bypasses soft deletes — without this, deleted sales
-                // contribute cost but no revenue and drag the report into loss
-                ->whereNull('orders.deleted_at'))
-                ->sum(DB::raw('order_items.quantity * COALESCE(order_items.cost_price, 0)'));
+            $netRevenue = $grossRevenue - $totalDiscounts - $exchangeValue + $deliveryIncome - $totalRefunds;
 
-            $monthlyData = $shopRaw(DB::table('orders')
-                ->whereBetween(DB::raw('DATE(created_at)'), [$from, $to])
-                ->where('status', 'delivered')
-                ->whereNull('deleted_at'), 'orders.shop_id')
-                ->select(
-                    DB::raw('MONTH(created_at) as month'),
-                    DB::raw('SUM(total) as revenue')
-                )
-                ->groupBy(DB::raw('MONTH(created_at)'))
-                ->orderBy(DB::raw('MONTH(created_at)'))
-                ->get()
-                ->map(fn($r) => ['month' => $r->month, 'revenue' => $r->revenue, 'cogs' => 0])
+            $monthlyData = $orders->groupBy(fn($o) => $o->created_at->month)
+                ->map(fn($group, $month) => [
+                    'month'   => $month,
+                    'revenue' => $group->sum('total'),
+                    'cogs'    => 0,
+                ])
+                ->sortKeys()
+                ->values()
                 ->toArray();
         }
 
-        $netRevenue  = $grossRevenue - $totalDiscounts;
-        $grossProfit = $netRevenue - $totalCogs;
+        $grossProfit   = $netRevenue - $totalCogs;
         $totalExpenses = Expense::forShopFilter($shopFilter)->whereBetween('expense_date', [$from, $to])->sum('amount');
-        $netProfit   = $grossProfit - $totalExpenses + $deliveryIncome;
+        $netProfit     = $grossProfit - $totalExpenses;
 
-        $expensesByCategory = $shopRaw(DB::table('expenses')
+        $expensesByCategory = Expense::forShopFilter($shopFilter)
             ->leftJoin('expense_categories', 'expense_categories.id', '=', 'expenses.expense_category_id')
-            ->whereBetween('expenses.expense_date', [$from, $to]), 'expenses.shop_id')
+            ->whereBetween('expenses.expense_date', [$from, $to])
             ->select(
                 'expense_categories.name as category_name',
                 DB::raw('COUNT(*) as count'),
@@ -218,8 +242,8 @@ class ReportController extends Controller
             ->get();
 
         return view('admin.reports.profit-loss', compact(
-            'grossRevenue', 'totalDiscounts', 'netRevenue', 'totalCogs', 'grossProfit',
-            'totalExpenses', 'deliveryIncome', 'netProfit', 'periodLabel',
+            'grossRevenue', 'totalDiscounts', 'exchangeValue', 'totalRefunds', 'netRevenue',
+            'totalCogs', 'grossProfit', 'totalExpenses', 'deliveryIncome', 'netProfit', 'periodLabel',
             'expensesByCategory', 'monthlyData', 'from', 'to',
             'sections', 'categories', 'sectionId', 'categoryId', 'isFiltered',
             'shops', 'shopFilter'

@@ -161,7 +161,9 @@ $activeCategoryLabel = $categoryId ? collect($categoryOptions)->firstWhere('valu
         @endif
         <span class="text-xs text-gray-400 self-center">
             <i class="fas fa-info-circle mr-0.5"></i>
-            Revenue &amp; COGS are filtered. Expenses and Delivery Income remain store-wide.
+            Revenue, COGS &amp; Refunds are filtered to matching items. Discounts, Exchange, Delivery
+            and Expenses aren't attributable per-category and are omitted here (see the unfiltered
+            report for those).
         </span>
     </div>
     @endif
@@ -183,8 +185,28 @@ $activeCategoryLabel = $categoryId ? collect($categoryOptions)->firstWhere('valu
                 <span class="font-semibold text-gray-900">Rs. {{ number_format($grossRevenue) }}</span>
             </div>
             <div class="flex justify-between text-sm py-2 border-b border-gray-100">
-                <span class="text-gray-600">Discounts Given</span>
+                <span class="text-gray-600">
+                    Discounts Given
+                    @if($isFiltered)<span class="text-xs text-gray-400 font-normal ml-1">(store-wide)</span>@endif
+                </span>
                 <span class="font-semibold text-red-600">– Rs. {{ number_format($totalDiscounts) }}</span>
+            </div>
+            @if(!$isFiltered)
+            <div class="flex justify-between text-sm py-2 border-b border-gray-100">
+                <span class="text-gray-600">Exchange Value Deducted</span>
+                <span class="font-semibold text-red-600">– Rs. {{ number_format($exchangeValue) }}</span>
+            </div>
+            <div class="flex justify-between text-sm py-2 border-b border-gray-100">
+                <span class="text-gray-600">Delivery Income</span>
+                <span class="font-semibold text-green-600">+ Rs. {{ number_format($deliveryIncome) }}</span>
+            </div>
+            @endif
+            <div class="flex justify-between text-sm py-2 border-b border-gray-100">
+                <span class="text-gray-600">
+                    Refunds (Returns)
+                    @if($isFiltered)<span class="text-xs text-gray-400 font-normal ml-1">(matching items)</span>@endif
+                </span>
+                <span class="font-semibold text-red-600">– Rs. {{ number_format($totalRefunds) }}</span>
             </div>
             <div class="flex justify-between text-sm py-2 border-b border-gray-200 font-semibold">
                 <span>Net Revenue</span>
@@ -205,12 +227,6 @@ $activeCategoryLabel = $categoryId ? collect($categoryOptions)->firstWhere('valu
                 </span>
                 <span class="font-semibold text-red-600">– Rs. {{ number_format($totalExpenses) }}</span>
             </div>
-            @if(!$isFiltered)
-            <div class="flex justify-between text-sm py-2 border-b border-gray-100">
-                <span class="text-gray-600">Delivery Income</span>
-                <span class="font-semibold text-green-600">+ Rs. {{ number_format($deliveryIncome) }}</span>
-            </div>
-            @endif
             <div class="flex justify-between py-3 border-t-2 border-gray-300">
                 <span class="font-bold text-base">Net Profit / Loss</span>
                 <span class="font-extrabold text-xl {{ $netProfit >= 0 ? 'text-green-600' : 'text-red-600' }}">

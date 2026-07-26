@@ -112,12 +112,19 @@
         </div>
     </div>
 </div>
-<div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-4 mb-6">
+<div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-4 gap-4 mb-6">
     <div class="stat-card">
         <div class="stat-icon bg-orange-100"><i class="fas fa-sync-alt text-orange-600"></i></div>
         <div>
             <div class="text-2xl font-extrabold text-gray-900">Rs. {{ number_format($totalExchangeValue) }}</div>
             <div class="text-sm text-gray-500">Exchange Value</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon bg-amber-100"><i class="fas fa-undo text-amber-600"></i></div>
+        <div>
+            <div class="text-2xl font-extrabold text-gray-900">Rs. {{ number_format($totalRefunds) }}</div>
+            <div class="text-sm text-gray-500">Refunds (Returns)</div>
         </div>
     </div>
     <div class="stat-card">
@@ -231,8 +238,13 @@
             <tbody>
                 @forelse($orders as $order)
                 @php
-                    $orderCogs      = $order->items->sum(fn($i) => (float) $i->cost_price * (int) $i->quantity);
-                    $orderProfit    = (float) $order->total - $orderCogs;
+                    // Returns-aware: a returned line contributes (sale − refund) revenue
+                    // and drops its cost basis back out if the unit was restocked —
+                    // see App\Services\OrderProfitCalculator for the shared formula.
+                    $itemProfits    = $order->items->map(fn($i) => \App\Services\OrderProfitCalculator::itemProfit($i));
+                    $orderCogs      = $itemProfits->sum('cogs');
+                    $orderRefund    = $itemProfits->sum('refund');
+                    $orderProfit    = $itemProfits->sum('profit');
                     $orderMarginPct = (float) $order->total > 0 ? round($orderProfit / (float) $order->total * 100, 1) : 0;
                     $orderData = [
                         'number'   => $order->order_number,
@@ -245,17 +257,22 @@
                         'bank'     => (float) $order->bank_amount,
                         'total'    => (float) $order->total,
                         'discount' => (float) $order->discount_amount,
+                        'refund'   => $orderRefund,
                         'cogs'     => $orderCogs,
                         'profit'   => $orderProfit,
                         'margin'   => $orderMarginPct,
-                        'items'    => $order->items->map(fn($i) => [
-                            'name'       => $i->product_name . ($i->color_name ? ' (' . $i->color_name . ')' : ''),
-                            'qty'        => (int) $i->quantity,
-                            'unit_price' => (float) $i->unit_price,
-                            'cost_price' => (float) $i->cost_price,
-                            'total'      => (float) $i->unit_price * (int) $i->quantity,
-                            'profit'     => ((float) $i->unit_price - (float) $i->cost_price) * (int) $i->quantity,
-                        ])->values()->toArray(),
+                        'items'    => $order->items->map(function ($i) {
+                            $p = \App\Services\OrderProfitCalculator::itemProfit($i);
+                            return [
+                                'name'       => $i->product_name . ($i->color_name ? ' (' . $i->color_name . ')' : ''),
+                                'qty'        => (int) $i->quantity,
+                                'unit_price' => (float) $i->unit_price,
+                                'cost_price' => (float) $i->cost_price,
+                                'total'      => (float) $i->unit_price * (int) $i->quantity,
+                                'refund'     => $p['refund'],
+                                'profit'     => $p['profit'],
+                            ];
+                        })->values()->toArray(),
                     ];
                 @endphp
                 <tr class="cursor-pointer hover:bg-primary-50 transition-colors"
@@ -350,6 +367,10 @@
             <div id="omDiscountWrap" class="hidden">
                 <div class="text-xs text-gray-400 uppercase tracking-wide font-semibold">Discount</div>
                 <div class="font-medium text-red-600 mt-0.5" id="omDiscount"></div>
+            </div>
+            <div id="omRefundWrap" class="hidden">
+                <div class="text-xs text-gray-400 uppercase tracking-wide font-semibold">Refunded (Returns)</div>
+                <div class="font-medium text-amber-600 mt-0.5" id="omRefund"></div>
             </div>
         </div>
         {{-- Split payment breakdown (shown only for split orders) --}}
@@ -458,6 +479,14 @@ function openOrderModal(data) {
         document.getElementById('omDiscount').textContent = '− ' + _fmt(data.discount);
     } else {
         discountWrap.classList.add('hidden');
+    }
+
+    const refundWrap = document.getElementById('omRefundWrap');
+    if (data.refund > 0) {
+        refundWrap.classList.remove('hidden');
+        document.getElementById('omRefund').textContent = '− ' + _fmt(data.refund);
+    } else {
+        refundWrap.classList.add('hidden');
     }
 
     const splitWrap = document.getElementById('omSplitWrap');
