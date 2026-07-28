@@ -58,6 +58,18 @@
 </a>
 @endcan
 
+@can('serials.lookup')
+<a href="{{ route('salesman.serials.lookup') }}" class="sidebar-link {{ $is('salesman.serials.lookup') ? 'active' : '' }}">
+    <i class="fas fa-search"></i> Serial Lookup
+</a>
+@endcan
+
+@can('serials.manage_attributes')
+<a href="{{ route('salesman.serials.attributes.index') }}" class="sidebar-link {{ $is('salesman.serials.attributes') ? 'active' : '' }}">
+    <i class="fas fa-tags"></i> Serial Attributes
+</a>
+@endcan
+
 @can('purchases.view')
 <a href="{{ route('salesman.purchases.index') }}" class="sidebar-link {{ $is('salesman.purchases') ? 'active' : '' }}">
     <i class="fas fa-file-invoice-dollar"></i> Purchases

@@ -421,7 +421,17 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
     Route::post('purchases/{purchase}/serials', [Admin\SerialController::class, 'storeForPurchase'])
         ->middleware('permission:purchases.manage')->name('purchases.serials.store');
     Route::get('serials/lookup', [Admin\SerialController::class, 'lookup'])
-        ->middleware('permission:inventory.view')->name('serials.lookup');
+        ->middleware('permission:serials.lookup')->name('serials.lookup');
+
+    // Serial attribute definitions for salesman
+    Route::get('serials/attributes', [Admin\SerialAttributeController::class, 'index'])
+        ->middleware('permission:serials.manage_attributes')->name('serials.attributes.index');
+    Route::post('serials/attributes', [Admin\SerialAttributeController::class, 'store'])
+        ->middleware('permission:serials.manage_attributes')->name('serials.attributes.store');
+    Route::put('serials/attributes/{serialAttribute}', [Admin\SerialAttributeController::class, 'update'])
+        ->middleware('permission:serials.manage_attributes')->name('serials.attributes.update');
+    Route::delete('serials/attributes/{serialAttribute}', [Admin\SerialAttributeController::class, 'destroy'])
+        ->middleware('permission:serials.manage_attributes')->name('serials.attributes.destroy');
 
     // Purchase-related API helpers (mirrors admin endpoints)
     Route::get('api/products/search', function (\Illuminate\Http\Request $request) {

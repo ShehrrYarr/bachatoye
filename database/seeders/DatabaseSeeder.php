@@ -52,6 +52,8 @@ class DatabaseSeeder extends Seeder
             'banners.manage',
             'users.manage',
             'settings.manage',
+            'serials.lookup',
+            'serials.manage_attributes',
         ];
 
         foreach ($permissions as $perm) {

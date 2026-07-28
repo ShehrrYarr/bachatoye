@@ -2,6 +2,7 @@
 @section('title', 'Serial Attribute Fields')
 
 @section('content')
+@php $rPrefix = auth()->user()->panelPrefix(); @endphp
 
 <div class="flex items-center justify-between mb-6">
     <div>
@@ -61,7 +62,7 @@
                             <button @click="editing = true" class="btn-outline btn-sm">
                                 <i class="fas fa-edit mr-1"></i> Edit
                             </button>
-                            <form method="POST" action="{{ route('admin.serials.attributes.destroy', $def) }}"
+                            <form method="POST" action="{{ route("{$rPrefix}.serials.attributes.destroy", $def) }}"
                                   onsubmit="return confirm('Delete attribute field \'{{ $def->name }}\'? This won\'t remove data already saved on existing serials.')">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="btn-danger btn-sm">
@@ -73,7 +74,7 @@
 
                     {{-- Edit mode --}}
                     <div x-show="editing" x-cloak>
-                        <form method="POST" action="{{ route('admin.serials.attributes.update', $def) }}" class="space-y-3">
+                        <form method="POST" action="{{ route("{$rPrefix}.serials.attributes.update", $def) }}" class="space-y-3">
                             @csrf @method('PUT')
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
@@ -119,7 +120,7 @@
             </div>
             @endif
 
-            <form method="POST" action="{{ route('admin.serials.attributes.store') }}" class="space-y-4">
+            <form method="POST" action="{{ route("{$rPrefix}.serials.attributes.store") }}" class="space-y-4">
                 @csrf
                 <div>
                     <label class="form-label">Field Name <span class="text-red-500">*</span></label>

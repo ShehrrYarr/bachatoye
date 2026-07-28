@@ -2,6 +2,7 @@
 @section('title', 'Serial Number Lookup')
 
 @section('content')
+@php $rPrefix = auth()->user()->panelPrefix(); @endphp
 
 <div class="flex items-center justify-between mb-6">
     <h1 class="text-xl font-bold text-gray-900">
@@ -12,7 +13,7 @@
 {{-- Search form --}}
 <div class="card mb-6">
     <div class="card-body">
-        <form method="GET" action="{{ route('admin.serials.lookup') }}" class="flex gap-3">
+        <form method="GET" action="{{ route("{$rPrefix}.serials.lookup") }}" class="flex gap-3">
             <div class="relative flex-1">
                 <i class="fas fa-barcode absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
                 <input type="text" name="q" value="{{ $query }}" autofocus
@@ -111,7 +112,7 @@
                             </div>
                             @endif
                             <div class="mt-1">
-                                <a href="{{ route('admin.purchases.show', $serial->purchase) }}"
+                                <a href="{{ route("{$rPrefix}.purchases.show", $serial->purchase) }}"
                                    class="text-indigo-600 hover:underline text-xs">
                                     <i class="fas fa-external-link-alt mr-1"></i>View Purchase
                                 </a>
@@ -148,7 +149,7 @@
                             </div>
                             @endif
                             <div class="mt-1">
-                                <a href="{{ route('admin.orders.show', $serial->order) }}"
+                                <a href="{{ route("{$rPrefix}.orders.show", $serial->order) }}"
                                    class="text-blue-600 hover:underline text-xs">
                                     <i class="fas fa-external-link-alt mr-1"></i>View Order
                                 </a>
@@ -208,7 +209,7 @@
                 <div class="flex justify-between">
                     <dt class="text-gray-500">Product</dt>
                     <dd class="font-medium text-right">
-                        <a href="{{ route('admin.products.show', $serial->product) }}" class="text-primary-600 hover:underline">
+                        <a href="{{ route("{$rPrefix}.products.show", $serial->product) }}" class="text-primary-600 hover:underline">
                             {{ Str::limit($serial->product->name, 25) }}
                         </a>
                     </dd>
