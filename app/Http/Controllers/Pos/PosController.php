@@ -1883,7 +1883,7 @@ class PosController extends Controller
             'orderNotes'   => $h->order_notes,
             'total'        => (float) $h->total,
             'itemCount'    => collect($h->cart_data)->sum('quantity'),
-            'heldAt'       => $h->created_at->format('h:i A'),
+            'heldAt'       => $h->created_at->format('d M, h:i A'),
             'createdBy'    => $h->creator->name,
             'isOwn'        => $h->created_by === $user->id,
         ]);
@@ -1941,7 +1941,7 @@ class PosController extends Controller
             'orderNotes'   => $hold->order_notes,
             'total'        => (float) $hold->total,
             'itemCount'    => collect($hold->cart_data)->sum('quantity'),
-            'heldAt'       => $hold->created_at->format('h:i A'),
+            'heldAt'       => $hold->created_at->format('d M, h:i A'),
             'createdBy'    => $hold->creator->name,
             'isOwn'        => true,
         ]);
