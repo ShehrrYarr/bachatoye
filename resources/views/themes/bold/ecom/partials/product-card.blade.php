@@ -64,7 +64,13 @@
              x-transition:enter-start="opacity-0 translate-y-3"
              x-transition:enter-end="opacity-100 translate-y-0"
              class="absolute bottom-3 left-3 right-3 hidden sm:block">
-            @if($hasColors)
+            @if($product->is_serialized)
+            <a href="{{ route('products.show', $product->slug) }}"
+               class="w-full text-white text-xs font-black py-3 rounded-full flex items-center justify-center gap-1.5"
+               style="background: var(--app-gradient); box-shadow:0 6px 18px -4px rgb(var(--t-accent-rgb) / .6);">
+                <i class="fas fa-sliders-h"></i> SELECT VARIANT
+            </a>
+            @elseif($hasColors)
             <button type="button"
                     data-product-id="{{ $product->id }}"
                     data-product-name="{{ $product->name }}"
@@ -137,7 +143,13 @@
 
         @if($inStock)
         <div class="sm:hidden mt-3">
-            @if($hasColors)
+            @if($product->is_serialized)
+            <a href="{{ route('products.show', $product->slug) }}"
+               class="w-full text-white text-[11px] font-black py-2.5 rounded-full flex items-center justify-center"
+               style="background: var(--app-gradient);">
+                SELECT VARIANT
+            </a>
+            @elseif($hasColors)
             <button type="button"
                     data-product-id="{{ $product->id }}"
                     data-product-name="{{ $product->name }}"

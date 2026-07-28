@@ -66,7 +66,13 @@
              x-transition:leave-end="opacity-0 translate-y-2"
              class="absolute bottom-0 left-0 right-0"
              style="display:none;">
-            @if($hasColors)
+            @if($product->is_serialized)
+                {{-- Serialized product: price/stock depends on a variant — must pick one on the product page --}}
+                <a href="{{ route('products.show', $product->slug) }}"
+                   class="w-full bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold py-3 transition-colors flex items-center justify-center gap-1.5">
+                    <i class="fas fa-sliders-h"></i> Select Variant
+                </a>
+            @elseif($hasColors)
                 {{-- Product has colors: open color picker modal --}}
                 <button type="button"
                         data-product-id="{{ $product->id }}"

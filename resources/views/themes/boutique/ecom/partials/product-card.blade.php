@@ -52,7 +52,13 @@
              x-transition:enter-start="opacity-0 translate-y-2"
              x-transition:enter-end="opacity-100 translate-y-0"
              class="absolute bottom-4 left-4 right-4 hidden sm:block">
-            @if($hasColors)
+            @if($product->is_serialized)
+            <a href="{{ route('products.show', $product->slug) }}"
+               class="block w-full text-center text-[11px] font-semibold py-3"
+               style="background: var(--t-surface); color: var(--t-text); letter-spacing:.12em; text-transform:uppercase; border:1px solid var(--t-text);">
+                Select Variant
+            </a>
+            @elseif($hasColors)
             <button type="button"
                     data-product-id="{{ $product->id }}"
                     data-product-name="{{ $product->name }}"
@@ -119,7 +125,13 @@
         {{-- Touch devices get a persistent action --}}
         @if($inStock)
         <div class="sm:hidden mt-3">
-            @if($hasColors)
+            @if($product->is_serialized)
+            <a href="{{ route('products.show', $product->slug) }}"
+               class="block w-full text-center text-[10px] font-semibold py-2.5"
+               style="border:1px solid var(--t-border); letter-spacing:.1em; text-transform:uppercase;">
+                Select Variant
+            </a>
+            @elseif($hasColors)
             <button type="button"
                     data-product-id="{{ $product->id }}"
                     data-product-name="{{ $product->name }}"

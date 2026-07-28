@@ -74,7 +74,13 @@
              x-transition:leave-start="opacity-100 translate-y-0"
              x-transition:leave-end="opacity-0 translate-y-2"
              class="absolute bottom-0 left-0 right-0 hidden sm:block">
-            @if($hasColors)
+            @if($product->is_serialized)
+                <a href="{{ route('products.show', $product->slug) }}"
+                   class="w-full text-white text-sm font-bold py-2.5 flex items-center justify-center gap-1.5"
+                   style="background: var(--app-gradient);">
+                    <i class="fas fa-sliders-h"></i> Select Variant
+                </a>
+            @elseif($hasColors)
                 <button type="button"
                         data-product-id="{{ $product->id }}"
                         data-product-name="{{ $product->name }}"
@@ -151,7 +157,13 @@
         {{-- Mobile: always-visible action (no hover on touch) --}}
         @if($inStock)
         <div class="sm:hidden mt-2.5">
-            @if($hasColors)
+            @if($product->is_serialized)
+            <a href="{{ route('products.show', $product->slug) }}"
+               class="w-full text-xs font-bold py-2 flex items-center justify-center"
+               style="background: rgb(var(--t-accent-rgb) / .12); color: var(--t-accent); border-radius: var(--t-radius-sm);">
+                <i class="fas fa-sliders-h mr-1"></i> Select Variant
+            </a>
+            @elseif($hasColors)
             <button type="button"
                     data-product-id="{{ $product->id }}"
                     data-product-name="{{ $product->name }}"
