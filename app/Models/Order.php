@@ -52,6 +52,11 @@ class Order extends Model
         return $this->belongsTo(Customer::class);
     }
 
+    public function vendor()
+    {
+        return $this->belongsTo(Vendor::class);
+    }
+
     public function servedBy()
     {
         return $this->belongsTo(User::class, 'served_by');

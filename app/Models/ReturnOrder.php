@@ -9,7 +9,7 @@ class ReturnOrder extends Model
     protected $table = 'returns';
 
     protected $fillable = [
-        'return_number', 'order_id', 'customer_id', 'reason',
+        'return_number', 'order_id', 'customer_id', 'vendor_id', 'reason',
         'refund_amount', 'refund_method', 'bank_account_id', 'status', 'restock', 'processed_by',
     ];
 
@@ -45,6 +45,11 @@ class ReturnOrder extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function vendor()
+    {
+        return $this->belongsTo(Vendor::class);
     }
 
     public function processedBy()

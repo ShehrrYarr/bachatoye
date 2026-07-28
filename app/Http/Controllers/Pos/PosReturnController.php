@@ -14,6 +14,8 @@ use App\Models\ReturnOrder;
 use App\Models\SerialNumber;
 use App\Models\Setting;
 use App\Models\StockMovement;
+use App\Models\Vendor;
+use App\Models\VendorLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -255,6 +257,7 @@ class PosReturnController extends Controller
             $returnOrder = ReturnOrder::create([
                 'order_id'        => $order->id,
                 'customer_id'     => $order->customer_id,
+                'vendor_id'       => $order->vendor_id,
                 'reason'          => $request->reason,
                 'refund_amount'   => $refund,
                 'refund_method'   => $request->refund_method,
@@ -344,6 +347,22 @@ class PosReturnController extends Controller
                     'return_id'     => $returnOrder->id,
                 ]);
                 $customer->update(['credit_balance' => $newBal]);
+            } elseif ($request->refund_method === 'khata_credit' && $order->vendor_id) {
+                // Vendor return: reverses part of the debit the original sale posted
+                // (vendor->balance -= khataDue in PosController), so it's credited back the same way.
+                $vendor = Vendor::find($order->vendor_id);
+                $newBal = $vendor->balance + $refund;
+                VendorLedger::create([
+                    'vendor_id'     => $vendor->id,
+                    'order_id'      => $order->id,
+                    'type'          => 'credit',
+                    'amount'        => $refund,
+                    'balance_after' => $newBal,
+                    'description'   => "Return Credit — {$returnOrder->return_number}",
+                    'reference'     => $returnOrder->return_number,
+                    'created_by'    => Auth::id(),
+                ]);
+                $vendor->update(['balance' => $newBal]);
             }
 
             DB::commit();

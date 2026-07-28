@@ -42,6 +42,9 @@
         @if($return->order->customer)
         <div class="row"><span>Customer:</span><span>{{ $return->order->customer->name }}</span></div>
         @endif
+        @if($return->order->vendor)
+        <div class="row"><span>Vendor:</span><span>{{ $return->order->vendor->name }}</span></div>
+        @endif
         <div class="row"><span>Reason:</span><span>{{ ucfirst(str_replace('_', ' ', $return->reason)) }}</span></div>
     </div>
 

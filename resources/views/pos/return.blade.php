@@ -262,6 +262,7 @@
                             <option value="cash">Cash Refund</option>
                             <option value="bank_transfer">Bank Transfer</option>
                             <option value="khata_credit" x-show="order?.customer_id">Add to Khata Credit</option>
+                            <option value="khata_credit" x-show="order?.vendor_id">Add to Vendor Ledger</option>
                         </select>
                     </div>
 
