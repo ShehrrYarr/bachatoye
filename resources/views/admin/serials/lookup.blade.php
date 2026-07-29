@@ -90,108 +90,143 @@
         <div class="card">
             <div class="card-header"><h2 class="font-semibold text-gray-800">History Timeline</h2></div>
             <div class="card-body">
+                @if($timeline->isEmpty())
+                <div class="text-sm text-gray-400 italic">No history recorded for this unit yet.</div>
+                @else
                 <ol class="relative border-l-2 border-gray-200 ml-3 space-y-6">
-
-                    {{-- Purchase --}}
+                    @foreach($timeline as $event)
+                    @php
+                        $dotColor = match($event['type']) {
+                            'purchase' => 'bg-indigo-500',
+                            'sale'     => 'bg-blue-500',
+                            'return'   => 'bg-orange-500',
+                            'buyback'  => 'bg-purple-500',
+                        };
+                        $iconColor = match($event['type']) {
+                            'purchase' => 'text-indigo-400',
+                            'sale'     => 'text-blue-400',
+                            'return'   => 'text-orange-400',
+                            'buyback'  => 'text-purple-400',
+                        };
+                        $linkColor = match($event['type']) {
+                            'purchase' => 'text-indigo-600',
+                            'sale'     => 'text-blue-600',
+                            'return'   => 'text-orange-600',
+                            'buyback'  => 'text-purple-600',
+                        };
+                    @endphp
                     <li class="ml-5">
-                        <div class="absolute -left-[9px] w-4 h-4 rounded-full border-2 border-white
-                                    {{ $serial->purchase ? 'bg-indigo-500' : 'bg-gray-300' }}"></div>
-                        <div class="text-xs text-gray-400 mb-0.5">Step 1</div>
-                        @if($serial->purchase)
+                        <div class="absolute -left-[9px] w-4 h-4 rounded-full border-2 border-white {{ $dotColor }}"></div>
+                        <div class="text-xs text-gray-400 mb-0.5">Step {{ $loop->iteration }}</div>
+
+                        @if($event['type'] === 'purchase')
                         <div class="font-semibold text-gray-800 text-sm">Purchased from Vendor</div>
                         <div class="text-xs text-gray-600 mt-1 space-y-0.5">
-                            <div><i class="fas fa-store text-indigo-400 w-4 mr-1"></i>
-                                Vendor: <strong>{{ $serial->purchase->vendor?->name ?? '—' }}</strong>
+                            <div><i class="fas fa-store {{ $iconColor }} w-4 mr-1"></i>
+                                Vendor: <strong>{{ $event['purchase']->vendor?->name ?? '—' }}</strong>
                             </div>
-                            <div><i class="fas fa-calendar text-indigo-400 w-4 mr-1"></i>
-                                Date: {{ $serial->purchase->purchase_date->format('d M Y') }}
+                            <div><i class="fas fa-calendar {{ $iconColor }} w-4 mr-1"></i>
+                                Date: {{ $event['purchase']->purchase_date->format('d M Y') }}
                             </div>
-                            @if($serial->purchase->reference)
-                            <div><i class="fas fa-hashtag text-indigo-400 w-4 mr-1"></i>
-                                Ref: <span class="font-mono">{{ $serial->purchase->reference }}</span>
+                            @if($event['purchase']->reference)
+                            <div><i class="fas fa-hashtag {{ $iconColor }} w-4 mr-1"></i>
+                                Ref: <span class="font-mono">{{ $event['purchase']->reference }}</span>
                             </div>
                             @endif
                             <div class="mt-1">
-                                <a href="{{ route("{$rPrefix}.purchases.show", $serial->purchase) }}"
-                                   class="text-indigo-600 hover:underline text-xs">
+                                <a href="{{ route("{$rPrefix}.purchases.show", $event['purchase']) }}"
+                                   class="{{ $linkColor }} hover:underline text-xs">
                                     <i class="fas fa-external-link-alt mr-1"></i>View Purchase
                                 </a>
                             </div>
                         </div>
-                        @else
-                        <div class="text-sm text-gray-400 italic">Purchase details not available</div>
-                        @endif
-                    </li>
 
-                    {{-- Sale --}}
-                    <li class="ml-5">
-                        <div class="absolute -left-[9px] w-4 h-4 rounded-full border-2 border-white
-                                    {{ $serial->order ? 'bg-blue-500' : 'bg-gray-300' }}"></div>
-                        <div class="text-xs text-gray-400 mb-0.5">Step 2</div>
-                        @if($serial->order)
+                        @elseif($event['type'] === 'sale')
                         <div class="font-semibold text-gray-800 text-sm">Sold</div>
                         <div class="text-xs text-gray-600 mt-1 space-y-0.5">
-                            <div><i class="fas fa-receipt text-blue-400 w-4 mr-1"></i>
-                                Order: <span class="font-mono font-semibold">{{ $serial->order->order_number }}</span>
+                            <div><i class="fas fa-receipt {{ $iconColor }} w-4 mr-1"></i>
+                                Order: <span class="font-mono font-semibold">{{ $event['order']->order_number }}</span>
                             </div>
-                            <div><i class="fas fa-user text-blue-400 w-4 mr-1"></i>
-                                Customer: {{ $serial->order->customer_name }}
-                                @if($serial->order->customer_phone && $serial->order->customer_phone !== '-')
-                                    <span class="text-gray-400">({{ $serial->order->customer_phone }})</span>
+                            <div><i class="fas fa-user {{ $iconColor }} w-4 mr-1"></i>
+                                Customer: {{ $event['order']->customer_name }}
+                                @if($event['order']->customer_phone && $event['order']->customer_phone !== '-')
+                                    <span class="text-gray-400">({{ $event['order']->customer_phone }})</span>
                                 @endif
                             </div>
-                            <div><i class="fas fa-calendar text-blue-400 w-4 mr-1"></i>
-                                Date: {{ $serial->order->created_at->format('d M Y H:i') }}
+                            <div><i class="fas fa-tag {{ $iconColor }} w-4 mr-1"></i>
+                                Price: Rs. {{ number_format($event['orderItem']->unit_price) }}
                             </div>
-                            @if($serial->order->servedBy)
-                            <div><i class="fas fa-user-tie text-blue-400 w-4 mr-1"></i>
-                                Served by: {{ $serial->order->servedBy->name }}
+                            <div><i class="fas fa-calendar {{ $iconColor }} w-4 mr-1"></i>
+                                Date: {{ $event['order']->created_at->format('d M Y H:i') }}
+                            </div>
+                            @if($event['order']->servedBy)
+                            <div><i class="fas fa-user-tie {{ $iconColor }} w-4 mr-1"></i>
+                                Served by: {{ $event['order']->servedBy->name }}
                             </div>
                             @endif
                             <div class="mt-1">
-                                <a href="{{ route("{$rPrefix}.orders.show", $serial->order) }}"
-                                   class="text-blue-600 hover:underline text-xs">
+                                <a href="{{ route("{$rPrefix}.orders.show", $event['order']) }}"
+                                   class="{{ $linkColor }} hover:underline text-xs">
                                     <i class="fas fa-external-link-alt mr-1"></i>View Order
                                 </a>
                             </div>
                         </div>
-                        @else
-                        <div class="text-sm text-gray-400 italic">
-                            @if($serial->status === 'in_stock')
-                                Not yet sold — currently in stock
-                            @else
-                                Sale details not available
-                            @endif
-                        </div>
-                        @endif
-                    </li>
 
-                    {{-- Return --}}
-                    <li class="ml-5">
-                        <div class="absolute -left-[9px] w-4 h-4 rounded-full border-2 border-white
-                                    {{ $serial->returnOrder ? 'bg-orange-500' : 'bg-gray-300' }}"></div>
-                        <div class="text-xs text-gray-400 mb-0.5">Step 3</div>
-                        @if($serial->returnOrder)
+                        @elseif($event['type'] === 'return')
                         <div class="font-semibold text-gray-800 text-sm">Returned</div>
                         <div class="text-xs text-gray-600 mt-1 space-y-0.5">
-                            <div><i class="fas fa-undo text-orange-400 w-4 mr-1"></i>
-                                Return: <span class="font-mono font-semibold">{{ $serial->returnOrder->return_number }}</span>
+                            <div><i class="fas fa-undo {{ $iconColor }} w-4 mr-1"></i>
+                                Return: <span class="font-mono font-semibold">{{ $event['returnOrder']->return_number }}</span>
                             </div>
-                            @if($serial->returnOrder->reason)
-                            <div><i class="fas fa-comment text-orange-400 w-4 mr-1"></i>
-                                Reason: {{ $serial->returnOrder->reason }}
+                            @if($event['returnOrder']->reason)
+                            <div><i class="fas fa-comment {{ $iconColor }} w-4 mr-1"></i>
+                                Reason: {{ $event['returnOrder']->reason }}
                             </div>
                             @endif
-                            <div><i class="fas fa-calendar text-orange-400 w-4 mr-1"></i>
-                                Date: {{ $serial->returnOrder->created_at->format('d M Y H:i') }}
+                            <div><i class="fas fa-calendar {{ $iconColor }} w-4 mr-1"></i>
+                                Date: {{ $event['returnOrder']->created_at->format('d M Y H:i') }}
                             </div>
                         </div>
-                        @else
-                        <div class="text-sm text-gray-400 italic">Not returned</div>
+
+                        @elseif($event['type'] === 'buyback')
+                        <div class="font-semibold text-gray-800 text-sm">Bought Back</div>
+                        <div class="text-xs text-gray-600 mt-1 space-y-0.5">
+                            <div><i class="fas fa-hand-holding-usd {{ $iconColor }} w-4 mr-1"></i>
+                                Buyback: <span class="font-mono font-semibold">{{ $event['buyback']->buyback_number }}</span>
+                            </div>
+                            <div><i class="fas fa-user {{ $iconColor }} w-4 mr-1"></i>
+                                From: {{ $event['buyback']->seller_name }}
+                                @if($event['buyback']->seller_phone)
+                                    <span class="text-gray-400">({{ $event['buyback']->seller_phone }})</span>
+                                @endif
+                            </div>
+                            <div><i class="fas fa-tag {{ $iconColor }} w-4 mr-1"></i>
+                                Paid: Rs. {{ number_format($event['buybackItem']->price_paid) }}
+                            </div>
+                            <div><i class="fas fa-calendar {{ $iconColor }} w-4 mr-1"></i>
+                                Date: {{ $event['buyback']->created_at->format('d M Y H:i') }}
+                            </div>
+                            @if($event['originalOrderItem']?->order)
+                            <div><i class="fas fa-link {{ $iconColor }} w-4 mr-1"></i>
+                                Originally sold on order
+                                <a href="{{ route("{$rPrefix}.orders.show", $event['originalOrderItem']->order) }}"
+                                   class="font-mono font-semibold {{ $linkColor }} hover:underline">{{ $event['originalOrderItem']->order->order_number }}</a>
+                                ({{ $event['originalOrderItem']->order->created_at->format('d M Y') }})
+                                for Rs. {{ number_format($event['originalOrderItem']->unit_price) }}
+                            </div>
+                            @endif
+                            <div class="mt-1">
+                                <a href="{{ route('pos.buyback.receipt', $event['buyback']) }}"
+                                   class="{{ $linkColor }} hover:underline text-xs">
+                                    <i class="fas fa-external-link-alt mr-1"></i>View Buyback
+                                </a>
+                            </div>
+                        </div>
                         @endif
                     </li>
-
+                    @endforeach
                 </ol>
+                @endif
             </div>
         </div>
     </div>

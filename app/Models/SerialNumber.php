@@ -74,6 +74,18 @@ class SerialNumber extends Model
         return $this->belongsTo(ReturnOrder::class);
     }
 
+    /** All order items across this serial's lifetime (survives buyback/return clearing the current order_id). */
+    public function orderItems()
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
+    /** All buyback events this serial has ever been part of. */
+    public function buybackItems()
+    {
+        return $this->hasMany(BuybackItem::class);
+    }
+
     // ── Scopes ───────────────────────────────────────────────────────────────
 
     public function scopeInStock($query)

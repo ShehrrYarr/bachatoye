@@ -242,21 +242,83 @@ class SerialController extends Controller
      */
     public function lookup(Request $request)
     {
-        $query  = trim($request->get('q', ''));
-        $serial = null;
+        $query    = trim($request->get('q', ''));
+        $serial   = null;
+        $timeline = collect();
 
         if ($query) {
             $serial = SerialNumber::where('serial_number', 'like', "%{$query}%")
                 ->with([
                     'product',
                     'purchase.vendor',
-                    'order.customer',
-                    'order.servedBy',
-                    'returnOrder',
+                    'orderItems.order.customer',
+                    'orderItems.order.servedBy',
+                    'orderItems.returnItems.returnOrder',
+                    'buybackItems.buyback',
+                    'buybackItems.originalOrderItem.order',
                 ])
                 ->first();
+
+            if ($serial) {
+                $timeline = $this->buildSerialTimeline($serial);
+            }
         }
 
-        return view('admin.serials.lookup', compact('query', 'serial'));
+        return view('admin.serials.lookup', compact('query', 'serial', 'timeline'));
+    }
+
+    /**
+     * Merge purchase/sale/return/buyback events into one chronological timeline.
+     * A serial can cycle through sold -> bought back -> resold more than once, so
+     * this walks every OrderItem/BuybackItem the serial has ever been linked to
+     * (order_items.serial_number_id / buyback_items.serial_number_id are never
+     * cleared, unlike serial_numbers.order_id which gets reset on buyback/return).
+     */
+    private function buildSerialTimeline(SerialNumber $serial): \Illuminate\Support\Collection
+    {
+        $events = collect();
+
+        if ($serial->purchase) {
+            $events->push([
+                'type'     => 'purchase',
+                'date'     => $serial->purchase->purchase_date,
+                'purchase' => $serial->purchase,
+            ]);
+        }
+
+        foreach ($serial->orderItems as $orderItem) {
+            if ($orderItem->order) {
+                $events->push([
+                    'type'      => 'sale',
+                    'date'      => $orderItem->order->created_at,
+                    'order'     => $orderItem->order,
+                    'orderItem' => $orderItem,
+                ]);
+            }
+
+            foreach ($orderItem->returnItems as $returnItem) {
+                if ($returnItem->returnOrder && in_array($returnItem->returnOrder->status, ['approved', 'completed'])) {
+                    $events->push([
+                        'type'        => 'return',
+                        'date'        => $returnItem->returnOrder->created_at,
+                        'returnOrder' => $returnItem->returnOrder,
+                    ]);
+                }
+            }
+        }
+
+        foreach ($serial->buybackItems as $buybackItem) {
+            if ($buybackItem->buyback) {
+                $events->push([
+                    'type'              => 'buyback',
+                    'date'              => $buybackItem->buyback->created_at,
+                    'buyback'           => $buybackItem->buyback,
+                    'buybackItem'       => $buybackItem,
+                    'originalOrderItem' => $buybackItem->originalOrderItem,
+                ]);
+            }
+        }
+
+        return $events->sortBy('date')->values();
     }
 }
