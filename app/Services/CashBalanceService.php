@@ -33,9 +33,9 @@ class CashBalanceService
         $cashInPos = Order::where('status', 'delivered')
             ->forShop($shopId)
             ->whereNull('deleted_at')
-            ->whereIn('payment_method', ['cash', 'split'])
+            ->whereIn('payment_method', ['cash', 'split', 'partial'])
             ->get(['payment_method', 'total', 'cash_amount'])
-            ->sum(fn($o) => $o->payment_method === 'split' ? (float) $o->cash_amount : (float) $o->total);
+            ->sum(fn($o) => in_array($o->payment_method, ['split', 'partial']) ? (float) $o->cash_amount : (float) $o->total);
 
         $cashInEcom = $shopId ? 0.0 : (float) Order::where('status', 'delivered')
             ->where('source', 'ecommerce')
@@ -119,7 +119,7 @@ class CashBalanceService
                 ->where('bank_account_id', $bank->id)
                 ->where('payment_method', 'partial')
                 ->whereNull('deleted_at')
-                ->sum('amount_paid');
+                ->sum('bank_amount');
 
             $bankInKhata = (float) AccountLedger::where('type', 'credit')
                 ->whereNull('return_id')

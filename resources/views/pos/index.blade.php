@@ -634,26 +634,31 @@
             <div x-show="paymentMethod === 'partial'" class="space-y-1.5 bg-orange-50 border border-orange-200 rounded-xl p-2">
                 <div class="text-xs font-semibold text-orange-700 mb-1">
                     <i class="fas fa-code-branch mr-1"></i> Partial Payment
-                    (<span x-text="partialPayVia === 'bank' ? 'Bank' : 'Cash'"></span> + Khata)
+                    (<span x-text="partialPayVia === 'bank' ? 'Bank' : (partialPayVia === 'split' ? 'Split' : 'Cash')"></span> + Khata)
                 </div>
 
-                {{-- Cash / Bank toggle --}}
-                <div class="flex gap-1.5">
-                    <button @click="partialPayVia = 'cash'; partialBankId = ''"
+                {{-- Cash / Bank / Split toggle --}}
+                <div class="grid grid-cols-3 gap-1.5">
+                    <button @click="partialPayVia = 'cash'; partialBankId = ''; partialCash = 0; partialBank = 0"
                             :class="partialPayVia === 'cash' ? 'bg-green-500 text-white border-green-500' : 'bg-white text-gray-600 border-gray-300 hover:border-green-300'"
-                            class="flex-1 text-xs font-semibold border rounded-lg py-1 transition-colors">
+                            class="text-xs font-semibold border rounded-lg py-1 transition-colors">
                         <i class="fas fa-money-bill-wave mr-1"></i> Cash
                     </button>
-                    <button @click="partialPayVia = 'bank'"
+                    <button @click="partialPayVia = 'bank'; partialCash = 0; partialBank = 0"
                             :class="partialPayVia === 'bank' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-300'"
-                            class="flex-1 text-xs font-semibold border rounded-lg py-1 transition-colors">
+                            class="text-xs font-semibold border rounded-lg py-1 transition-colors">
                         <i class="fas fa-university mr-1"></i> Bank
+                    </button>
+                    <button @click="partialPayVia = 'split'; partialCash = partialAmountPaid; partialBank = 0"
+                            :class="partialPayVia === 'split' ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-600 border-gray-300 hover:border-teal-300'"
+                            class="text-xs font-semibold border rounded-lg py-1 transition-colors">
+                        <i class="fas fa-random mr-1"></i> Split
                     </button>
                 </div>
 
-                {{-- Bank account selector --}}
+                {{-- Bank account selector (shown for Bank or Split submode) --}}
                 @if($bankAccounts->count())
-                <div x-show="partialPayVia === 'bank'" x-transition>
+                <div x-show="partialPayVia === 'bank' || partialPayVia === 'split'" x-transition>
                     <select x-model="partialBankId"
                             class="w-full text-sm border border-blue-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white font-medium">
                         <option value="">— Choose bank account —</option>
@@ -663,30 +668,63 @@
                         </option>
                         @endforeach
                     </select>
-                    <p x-show="!partialBankId && partialPayVia === 'bank'" class="text-xs text-orange-500 font-medium mt-0.5">
+                    <p x-show="!partialBankId && (partialPayVia === 'bank' || (partialPayVia === 'split' && partialBank > 0))"
+                       class="text-xs text-orange-500 font-medium mt-0.5">
                         <i class="fas fa-exclamation-triangle mr-1"></i>Please select a bank account.
                     </p>
                 </div>
                 @endif
 
-                <div class="flex items-center gap-2">
-                    <label class="text-xs text-gray-600 shrink-0 w-20">Paid Now:</label>
-                    <input type="number" x-model.number="partialAmountPaid" @input="calcPartialKhata()"
-                           :max="total" min="0" placeholder="0"
-                           class="flex-1 text-sm font-bold border border-orange-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orange-400 bg-white">
-                </div>
-                <div class="grid grid-cols-4 gap-1">
-                    <template x-for="amount in quickCash">
-                        <button @click="partialAmountPaid = Math.min(amount, total); calcPartialKhata()"
-                                class="text-xs border border-orange-200 rounded-lg py-0.5 hover:bg-orange-100 text-orange-700 font-medium bg-white"
-                                x-text="`${amount >= 1000 ? amount/1000+'k' : amount}`"></button>
-                    </template>
-                </div>
-                <div class="border-t border-orange-200 pt-1 space-y-0.5 text-xs">
-                    <div class="flex justify-between text-gray-600">
-                        <span x-text="partialPayVia === 'bank' ? 'Bank Received:' : 'Cash Received:'"></span>
-                        <span class="font-semibold text-green-700" x-text="`Rs. ${partialAmountPaid.toLocaleString()}`"></span>
+                {{-- Cash / Bank (single-mode) amount entry --}}
+                <template x-if="partialPayVia !== 'split'">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs text-gray-600 shrink-0 w-20">Paid Now:</label>
+                            <input type="number" x-model.number="partialAmountPaid" @input="calcPartialKhata()"
+                                   :max="total" min="0" placeholder="0"
+                                   class="flex-1 text-sm font-bold border border-orange-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orange-400 bg-white">
+                        </div>
+                        <div class="grid grid-cols-4 gap-1 mt-1">
+                            <template x-for="amount in quickCash">
+                                <button @click="partialAmountPaid = Math.min(amount, total); calcPartialKhata()"
+                                        class="text-xs border border-orange-200 rounded-lg py-0.5 hover:bg-orange-100 text-orange-700 font-medium bg-white"
+                                        x-text="`${amount >= 1000 ? amount/1000+'k' : amount}`"></button>
+                            </template>
+                        </div>
                     </div>
+                </template>
+
+                {{-- Split (cash + bank) amount entry --}}
+                <template x-if="partialPayVia === 'split'">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs text-gray-600 shrink-0 w-16"><i class="fas fa-money-bill-wave text-green-500 mr-1"></i>Cash:</label>
+                            <input type="number" x-model.number="partialCash" @input="calcPartialSplitCash()" min="0" :max="total"
+                                   class="flex-1 text-sm font-bold border border-orange-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orange-400 bg-white"
+                                   placeholder="0">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs text-gray-600 shrink-0 w-16"><i class="fas fa-university text-blue-500 mr-1"></i>Bank:</label>
+                            <input type="number" x-model.number="partialBank" @input="calcPartialSplitBank()" min="0" :max="total"
+                                   class="flex-1 text-sm font-bold border border-orange-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orange-400 bg-white"
+                                   placeholder="0">
+                        </div>
+                    </div>
+                </template>
+
+                <div class="border-t border-orange-200 pt-1 space-y-0.5 text-xs">
+                    <template x-if="partialPayVia !== 'split'">
+                        <div class="flex justify-between text-gray-600">
+                            <span x-text="partialPayVia === 'bank' ? 'Bank Received:' : 'Cash Received:'"></span>
+                            <span class="font-semibold text-green-700" x-text="`Rs. ${partialAmountPaid.toLocaleString()}`"></span>
+                        </div>
+                    </template>
+                    <template x-if="partialPayVia === 'split'">
+                        <div class="flex justify-between text-gray-600">
+                            <span>Received (Cash + Bank):</span>
+                            <span class="font-semibold text-green-700" x-text="`Rs. ${partialAmountPaid.toLocaleString()} (Rs. ${partialCash.toLocaleString()} + Rs. ${partialBank.toLocaleString()})`"></span>
+                        </div>
+                    </template>
                     <div class="flex justify-between text-gray-600">
                         <span>Added to Khata:</span>
                         <span class="font-bold text-red-600" x-text="`Rs. ${Math.max(0, total - partialAmountPaid).toLocaleString()}`"></span>
@@ -1621,7 +1659,7 @@
                                             <span class="text-xs px-2 py-0.5 rounded-full font-medium"
                                                   :class="pmLabel(o.payment_method).cls"
                                                   x-text="pmLabel(o.payment_method).label"></span>
-                                            <div x-show="o.payment_method === 'split'" class="mt-1 space-y-0.5">
+                                            <div x-show="['split', 'partial'].includes(o.payment_method) && (o.cash_amount > 0 || o.bank_amount > 0)" class="mt-1 space-y-0.5">
                                                 <div class="text-xs text-green-600">
                                                     <i class="fas fa-money-bill-wave text-[10px] mr-0.5"></i><span x-text="'Rs. ' + fmt(o.cash_amount)"></span>
                                                 </div>
@@ -2230,6 +2268,8 @@ function posApp() {
         partialAmountPaid: 0,
         partialPayVia: 'cash',
         partialBankId: '',
+        partialCash: 0,
+        partialBank: 0,
         promiseDate: '',
         splitCash: 0,
         splitBank: 0,
@@ -2995,6 +3035,8 @@ function posApp() {
                 this.partialAmountPaid = 0;
                 this.partialPayVia = 'cash';
                 this.partialBankId = '';
+                this.partialCash = 0;
+                this.partialBank = 0;
             } else if (method === 'split') {
                 this.splitCash = Math.ceil(this.total / 100) * 100;
                 this.splitBank = 0;
@@ -3007,6 +3049,22 @@ function posApp() {
         calcPartialKhata() {
             if (this.partialAmountPaid > this.total) this.partialAmountPaid = this.total;
             if (this.partialAmountPaid < 0) this.partialAmountPaid = 0;
+        },
+
+        calcPartialSplitCash() {
+            if (this.partialCash < 0) this.partialCash = 0;
+            if (this.partialCash + this.partialBank > this.total) {
+                this.partialBank = Math.max(0, this.total - this.partialCash);
+            }
+            this.partialAmountPaid = this.partialCash + this.partialBank;
+        },
+
+        calcPartialSplitBank() {
+            if (this.partialBank < 0) this.partialBank = 0;
+            if (this.partialCash + this.partialBank > this.total) {
+                this.partialCash = Math.max(0, this.total - this.partialBank);
+            }
+            this.partialAmountPaid = this.partialCash + this.partialBank;
         },
 
         calcSplitBank() {
@@ -3074,9 +3132,13 @@ function posApp() {
                 payment_method: this.paymentMethod,
                 amount_paid: this.paymentMethod === 'partial' ? this.partialAmountPaid : null,
                 partial_pay_via: this.paymentMethod === 'partial' ? this.partialPayVia : null,
-                partial_bank_account_id: (this.paymentMethod === 'partial' && this.partialPayVia === 'bank') ? this.partialBankId : null,
-                cash_amount: this.paymentMethod === 'split' ? this.splitCash : null,
-                bank_amount: this.paymentMethod === 'split' ? this.splitBank : null,
+                partial_bank_account_id: (this.paymentMethod === 'partial' && ['bank', 'split'].includes(this.partialPayVia)) ? this.partialBankId : null,
+                cash_amount: this.paymentMethod === 'split'
+                    ? this.splitCash
+                    : (this.paymentMethod === 'partial' && this.partialPayVia === 'split' ? this.partialCash : null),
+                bank_amount: this.paymentMethod === 'split'
+                    ? this.splitBank
+                    : (this.paymentMethod === 'partial' && this.partialPayVia === 'split' ? this.partialBank : null),
                 bank_account_id: ['bank_transfer', 'split'].includes(this.paymentMethod) ? this.bankAccountId : null,
                 customer_id: (this.selectedCustomer?.type === 'customer') ? (this.selectedCustomer?.id || null) : null,
                 vendor_id:   (this.selectedCustomer?.type === 'vendor')   ? (this.selectedCustomer?.id || null) : null,

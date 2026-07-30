@@ -132,18 +132,16 @@ class PosController extends Controller
         // Aggregated totals for the summary bar
         $cashTotal = $todaySalesOrders->sum(function ($o) {
             return match ($o->payment_method) {
-                'cash'    => $o->total,
-                'split'   => $o->cash_amount ?? 0,
-                'partial' => $o->bank_account_id ? 0 : ($o->amount_paid ?? 0),
-                default   => 0,
+                'cash'              => $o->total,
+                'split', 'partial'  => $o->cash_amount ?? 0,
+                default             => 0,
             };
         });
         $bankTotal = $todaySalesOrders->sum(function ($o) {
             return match ($o->payment_method) {
-                'bank_transfer' => $o->total,
-                'split'         => $o->bank_amount ?? 0,
-                'partial'       => $o->bank_account_id ? ($o->amount_paid ?? 0) : 0,
-                default         => 0,
+                'bank_transfer'     => $o->total,
+                'split', 'partial'  => $o->bank_amount ?? 0,
+                default             => 0,
             };
         });
 
@@ -213,18 +211,16 @@ class PosController extends Controller
 
         $cashTotal = $todaySalesOrders->sum(function ($o) {
             return match ($o->payment_method) {
-                'cash'    => $o->total,
-                'split'   => $o->cash_amount ?? 0,
-                'partial' => $o->bank_account_id ? 0 : ($o->amount_paid ?? 0),
-                default   => 0,
+                'cash'              => $o->total,
+                'split', 'partial'  => $o->cash_amount ?? 0,
+                default             => 0,
             };
         });
         $bankTotal = $todaySalesOrders->sum(function ($o) {
             return match ($o->payment_method) {
-                'bank_transfer' => $o->total,
-                'split'         => $o->bank_amount ?? 0,
-                'partial'       => $o->bank_account_id ? ($o->amount_paid ?? 0) : 0,
-                default         => 0,
+                'bank_transfer'     => $o->total,
+                'split', 'partial'  => $o->bank_amount ?? 0,
+                default             => 0,
             };
         });
 
@@ -907,7 +903,7 @@ class PosController extends Controller
             'items.*.serial_number' => 'nullable|string|max:100',
             'payment_method'           => 'required|in:cash,bank_transfer,khata,partial,split',
             'amount_paid'              => 'nullable|numeric|min:0',
-            'partial_pay_via'          => 'nullable|in:cash,bank',
+            'partial_pay_via'          => 'nullable|in:cash,bank,split',
             'partial_bank_account_id'  => 'nullable|exists:bank_accounts,id',
             'cash_amount'              => 'nullable|numeric|min:0',
             'bank_amount'              => 'nullable|numeric|min:0',
@@ -1057,11 +1053,24 @@ class PosController extends Controller
                     return response()->json(['error' => 'A customer or vendor must be selected for Khata payment.'], 422);
                 }
             } elseif ($payMethod === 'partial') {
-                $amountPaid = min((float)($request->amount_paid ?? 0), $total);
-                $payStatus  = $amountPaid >= $total ? 'paid' : 'partial';
+                if ($request->partial_pay_via === 'split') {
+                    $cashAmount = max(0, (float)($request->cash_amount ?? 0));
+                    $bankAmount = max(0, (float)($request->bank_amount ?? 0));
+                    $amountPaid = min($cashAmount + $bankAmount, $total);
+                } else {
+                    $amountPaid = min((float)($request->amount_paid ?? 0), $total);
+                    $bankAmount = $request->partial_pay_via === 'bank' ? $amountPaid : 0;
+                    $cashAmount = $amountPaid - $bankAmount;
+                }
+                $payStatus = $amountPaid >= $total ? 'paid' : 'partial';
+
                 if (!$customer && !$vendor && $amountPaid < $total) {
                     DB::rollBack();
                     return response()->json(['error' => 'A customer or vendor must be selected for partial payment.'], 422);
+                }
+                if ($bankAmount > 0 && !$request->filled('partial_bank_account_id')) {
+                    DB::rollBack();
+                    return response()->json(['error' => 'Please select a bank account for the bank portion of the partial payment.'], 422);
                 }
             } elseif ($payMethod === 'split') {
                 $cashAmount = max(0, (float)($request->cash_amount ?? 0));
@@ -1088,7 +1097,7 @@ class PosController extends Controller
                 'payment_status'   => $payStatus,
                 'bank_account_id'  => in_array($payMethod, ['bank_transfer', 'split'])
                                         ? $request->bank_account_id
-                                        : ($payMethod === 'partial' && $request->partial_pay_via === 'bank'
+                                        : ($payMethod === 'partial' && $bankAmount > 0
                                             ? $request->partial_bank_account_id
                                             : null),
                 'notes'              => $request->notes,
@@ -1154,9 +1163,9 @@ class PosController extends Controller
                 // Vendor buying on credit: reduces our payable to them (debit entry)
                 // If vendor.balance goes negative, it means vendor owes us money
                 $newBal = $vendor->balance - $khataDue;
-                $partialVia = $request->partial_pay_via === 'bank' ? 'Bank' : 'Cash';
+                $paidVia = $this->paymentBreakdownLabel($payMethod, $cashAmount, $bankAmount);
                 $description = $payMethod === 'partial'
-                    ? "Partial Sale — {$order->order_number} | Total: Rs.{$total} | Paid via {$partialVia}: Rs.{$amountPaid}, Pending: Rs.{$khataDue} | Items: {$itemsList}"
+                    ? "Partial Sale — {$order->order_number} | Total: Rs.{$total} | Paid via {$paidVia}: Rs.{$amountPaid}, Pending: Rs.{$khataDue} | Items: {$itemsList}"
                     : "POS Sale — {$order->order_number} | Total: Rs.{$total} | Items: {$itemsList}";
                 VendorLedger::create([
                     'vendor_id'    => $vendor->id,
@@ -1171,9 +1180,9 @@ class PosController extends Controller
                 $vendor->update(['balance' => $newBal]);
             } elseif ($khataDue > 0 && $customer) {
                 $newBal = $customer->credit_balance - $khataDue;
-                $partialVia = $request->partial_pay_via === 'bank' ? 'Bank' : 'Cash';
+                $paidVia = $this->paymentBreakdownLabel($payMethod, $cashAmount, $bankAmount);
                 $description = $payMethod === 'partial'
-                    ? "Partial Payment — {$order->order_number} | Total: Rs.{$total} | Paid via {$partialVia}: Rs.{$amountPaid}, Khata: Rs.{$khataDue} | Items: {$itemsList}"
+                    ? "Partial Payment — {$order->order_number} | Total: Rs.{$total} | Paid via {$paidVia}: Rs.{$amountPaid}, Khata: Rs.{$khataDue} | Items: {$itemsList}"
                     : "POS Sale — {$order->order_number} | Total: Rs.{$total} | Items: {$itemsList}";
                 AccountLedger::create([
                     'customer_id'   => $customer->id,
@@ -1192,12 +1201,15 @@ class PosController extends Controller
                 // These rows carry order_id: the money is already counted through the order
                 // itself, so every "khata collections" query excludes order-linked rows.
                 $bal = $customer->credit_balance;
-                $payLabel = match($payMethod) {
-                    'bank_transfer' => 'Bank Transfer',
-                    'split'         => "Cash: Rs.{$cashAmount} + Bank: Rs.{$bankAmount}",
-                    default         => 'Cash',
+                $payLabel = $this->paymentBreakdownLabel($payMethod, $cashAmount, $bankAmount);
+                $bankAccId = match(true) {
+                    in_array($payMethod, ['bank_transfer', 'split']) => $request->bank_account_id,
+                    $payMethod === 'partial' && $bankAmount > 0       => $request->partial_bank_account_id,
+                    default                                           => null,
                 };
-                $bankAccId = in_array($payMethod, ['bank_transfer', 'split']) ? $request->bank_account_id : null;
+                $ledgerPayMethod = ($payMethod === 'bank_transfer' || ($bankAmount > 0 && $cashAmount <= 0))
+                    ? 'bank_transfer'
+                    : 'cash';
 
                 AccountLedger::create([
                     'customer_id'    => $customer->id,
@@ -1213,7 +1225,7 @@ class PosController extends Controller
                     'customer_id'    => $customer->id,
                     'order_id'       => $order->id,
                     'type'           => 'credit',
-                    'payment_method' => in_array($payMethod, ['cash', 'split']) ? 'cash' : 'bank_transfer',
+                    'payment_method' => $ledgerPayMethod,
                     'bank_account_id' => $bankAccId,
                     'amount'         => $total,
                     'balance_after'  => $bal,
@@ -1263,6 +1275,25 @@ class PosController extends Controller
             'footer'       => $shop?->receipt_footer ?? Setting::get('receipt_footer'),
         ];
         return view('pos.receipt', compact('order', 'settings'));
+    }
+
+    /**
+     * Human-readable label for how a sale's paid portion was actually received.
+     * cash_amount/bank_amount are only populated for split/partial payments —
+     * bank_transfer's amount lives in `total` alone, so it's special-cased here.
+     */
+    private function paymentBreakdownLabel(string $payMethod, ?float $cashAmount, ?float $bankAmount): string
+    {
+        if ($payMethod === 'bank_transfer') {
+            return 'Bank Transfer';
+        }
+        if ($cashAmount > 0 && $bankAmount > 0) {
+            return "Cash: Rs.{$cashAmount} + Bank: Rs.{$bankAmount}";
+        }
+        if ($bankAmount > 0) {
+            return 'Bank';
+        }
+        return 'Cash';
     }
 
     /**
@@ -1486,7 +1517,7 @@ class PosController extends Controller
             'items.*.serial_number' => 'nullable|string|max:100',
             'payment_method'           => 'required|in:cash,bank_transfer,khata,partial,split',
             'amount_paid'              => 'nullable|numeric|min:0',
-            'partial_pay_via'          => 'nullable|in:cash,bank',
+            'partial_pay_via'          => 'nullable|in:cash,bank,split',
             'partial_bank_account_id'  => 'nullable|exists:bank_accounts,id',
             'cash_amount'              => 'nullable|numeric|min:0',
             'bank_amount'              => 'nullable|numeric|min:0',
@@ -1679,11 +1710,24 @@ class PosController extends Controller
                     return response()->json(['error' => 'A customer or vendor is required for Khata payment.'], 422);
                 }
             } elseif ($payMethod === 'partial') {
-                $amountPaid = min((float) ($request->amount_paid ?? 0), $newTotal);
-                $payStatus  = $amountPaid >= $newTotal ? 'paid' : 'partial';
+                if ($request->partial_pay_via === 'split') {
+                    $cashAmount = max(0, (float) ($request->cash_amount ?? 0));
+                    $bankAmount = max(0, (float) ($request->bank_amount ?? 0));
+                    $amountPaid = min($cashAmount + $bankAmount, $newTotal);
+                } else {
+                    $amountPaid = min((float) ($request->amount_paid ?? 0), $newTotal);
+                    $bankAmount = $request->partial_pay_via === 'bank' ? $amountPaid : 0;
+                    $cashAmount = $amountPaid - $bankAmount;
+                }
+                $payStatus = $amountPaid >= $newTotal ? 'paid' : 'partial';
+
                 if (! $customer && ! $vendor && $amountPaid < $newTotal) {
                     DB::rollBack();
                     return response()->json(['error' => 'A customer or vendor is required for partial payment.'], 422);
+                }
+                if ($bankAmount > 0 && !$request->filled('partial_bank_account_id')) {
+                    DB::rollBack();
+                    return response()->json(['error' => 'Please select a bank account for the bank portion of the partial payment.'], 422);
                 }
             } elseif ($payMethod === 'split') {
                 $cashAmount = max(0, (float) ($request->cash_amount ?? 0));
@@ -1737,13 +1781,17 @@ class PosController extends Controller
             if ($khataDue > 0 && $vendor) {
                 $vendor->refresh();
                 $newBal = $vendor->balance - $khataDue;
+                $paidVia = $this->paymentBreakdownLabel($payMethod, $cashAmount, $bankAmount);
+                $description = $payMethod === 'partial'
+                    ? "Edited Sale — {$order->order_number} | Total: Rs.{$newTotal} | Paid via {$paidVia}: Rs.{$amountPaid}, Pending: Rs.{$khataDue} | Items: {$itemsList}"
+                    : "Edited Sale — {$order->order_number} | Total: Rs.{$newTotal} | Items: {$itemsList}";
                 VendorLedger::create([
                     'vendor_id'    => $vendor->id,
                     'order_id'     => $order->id,
                     'type'         => 'debit',
                     'amount'       => $khataDue,
                     'balance_after' => $newBal,
-                    'description'  => "Edited Sale — {$order->order_number} | Total: Rs.{$newTotal} | Items: {$itemsList}",
+                    'description'  => $description,
                     'reference'    => $order->order_number,
                     'created_by'   => Auth::id(),
                 ]);
@@ -1751,6 +1799,10 @@ class PosController extends Controller
             } elseif ($khataDue > 0 && $customer) {
                 $customer->refresh();
                 $newBal = $customer->credit_balance - $khataDue;
+                $paidVia = $this->paymentBreakdownLabel($payMethod, $cashAmount, $bankAmount);
+                $description = $payMethod === 'partial'
+                    ? "Edited Sale — {$order->order_number} | Total: Rs.{$newTotal} | Paid via {$paidVia}: Rs.{$amountPaid}, Khata: Rs.{$khataDue} | Items: {$itemsList}"
+                    : "Edited Sale — {$order->order_number} | Total: Rs.{$newTotal} | Items: {$itemsList}";
 
                 AccountLedger::create([
                     'customer_id'   => $customer->id,
@@ -1758,7 +1810,7 @@ class PosController extends Controller
                     'type'          => 'debit',
                     'amount'        => $khataDue,
                     'balance_after' => $newBal,
-                    'description'   => "Edited Sale — {$order->order_number} | Total: Rs.{$newTotal} | Items: {$itemsList}",
+                    'description'   => $description,
                     'promise_date'  => $request->promise_date ?: null,
                     'reference'     => $order->order_number,
                     'user_id'       => Auth::id(),
@@ -1768,12 +1820,15 @@ class PosController extends Controller
                 // Full cash/bank payment on edit — record without changing balance
                 $customer->refresh();
                 $bal = $customer->credit_balance;
-                $payLabel = match($payMethod) {
-                    'bank_transfer' => 'Bank Transfer',
-                    'split'         => "Cash: Rs.{$cashAmount} + Bank: Rs.{$bankAmount}",
-                    default         => 'Cash',
+                $payLabel = $this->paymentBreakdownLabel($payMethod, $cashAmount, $bankAmount);
+                $bankAccId = match(true) {
+                    in_array($payMethod, ['bank_transfer', 'split']) => $request->bank_account_id,
+                    $payMethod === 'partial' && $bankAmount > 0       => $request->partial_bank_account_id,
+                    default                                           => null,
                 };
-                $bankAccId = in_array($payMethod, ['bank_transfer', 'split']) ? $request->bank_account_id : null;
+                $ledgerPayMethod = ($payMethod === 'bank_transfer' || ($bankAmount > 0 && $cashAmount <= 0))
+                    ? 'bank_transfer'
+                    : 'cash';
 
                 AccountLedger::create([
                     'customer_id'    => $customer->id,
@@ -1789,7 +1844,7 @@ class PosController extends Controller
                     'customer_id'    => $customer->id,
                     'order_id'       => $order->id,
                     'type'           => 'credit',
-                    'payment_method' => in_array($payMethod, ['cash', 'split']) ? 'cash' : 'bank_transfer',
+                    'payment_method' => $ledgerPayMethod,
                     'bank_account_id' => $bankAccId,
                     'amount'         => $newTotal,
                     'balance_after'  => $bal,
@@ -1820,7 +1875,7 @@ class PosController extends Controller
                 'payment_status'  => $payStatus,
                 'bank_account_id' => in_array($payMethod, ['bank_transfer', 'split'])
                                         ? $request->bank_account_id
-                                        : ($payMethod === 'partial' && $request->partial_pay_via === 'bank'
+                                        : ($payMethod === 'partial' && $bankAmount > 0
                                             ? $request->partial_bank_account_id
                                             : null),
                 'notes'           => $request->notes,

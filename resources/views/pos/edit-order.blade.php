@@ -16,6 +16,13 @@ function editSale() {
         cashAmount:     _orderData.cash_amount,
         bankAmount:     _orderData.bank_amount,
         bankAccountId:  _orderData.bank_account_id ? String(_orderData.bank_account_id) : '',
+        // Partial's cash/bank submode isn't stored separately — infer it from
+        // the amounts already on the order (populated for every partial sale).
+        partialPayVia: _orderData.payment_method === 'partial'
+            ? (_orderData.cash_amount > 0 && _orderData.bank_amount > 0
+                ? 'split'
+                : (_orderData.bank_amount > 0 ? 'bank' : 'cash'))
+            : 'cash',
         notes:          _orderData.notes,
         exchangeValue:  _orderData.exchange_value,
 
@@ -193,6 +200,10 @@ function editSale() {
                         cash_amount:     this.cashAmount,
                         bank_amount:     this.bankAmount,
                         bank_account_id: this.bankAccountId || null,
+                        partial_pay_via: this.paymentMethod === 'partial' ? this.partialPayVia : null,
+                        partial_bank_account_id: (this.paymentMethod === 'partial' && ['bank', 'split'].includes(this.partialPayVia))
+                            ? (this.bankAccountId || null)
+                            : null,
                         customer_id:     this.customer?.id || null,
                         notes:           this.notes,
                     }),
@@ -481,15 +492,45 @@ function editSale() {
 
             {{-- Partial --}}
             <div x-show="paymentMethod === 'partial'" class="space-y-2 mb-3">
-                <div>
-                    <label class="text-xs text-gray-500 mb-1 block">Amount Paid (Rs.)</label>
-                    <input type="number" x-model.number="amountPaid" min="0"
-                           class="form-input text-sm">
+                <div class="grid grid-cols-3 gap-2">
+                    <button @click="partialPayVia = 'cash'"
+                            :class="partialPayVia === 'cash' ? 'border-green-400 bg-green-50 text-green-700 font-semibold' : 'border-gray-200 text-gray-600 hover:border-gray-300'"
+                            class="text-xs border rounded-lg px-2 py-1.5 transition-all">Cash</button>
+                    <button @click="partialPayVia = 'bank'"
+                            :class="partialPayVia === 'bank' ? 'border-blue-400 bg-blue-50 text-blue-700 font-semibold' : 'border-gray-200 text-gray-600 hover:border-gray-300'"
+                            class="text-xs border rounded-lg px-2 py-1.5 transition-all">Bank</button>
+                    <button @click="partialPayVia = 'split'"
+                            :class="partialPayVia === 'split' ? 'border-teal-400 bg-teal-50 text-teal-700 font-semibold' : 'border-gray-200 text-gray-600 hover:border-gray-300'"
+                            class="text-xs border rounded-lg px-2 py-1.5 transition-all">Split</button>
                 </div>
+
+                <template x-if="partialPayVia !== 'split'">
+                    <div>
+                        <label class="text-xs text-gray-500 mb-1 block">Amount Paid (Rs.)</label>
+                        <input type="number" x-model.number="amountPaid" min="0"
+                               class="form-input text-sm">
+                    </div>
+                </template>
+
+                <template x-if="partialPayVia === 'split'">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">Cash (Rs.)</label>
+                            <input type="number" x-model.number="cashAmount" min="0"
+                                   class="form-input text-sm">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">Bank (Rs.)</label>
+                            <input type="number" x-model.number="bankAmount" min="0"
+                                   class="form-input text-sm">
+                        </div>
+                    </div>
+                </template>
+
                 <div class="text-xs text-gray-500">
                     On Khata:
                     <span class="font-semibold text-red-500"
-                          x-text="`Rs. ${fmt(Math.max(0, total - amountPaid))}`"></span>
+                          x-text="`Rs. ${fmt(Math.max(0, total - (partialPayVia === 'split' ? (cashAmount + bankAmount) : amountPaid)))}`"></span>
                 </div>
             </div>
 
@@ -511,7 +552,7 @@ function editSale() {
 
             {{-- Bank account selector --}}
             @if($bankAccounts->count())
-            <div x-show="['bank_transfer', 'split'].includes(paymentMethod)">
+            <div x-show="['bank_transfer', 'split'].includes(paymentMethod) || (paymentMethod === 'partial' && ['bank', 'split'].includes(partialPayVia))">
                 <label class="text-xs text-gray-500 mb-1 block">Bank Account</label>
                 <select x-model="bankAccountId" class="form-select text-sm">
                     <option value="">— Select account —</option>
