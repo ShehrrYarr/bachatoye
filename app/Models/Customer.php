@@ -18,6 +18,7 @@ class Customer extends Model
         'city',
         'photo',
         'credit_balance',
+        'opening_balance',
         'is_active',
         'source',
         'khata_enabled',
@@ -27,7 +28,8 @@ class Customer extends Model
     protected function casts(): array
     {
         return [
-            'credit_balance' => 'decimal:2',
+            'credit_balance'  => 'decimal:2',
+            'opening_balance' => 'decimal:2',
             'is_active'      => 'boolean',
             'khata_enabled'  => 'boolean',
         ];

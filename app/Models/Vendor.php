@@ -6,13 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class Vendor extends Model
 {
-    protected $fillable = ['name', 'phone', 'email', 'company', 'address', 'balance', 'notes', 'khata_enabled'];
+    protected $fillable = ['name', 'phone', 'email', 'company', 'address', 'balance', 'opening_balance', 'notes', 'khata_enabled'];
 
     protected function casts(): array
     {
         return [
-            'balance'       => 'decimal:2',
-            'khata_enabled' => 'boolean',
+            'balance'         => 'decimal:2',
+            'opening_balance' => 'decimal:2',
+            'khata_enabled'   => 'boolean',
         ];
     }
 

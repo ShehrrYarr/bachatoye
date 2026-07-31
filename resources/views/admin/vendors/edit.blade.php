@@ -45,8 +45,24 @@
                 </div>
                 <div>
                     <label class="form-label">Opening Balance (Rs.)</label>
-                    <input type="number" name="opening_balance" value="{{ old('opening_balance', $vendor->balance) }}" step="0.01" class="form-input">
-                    <p class="form-hint">Positive = you owe vendor &middot; Negative = vendor owes you. Changing this records a balance adjustment.</p>
+                    <input type="number" name="opening_balance" value="{{ old('opening_balance', $vendor->opening_balance) }}" step="0.01" class="form-input">
+                    <p class="form-hint">
+                        Positive = you owed vendor &middot; Negative = vendor owed you, when they were added.
+                        This is <strong>not</strong> their current balance — changing it records a correction on top of
+                        whatever's already outstanding from real purchases, it doesn't overwrite it.
+                    </p>
+                </div>
+                <div class="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 flex items-center justify-between">
+                    <div>
+                        <div class="text-xs text-gray-500">Current Balance (live, includes all activity)</div>
+                        <div class="text-sm font-semibold {{ $vendor->balance > 0 ? 'text-red-600' : ($vendor->balance < 0 ? 'text-green-600' : 'text-gray-700') }}">
+                            Rs. {{ number_format(abs($vendor->balance), 2) }}
+                            {{ $vendor->balance > 0 ? '(you owe vendor)' : ($vendor->balance < 0 ? '(vendor owes you)' : '') }}
+                        </div>
+                    </div>
+                    <a href="{{ route(auth()->user()->panelPrefix() . '.vendors.khata', $vendor) }}" class="btn-outline btn-sm">
+                        <i class="fas fa-book mr-1"></i> Adjust in Khata
+                    </a>
                 </div>
                 <div class="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                     <input type="hidden" name="khata_enabled" value="0">

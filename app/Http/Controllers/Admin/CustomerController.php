@@ -99,7 +99,7 @@ class CustomerController extends Controller
         }
 
         $openingBalance = (float) ($data['opening_balance'] ?? 0);
-        unset($data['opening_balance']);
+        $data['opening_balance'] = $openingBalance;
 
         $data['shop_id']       = $shopId;
         $data['created_by']   = Auth::id();
@@ -187,26 +187,31 @@ class CustomerController extends Controller
             $data['photo'] = null;
         }
 
-        $newBalance = array_key_exists('opening_balance', $data) ? (float) $data['opening_balance'] : $customer->credit_balance;
+        // Opening balance is a separate historical figure from credit_balance
+        // (the live running total after every sale/payment since). Correcting
+        // it here shifts the live balance by the same delta — it never wipes
+        // out real transaction history the way overwriting credit_balance would.
+        $newOpeningBalance = array_key_exists('opening_balance', $data) ? (float) $data['opening_balance'] : (float) $customer->opening_balance;
         unset($data['opening_balance']);
 
         $data['is_active']    = $request->boolean('is_active');
         $data['khata_enabled'] = $request->boolean('khata_enabled');
 
-        DB::transaction(function () use ($customer, $data, $newBalance) {
+        DB::transaction(function () use ($customer, $data, $newOpeningBalance) {
             $customer->update($data);
 
-            $diff = round($newBalance - $customer->credit_balance, 2);
+            $diff = round($newOpeningBalance - $customer->opening_balance, 2);
             if (abs($diff) > 0.0001) {
+                $newCreditBalance = round($customer->credit_balance + $diff, 2);
                 AccountLedger::create([
                     'customer_id'   => $customer->id,
                     'type'          => $diff >= 0 ? 'credit' : 'debit',
                     'amount'        => abs($diff),
-                    'balance_after' => $newBalance,
-                    'description'   => 'Opening Balance Adjustment',
+                    'balance_after' => $newCreditBalance,
+                    'description'   => 'Opening Balance Corrected',
                     'user_id'       => Auth::id(),
                 ]);
-                $customer->update(['credit_balance' => $newBalance]);
+                $customer->update(['opening_balance' => $newOpeningBalance, 'credit_balance' => $newCreditBalance]);
             }
         });
 

@@ -75,8 +75,24 @@
                 </div>
                 <div>
                     <label class="form-label">Opening Balance (Rs.)</label>
-                    <input type="number" name="opening_balance" value="{{ old('opening_balance', $customer->credit_balance) }}" step="0.01" class="form-input">
-                    <p class="form-hint">Negative = customer owes you &middot; Positive = you owe customer. Changing this records a balance adjustment.</p>
+                    <input type="number" name="opening_balance" value="{{ old('opening_balance', $customer->opening_balance) }}" step="0.01" class="form-input">
+                    <p class="form-hint">
+                        Negative = customer owed you &middot; Positive = you owed customer, when they were added.
+                        This is <strong>not</strong> their current balance — changing it records a correction on top of
+                        whatever they already owe from real transactions, it doesn't overwrite it.
+                    </p>
+                </div>
+                <div class="col-span-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 flex items-center justify-between">
+                    <div>
+                        <div class="text-xs text-gray-500">Current Balance (live, includes all activity)</div>
+                        <div class="text-sm font-semibold {{ $customer->credit_balance < 0 ? 'text-red-600' : ($customer->credit_balance > 0 ? 'text-green-600' : 'text-gray-700') }}">
+                            Rs. {{ number_format(abs($customer->credit_balance), 2) }}
+                            {{ $customer->credit_balance < 0 ? '(customer owes)' : ($customer->credit_balance > 0 ? '(you owe customer)' : '') }}
+                        </div>
+                    </div>
+                    <a href="{{ route(auth()->user()->panelPrefix() . '.customers.ledger', $customer) }}" class="btn-outline btn-sm">
+                        <i class="fas fa-book mr-1"></i> Adjust in Ledger
+                    </a>
                 </div>
             </div>
             <div class="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">

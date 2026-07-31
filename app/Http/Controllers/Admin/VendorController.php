@@ -49,7 +49,7 @@ class VendorController extends Controller
         ]);
 
         $openingBalance = (float) ($data['opening_balance'] ?? 0);
-        unset($data['opening_balance']);
+        $data['opening_balance'] = $openingBalance;
         $data['khata_enabled'] = $request->boolean('khata_enabled');
 
         $vendor = DB::transaction(function () use ($data, $openingBalance) {
@@ -123,24 +123,30 @@ class VendorController extends Controller
             'opening_balance' => 'nullable|numeric',
         ]);
 
-        $newBalance = array_key_exists('opening_balance', $data) ? (float) $data['opening_balance'] : $vendor->balance;
+        // Opening balance is a separate historical figure from the live
+        // balance (running total after every purchase/payment since).
+        // Correcting it shifts the live balance by the same delta — it
+        // never wipes out real transaction history the way overwriting
+        // balance directly would.
+        $newOpeningBalance = array_key_exists('opening_balance', $data) ? (float) $data['opening_balance'] : (float) $vendor->opening_balance;
         unset($data['opening_balance']);
         $data['khata_enabled'] = $request->boolean('khata_enabled');
 
-        DB::transaction(function () use ($vendor, $data, $newBalance) {
+        DB::transaction(function () use ($vendor, $data, $newOpeningBalance) {
             $vendor->update($data);
 
-            $diff = round($newBalance - $vendor->balance, 2);
+            $diff = round($newOpeningBalance - $vendor->opening_balance, 2);
             if (abs($diff) > 0.0001) {
+                $newLiveBalance = round($vendor->balance + $diff, 2);
                 VendorLedger::create([
                     'vendor_id'     => $vendor->id,
                     'type'          => $diff >= 0 ? 'credit' : 'debit',
                     'amount'        => abs($diff),
-                    'balance_after' => $newBalance,
-                    'description'   => 'Opening Balance Adjustment',
+                    'balance_after' => $newLiveBalance,
+                    'description'   => 'Opening Balance Corrected',
                     'created_by'    => auth()->id(),
                 ]);
-                $vendor->update(['balance' => $newBalance]);
+                $vendor->update(['opening_balance' => $newOpeningBalance, 'balance' => $newLiveBalance]);
             }
         });
 
