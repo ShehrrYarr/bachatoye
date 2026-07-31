@@ -59,8 +59,8 @@
                 </div>
                 <div>
                     <label class="form-label">Opening Balance (Rs.)</label>
-                    <input type="number" name="credit_balance" value="{{ old('credit_balance', 0) }}" step="0.01" class="form-input">
-                    <p class="form-hint">Negative = customer owes money</p>
+                    <input type="number" name="opening_balance" value="{{ old('opening_balance', 0) }}" step="0.01" class="form-input">
+                    <p class="form-hint">Negative = customer owes you &middot; Positive = you owe customer</p>
                 </div>
             </div>
             <div class="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">

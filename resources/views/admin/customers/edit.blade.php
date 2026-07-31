@@ -73,6 +73,11 @@
                     <label class="form-label">City</label>
                     <input type="text" name="city" value="{{ old('city', $customer->city) }}" class="form-input">
                 </div>
+                <div>
+                    <label class="form-label">Opening Balance (Rs.)</label>
+                    <input type="number" name="opening_balance" value="{{ old('opening_balance', $customer->credit_balance) }}" step="0.01" class="form-input">
+                    <p class="form-hint">Negative = customer owes you &middot; Positive = you owe customer. Changing this records a balance adjustment.</p>
+                </div>
             </div>
             <div class="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                 <input type="hidden" name="khata_enabled" value="0">

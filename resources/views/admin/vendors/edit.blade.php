@@ -43,6 +43,11 @@
                     <label class="form-label">Notes</label>
                     <textarea name="notes" rows="2" class="form-textarea">{{ old('notes', $vendor->notes) }}</textarea>
                 </div>
+                <div>
+                    <label class="form-label">Opening Balance (Rs.)</label>
+                    <input type="number" name="opening_balance" value="{{ old('opening_balance', $vendor->balance) }}" step="0.01" class="form-input">
+                    <p class="form-hint">Positive = you owe vendor &middot; Negative = vendor owes you. Changing this records a balance adjustment.</p>
+                </div>
                 <div class="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                     <input type="hidden" name="khata_enabled" value="0">
                     <input type="checkbox" name="khata_enabled" id="khata_enabled" value="1"

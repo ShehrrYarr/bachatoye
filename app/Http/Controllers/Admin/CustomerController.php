@@ -80,28 +80,49 @@ class CustomerController extends Controller
         $shopId = Auth::user()->shopId();
 
         $data = $request->validate([
-            'name'    => 'required|string|max:100',
-            'phone'   => [
+            'name'            => 'required|string|max:100',
+            'phone'           => [
                 'required', 'string', 'max:20',
                 \Illuminate\Validation\Rule::unique('customers', 'phone')->where(
                     fn($q) => $shopId ? $q->where('shop_id', $shopId) : $q->whereNull('shop_id')
                 ),
             ],
-            'email'   => 'nullable|email',
-            'address' => 'nullable|string',
-            'city'    => 'nullable|string|max:100',
-            'photo'   => 'nullable|image|mimes:jpeg,jpg,png,webp|max:2048',
+            'email'           => 'nullable|email',
+            'address'         => 'nullable|string',
+            'city'            => 'nullable|string|max:100',
+            'photo'           => 'nullable|image|mimes:jpeg,jpg,png,webp|max:2048',
+            'opening_balance' => 'nullable|numeric',
         ]);
 
         if ($request->hasFile('photo')) {
             $data['photo'] = $request->file('photo')->store('customers', 'public');
         }
 
+        $openingBalance = (float) ($data['opening_balance'] ?? 0);
+        unset($data['opening_balance']);
+
         $data['shop_id']       = $shopId;
         $data['created_by']   = Auth::id();
         $data['source']        = 'pos';
         $data['khata_enabled'] = $request->boolean('khata_enabled');
-        $customer = Customer::create($data);
+
+        $customer = DB::transaction(function () use ($data, $openingBalance) {
+            $customer = Customer::create($data);
+
+            if (abs($openingBalance) > 0.0001) {
+                AccountLedger::create([
+                    'customer_id'   => $customer->id,
+                    'type'          => $openingBalance >= 0 ? 'credit' : 'debit',
+                    'amount'        => abs($openingBalance),
+                    'balance_after' => $openingBalance,
+                    'description'   => 'Opening Balance',
+                    'user_id'       => Auth::id(),
+                ]);
+                $customer->update(['credit_balance' => $openingBalance]);
+            }
+
+            return $customer;
+        });
 
         // Auto-create portal login account
         $plainPassword = Str::random(10);
@@ -142,19 +163,20 @@ class CustomerController extends Controller
     {
         $this->guardShop($customer);
         $data = $request->validate([
-            'name'         => 'required|string|max:100',
-            'phone'        => [
+            'name'            => 'required|string|max:100',
+            'phone'           => [
                 'required', 'string', 'max:20',
                 \Illuminate\Validation\Rule::unique('customers', 'phone')->ignore($customer->id)->where(
                     fn($q) => $customer->shop_id ? $q->where('shop_id', $customer->shop_id) : $q->whereNull('shop_id')
                 ),
             ],
-            'email'        => 'nullable|email',
-            'address'      => 'nullable|string',
-            'city'         => 'nullable|string|max:100',
-            'is_active'    => 'boolean',
-            'photo'        => 'nullable|image|mimes:jpeg,jpg,png,webp|max:2048',
-            'remove_photo' => 'nullable|boolean',
+            'email'           => 'nullable|email',
+            'address'         => 'nullable|string',
+            'city'            => 'nullable|string|max:100',
+            'is_active'       => 'boolean',
+            'photo'           => 'nullable|image|mimes:jpeg,jpg,png,webp|max:2048',
+            'remove_photo'    => 'nullable|boolean',
+            'opening_balance' => 'nullable|numeric',
         ]);
 
         if ($request->hasFile('photo')) {
@@ -165,9 +187,29 @@ class CustomerController extends Controller
             $data['photo'] = null;
         }
 
+        $newBalance = array_key_exists('opening_balance', $data) ? (float) $data['opening_balance'] : $customer->credit_balance;
+        unset($data['opening_balance']);
+
         $data['is_active']    = $request->boolean('is_active');
         $data['khata_enabled'] = $request->boolean('khata_enabled');
-        $customer->update($data);
+
+        DB::transaction(function () use ($customer, $data, $newBalance) {
+            $customer->update($data);
+
+            $diff = round($newBalance - $customer->credit_balance, 2);
+            if (abs($diff) > 0.0001) {
+                AccountLedger::create([
+                    'customer_id'   => $customer->id,
+                    'type'          => $diff >= 0 ? 'credit' : 'debit',
+                    'amount'        => abs($diff),
+                    'balance_after' => $newBalance,
+                    'description'   => 'Opening Balance Adjustment',
+                    'user_id'       => Auth::id(),
+                ]);
+                $customer->update(['credit_balance' => $newBalance]);
+            }
+        });
+
         return redirect()->route(Auth::user()->panelPrefix() . '.customers.index')->with('success', 'Customer updated.');
     }
 

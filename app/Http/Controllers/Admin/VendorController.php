@@ -39,17 +39,37 @@ class VendorController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'    => 'required|string|max:150',
-            'phone'   => 'nullable|string|max:30',
-            'email'   => 'nullable|email|max:150',
-            'company' => 'nullable|string|max:150',
-            'address' => 'nullable|string|max:400',
-            'notes'   => 'nullable|string|max:1000',
+            'name'            => 'required|string|max:150',
+            'phone'           => 'nullable|string|max:30',
+            'email'           => 'nullable|email|max:150',
+            'company'         => 'nullable|string|max:150',
+            'address'         => 'nullable|string|max:400',
+            'notes'           => 'nullable|string|max:1000',
+            'opening_balance' => 'nullable|numeric',
         ]);
 
+        $openingBalance = (float) ($data['opening_balance'] ?? 0);
+        unset($data['opening_balance']);
         $data['khata_enabled'] = $request->boolean('khata_enabled');
 
-        $vendor = Vendor::create($data);
+        $vendor = DB::transaction(function () use ($data, $openingBalance) {
+            $vendor = Vendor::create($data);
+
+            if (abs($openingBalance) > 0.0001) {
+                VendorLedger::create([
+                    'vendor_id'     => $vendor->id,
+                    'type'          => $openingBalance >= 0 ? 'credit' : 'debit',
+                    'amount'        => abs($openingBalance),
+                    'balance_after' => $openingBalance,
+                    'description'   => 'Opening Balance',
+                    'created_by'    => auth()->id(),
+                ]);
+                $vendor->update(['balance' => $openingBalance]);
+            }
+
+            return $vendor;
+        });
+
         $rPrefix = auth()->user()->panelPrefix();
         return redirect()->route("{$rPrefix}.vendors.show", $vendor)->with('success', 'Vendor created.');
     }
@@ -94,16 +114,36 @@ class VendorController extends Controller
     public function update(Request $request, Vendor $vendor)
     {
         $data = $request->validate([
-            'name'    => 'required|string|max:150',
-            'phone'   => 'nullable|string|max:30',
-            'email'   => 'nullable|email|max:150',
-            'company' => 'nullable|string|max:150',
-            'address' => 'nullable|string|max:400',
-            'notes'   => 'nullable|string|max:1000',
+            'name'            => 'required|string|max:150',
+            'phone'           => 'nullable|string|max:30',
+            'email'           => 'nullable|email|max:150',
+            'company'         => 'nullable|string|max:150',
+            'address'         => 'nullable|string|max:400',
+            'notes'           => 'nullable|string|max:1000',
+            'opening_balance' => 'nullable|numeric',
         ]);
 
+        $newBalance = array_key_exists('opening_balance', $data) ? (float) $data['opening_balance'] : $vendor->balance;
+        unset($data['opening_balance']);
         $data['khata_enabled'] = $request->boolean('khata_enabled');
-        $vendor->update($data);
+
+        DB::transaction(function () use ($vendor, $data, $newBalance) {
+            $vendor->update($data);
+
+            $diff = round($newBalance - $vendor->balance, 2);
+            if (abs($diff) > 0.0001) {
+                VendorLedger::create([
+                    'vendor_id'     => $vendor->id,
+                    'type'          => $diff >= 0 ? 'credit' : 'debit',
+                    'amount'        => abs($diff),
+                    'balance_after' => $newBalance,
+                    'description'   => 'Opening Balance Adjustment',
+                    'created_by'    => auth()->id(),
+                ]);
+                $vendor->update(['balance' => $newBalance]);
+            }
+        });
+
         $rPrefix = auth()->user()->panelPrefix();
         return redirect()->route("{$rPrefix}.vendors.show", $vendor)->with('success', 'Vendor updated.');
     }
