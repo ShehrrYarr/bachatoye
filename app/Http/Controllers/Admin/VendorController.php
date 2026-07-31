@@ -57,12 +57,13 @@ class VendorController extends Controller
 
             if (abs($openingBalance) > 0.0001) {
                 VendorLedger::create([
-                    'vendor_id'     => $vendor->id,
-                    'type'          => $openingBalance >= 0 ? 'credit' : 'debit',
-                    'amount'        => abs($openingBalance),
-                    'balance_after' => $openingBalance,
-                    'description'   => 'Opening Balance',
-                    'created_by'    => auth()->id(),
+                    'vendor_id'          => $vendor->id,
+                    'type'               => $openingBalance >= 0 ? 'credit' : 'debit',
+                    'is_opening_balance' => true,
+                    'amount'             => abs($openingBalance),
+                    'balance_after'      => $openingBalance,
+                    'description'        => 'Opening Balance',
+                    'created_by'         => auth()->id(),
                 ]);
                 $vendor->update(['balance' => $openingBalance]);
             }
@@ -83,7 +84,10 @@ class VendorController extends Controller
 
     public function khata(Vendor $vendor)
     {
-        $entries      = $vendor->ledgerEntries()->with(['createdBy', 'bankAccount', 'editedBy'])->latest()->paginate(30);
+        // Opening balance always sorts last (oldest-conceptually), regardless
+        // of when it was actually entered/corrected — everything else newest first.
+        $entries      = $vendor->ledgerEntries()->with(['createdBy', 'bankAccount', 'editedBy'])
+            ->orderBy('is_opening_balance')->latest()->paginate(30);
         $bankAccounts = BankAccount::active()->orderBy('sort_order')->orderBy('id')->get();
         return view('admin.vendors.khata', compact('vendor', 'entries', 'bankAccounts'));
     }
@@ -93,7 +97,10 @@ class VendorController extends Controller
         $dateFrom = $request->input('date_from');
         $dateTo   = $request->input('date_to');
 
-        $query = $vendor->ledgerEntries()->with(['createdBy', 'bankAccount'])->oldest();
+        // Opening balance always sorts first on a chronological statement,
+        // regardless of when it was actually entered/corrected.
+        $query = $vendor->ledgerEntries()->with(['createdBy', 'bankAccount'])
+            ->orderByDesc('is_opening_balance')->oldest();
         if ($dateFrom) $query->whereDate('created_at', '>=', $dateFrom);
         if ($dateTo)   $query->whereDate('created_at', '<=', $dateTo);
 
@@ -138,14 +145,35 @@ class VendorController extends Controller
             $diff = round($newOpeningBalance - $vendor->opening_balance, 2);
             if (abs($diff) > 0.0001) {
                 $newLiveBalance = round($vendor->balance + $diff, 2);
-                VendorLedger::create([
-                    'vendor_id'     => $vendor->id,
-                    'type'          => $diff >= 0 ? 'credit' : 'debit',
-                    'amount'        => abs($diff),
-                    'balance_after' => $newLiveBalance,
-                    'description'   => 'Opening Balance Corrected',
-                    'created_by'    => auth()->id(),
-                ]);
+
+                // Reuse the single anchor row (never insert a new one per edit),
+                // so it always stays findable and never duplicates in the ledger.
+                $anchor = VendorLedger::where('vendor_id', $vendor->id)->where('is_opening_balance', true)->first();
+                $anchorAttrs = [
+                    'vendor_id'          => $vendor->id,
+                    'type'               => $newOpeningBalance >= 0 ? 'credit' : 'debit',
+                    'is_opening_balance' => true,
+                    'amount'             => abs($newOpeningBalance),
+                    // The anchor's own balance_after is its standalone contribution
+                    // (it conceptually precedes every other transaction), not the
+                    // live total — that keeps every row's running balance correct
+                    // when read in true chronological order regardless of display order.
+                    'balance_after'      => $newOpeningBalance,
+                    'description'        => 'Opening Balance',
+                ];
+
+                if ($anchor) {
+                    $anchor->update($anchorAttrs + ['edited_at' => now(), 'edited_by' => auth()->id()]);
+                } else {
+                    $anchor = VendorLedger::create($anchorAttrs + ['created_by' => auth()->id()]);
+                }
+
+                // The opening balance precedes every other row chronologically,
+                // whenever it was actually entered — shift all of them by the delta.
+                VendorLedger::where('vendor_id', $vendor->id)
+                    ->where('id', '!=', $anchor->id)
+                    ->update(['balance_after' => DB::raw('balance_after + (' . $diff . ')')]);
+
                 $vendor->update(['opening_balance' => $newOpeningBalance, 'balance' => $newLiveBalance]);
             }
         });

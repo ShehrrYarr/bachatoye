@@ -65,7 +65,7 @@
                 <tbody>
                     @forelse($entries as $entry)
                     @php
-                        $isManual = is_null($entry->order_id) && is_null($entry->return_id);
+                        $isManual = is_null($entry->order_id) && is_null($entry->return_id) && !$entry->is_opening_balance;
                         $editData = [
                             'id'              => $entry->id,
                             'type'            => $entry->type,
@@ -129,6 +129,10 @@
                                         <i class="fas fa-trash text-xs"></i>
                                     </button>
                                 </form>
+                            @elseif($entry->is_opening_balance)
+                                <span class="text-gray-300 text-xs" title="Opening balance — edit from the customer's Edit page">
+                                    <i class="fas fa-lock"></i>
+                                </span>
                             @else
                                 <span class="text-gray-300 text-xs" title="Auto entry from a sale or return — not editable">
                                     <i class="fas fa-lock"></i>

@@ -111,12 +111,13 @@ class CustomerController extends Controller
 
             if (abs($openingBalance) > 0.0001) {
                 AccountLedger::create([
-                    'customer_id'   => $customer->id,
-                    'type'          => $openingBalance >= 0 ? 'credit' : 'debit',
-                    'amount'        => abs($openingBalance),
-                    'balance_after' => $openingBalance,
-                    'description'   => 'Opening Balance',
-                    'user_id'       => Auth::id(),
+                    'customer_id'        => $customer->id,
+                    'type'               => $openingBalance >= 0 ? 'credit' : 'debit',
+                    'is_opening_balance' => true,
+                    'amount'             => abs($openingBalance),
+                    'balance_after'      => $openingBalance,
+                    'description'        => 'Opening Balance',
+                    'user_id'            => Auth::id(),
                 ]);
                 $customer->update(['credit_balance' => $openingBalance]);
             }
@@ -203,14 +204,35 @@ class CustomerController extends Controller
             $diff = round($newOpeningBalance - $customer->opening_balance, 2);
             if (abs($diff) > 0.0001) {
                 $newCreditBalance = round($customer->credit_balance + $diff, 2);
-                AccountLedger::create([
-                    'customer_id'   => $customer->id,
-                    'type'          => $diff >= 0 ? 'credit' : 'debit',
-                    'amount'        => abs($diff),
-                    'balance_after' => $newCreditBalance,
-                    'description'   => 'Opening Balance Corrected',
-                    'user_id'       => Auth::id(),
-                ]);
+
+                // Reuse the single anchor row (never insert a new one per edit),
+                // so it always stays findable and never duplicates in the ledger.
+                $anchor = AccountLedger::where('customer_id', $customer->id)->where('is_opening_balance', true)->first();
+                $anchorAttrs = [
+                    'customer_id'        => $customer->id,
+                    'type'               => $newOpeningBalance >= 0 ? 'credit' : 'debit',
+                    'is_opening_balance' => true,
+                    'amount'             => abs($newOpeningBalance),
+                    // The anchor's own balance_after is its standalone contribution
+                    // (it conceptually precedes every other transaction), not the
+                    // live total — that keeps every row's running balance correct
+                    // when read in true chronological order regardless of display order.
+                    'balance_after'      => $newOpeningBalance,
+                    'description'        => 'Opening Balance',
+                ];
+
+                if ($anchor) {
+                    $anchor->update($anchorAttrs + ['edited_at' => now(), 'edited_by' => Auth::id()]);
+                } else {
+                    $anchor = AccountLedger::create($anchorAttrs + ['user_id' => Auth::id()]);
+                }
+
+                // The opening balance precedes every other row chronologically,
+                // whenever it was actually entered — shift all of them by the delta.
+                AccountLedger::where('customer_id', $customer->id)
+                    ->where('id', '!=', $anchor->id)
+                    ->update(['balance_after' => DB::raw('balance_after + (' . $diff . ')')]);
+
                 $customer->update(['opening_balance' => $newOpeningBalance, 'credit_balance' => $newCreditBalance]);
             }
         });
@@ -229,7 +251,10 @@ class CustomerController extends Controller
     public function ledger(Customer $customer)
     {
         $this->guardShop($customer);
-        $entries      = $customer->ledgerEntries()->with(['user', 'bankAccount', 'editedBy'])->latest()->paginate(30);
+        // Opening balance always sorts last (oldest-conceptually), regardless
+        // of when it was actually entered/corrected — everything else newest first.
+        $entries      = $customer->ledgerEntries()->with(['user', 'bankAccount', 'editedBy'])
+            ->orderBy('is_opening_balance')->latest()->paginate(30);
         $bankAccounts = BankAccount::active()->forShop($customer->shop_id)->orderBy('sort_order')->get();
         return view('admin.customers.ledger', compact('customer', 'entries', 'bankAccounts'));
     }
@@ -240,7 +265,10 @@ class CustomerController extends Controller
         $dateFrom = $request->input('date_from');
         $dateTo   = $request->input('date_to');
 
-        $query = $customer->ledgerEntries()->with(['user', 'bankAccount'])->oldest();
+        // Opening balance always sorts first on a chronological statement,
+        // regardless of when it was actually entered/corrected.
+        $query = $customer->ledgerEntries()->with(['user', 'bankAccount'])
+            ->orderByDesc('is_opening_balance')->oldest();
         if ($dateFrom) $query->whereDate('created_at', '>=', $dateFrom);
         if ($dateTo)   $query->whereDate('created_at', '<=', $dateTo);
 
