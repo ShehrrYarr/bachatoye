@@ -560,6 +560,10 @@ function editSale() {
                     <option value="{{ $bank->id }}">{{ $bank->label }} — {{ $bank->bank_name }}</option>
                     @endforeach
                 </select>
+                <p x-show="!bankAccountId && (paymentMethod === 'bank_transfer' || (paymentMethod === 'split' && bankAmount > 0) || (paymentMethod === 'partial' && ['bank', 'split'].includes(partialPayVia)))"
+                   class="text-xs text-orange-500 font-medium mt-0.5">
+                    <i class="fas fa-exclamation-triangle mr-1"></i>Please select a bank account.
+                </p>
             </div>
             @endif
         </div>

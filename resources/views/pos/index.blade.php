@@ -777,6 +777,9 @@
                         </option>
                         @endforeach
                     </select>
+                    <p x-show="!bankAccountId && splitBank > 0" class="text-xs text-orange-500 font-medium mt-0.5">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>Please select a bank account.
+                    </p>
                 </div>
                 @else
                 <div class="text-xs text-orange-600 bg-orange-50 border border-orange-200 rounded-lg px-2 py-1.5">

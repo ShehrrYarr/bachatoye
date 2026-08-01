@@ -1077,6 +1077,11 @@ class PosController extends Controller
                 $bankAmount = max(0, (float)($request->bank_amount ?? 0));
                 $amountPaid = $cashAmount + $bankAmount;
                 $payStatus  = 'paid';
+
+                if ($bankAmount > 0 && !$request->filled('bank_account_id')) {
+                    DB::rollBack();
+                    return response()->json(['error' => 'Please select a bank account for the bank portion of the split payment.'], 422);
+                }
             }
 
             $order = Order::create([
@@ -1734,6 +1739,11 @@ class PosController extends Controller
                 $bankAmount = max(0, (float) ($request->bank_amount ?? 0));
                 $amountPaid = $cashAmount + $bankAmount;
                 $payStatus  = 'paid';
+
+                if ($bankAmount > 0 && !$request->filled('bank_account_id')) {
+                    DB::rollBack();
+                    return response()->json(['error' => 'Please select a bank account for the bank portion of the split payment.'], 422);
+                }
             }
 
             // ── 5. Save new items and deduct stock ────────────────────────
