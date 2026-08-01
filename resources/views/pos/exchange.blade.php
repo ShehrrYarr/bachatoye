@@ -173,6 +173,40 @@
                             </div>
                         </div>
 
+                        {{-- Serial picker modal (serialized products) --}}
+                        <div x-show="serialPromptProduct" class="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-xl">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="text-sm font-semibold text-indigo-800">
+                                    Select unit (IMEI) for: <span x-text="serialPromptProduct?.name"></span>
+                                </div>
+                                <button @click="serialPromptProduct = null" class="text-gray-400 hover:text-gray-600 text-sm">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <input type="text" x-model="serialPromptInput"
+                                   placeholder="Scan or search IMEI / serial number..."
+                                   class="form-input text-sm mb-2">
+                            <div x-show="serialPromptError" class="text-xs text-red-600 mb-2" x-text="serialPromptError"></div>
+                            <div x-show="serialPromptLoading" class="text-xs text-gray-400 py-2 text-center">
+                                <i class="fas fa-spinner fa-spin mr-1"></i> Loading units...
+                            </div>
+                            <div x-show="!serialPromptLoading" class="space-y-1.5 max-h-56 overflow-y-auto">
+                                <template x-for="s in serialPromptFilteredSerials" :key="s.id">
+                                    <button @click="pickSerial(s)"
+                                            class="w-full flex items-center justify-between px-3 py-2 bg-white border border-gray-200 rounded-lg hover:border-indigo-400 hover:bg-indigo-50 text-left transition-colors">
+                                        <span class="text-sm font-mono font-semibold text-gray-800" x-text="s.serial_number"></span>
+                                        <span class="text-xs font-semibold text-indigo-700"
+                                              x-text="`Rs. ${Number(s.selling_price).toLocaleString()}`"></span>
+                                    </button>
+                                </template>
+                                <div x-show="!serialPromptLoading && serialPromptFilteredSerials.length === 0"
+                                     class="text-center text-xs text-gray-400 py-3">
+                                    <span x-show="serialPromptSerials.length === 0">No units in stock for this product.</span>
+                                    <span x-show="serialPromptSerials.length > 0">No unit matching that search.</span>
+                                </div>
+                            </div>
+                        </div>
+
                         {{-- New Items Cart --}}
                         <div x-show="newCart.length > 0" class="space-y-2">
                             <template x-for="(item, idx) in newCart" :key="idx">
@@ -180,14 +214,20 @@
                                     <div class="flex-1 min-w-0">
                                         <div class="text-sm font-semibold text-gray-800 truncate" x-text="item.name"></div>
                                         <div class="text-xs text-gray-500" x-text="item.color_name ? `Color: ${item.color_name}` : ''"></div>
+                                        <div x-show="item.is_serialized" class="text-xs text-indigo-600 font-mono" x-text="item.serial_number"></div>
                                     </div>
-                                    <div class="flex items-center gap-1.5 shrink-0">
-                                        <button @click="item.qty = Math.max(1, item.qty - 1); recalculate()"
-                                                class="w-6 h-6 rounded-full bg-gray-200 hover:bg-gray-300 text-xs font-bold flex items-center justify-center">−</button>
-                                        <span class="text-sm font-bold w-6 text-center" x-text="item.qty"></span>
-                                        <button @click="item.qty++; recalculate()"
-                                                class="w-6 h-6 rounded-full bg-gray-200 hover:bg-gray-300 text-xs font-bold flex items-center justify-center">+</button>
-                                    </div>
+                                    <template x-if="!item.is_serialized">
+                                        <div class="flex items-center gap-1.5 shrink-0">
+                                            <button @click="item.qty = Math.max(1, item.qty - 1); recalculate()"
+                                                    class="w-6 h-6 rounded-full bg-gray-200 hover:bg-gray-300 text-xs font-bold flex items-center justify-center">−</button>
+                                            <span class="text-sm font-bold w-6 text-center" x-text="item.qty"></span>
+                                            <button @click="item.qty++; recalculate()"
+                                                    class="w-6 h-6 rounded-full bg-gray-200 hover:bg-gray-300 text-xs font-bold flex items-center justify-center">+</button>
+                                        </div>
+                                    </template>
+                                    <template x-if="item.is_serialized">
+                                        <span class="text-xs bg-indigo-100 text-indigo-700 font-semibold px-2 py-0.5 rounded-full shrink-0">1 unit</span>
+                                    </template>
                                     <div class="text-sm font-bold text-gray-800 shrink-0 w-20 text-right"
                                          x-text="`Rs. ${Number(item.price * item.qty).toLocaleString()}`"></div>
                                     <button @click="newCart.splice(idx, 1); recalculate()"
@@ -371,6 +411,18 @@ function exchangeApp() {
         pendingColor: null,
         newCart: [],
 
+        // ── Serial picker (for serialized new items) ────────────────────────
+        serialPromptProduct: null,
+        serialPromptSerials: [],
+        serialPromptLoading: false,
+        serialPromptError: '',
+        serialPromptInput: '',
+        get serialPromptFilteredSerials() {
+            const q = (this.serialPromptInput || '').trim().toLowerCase();
+            if (!q) return this.serialPromptSerials;
+            return this.serialPromptSerials.filter(s => s.serial_number.toLowerCase().includes(q));
+        },
+
         // ── Summary ──────────────────────────────────────────────────────────
         newSubtotal: 0,
         difference: 0,
@@ -444,12 +496,47 @@ function exchangeApp() {
             this.productSearch  = '';
             this.productResults = [];
 
+            if (product.is_serialized) {
+                this.serialPromptProduct = product;
+                this.serialPromptInput   = '';
+                this.serialPromptError   = '';
+                this.serialPromptSerials = [];
+                this.serialPromptLoading = true;
+                fetch(`/pos/product/${product.id}/serials`)
+                    .then(r => r.json())
+                    .then(data => { this.serialPromptSerials = data.serials || []; })
+                    .catch(() => { this.serialPromptError = 'Could not load serials. Please try again.'; })
+                    .finally(() => { this.serialPromptLoading = false; });
+                return;
+            }
+
             if (product.colors && product.colors.length > 0) {
                 this.pendingProduct = product;
                 this.pendingColor   = null;
             } else {
                 this._pushToCart(product, null);
             }
+        },
+
+        // Click a serial row → add that specific unit to the new-items cart
+        pickSerial(s) {
+            if (this.newCart.find(i => i.serial_number === s.serial_number)) return;
+            const p = this.serialPromptProduct;
+            this.newCart.push({
+                product_id:     p.id,
+                name:           p.name,
+                price:          s.selling_price,
+                color_id:       null,
+                color_name:     null,
+                qty:            1,
+                is_serialized:  true,
+                serial_number:  s.serial_number,
+                serial_id:      s.id,
+            });
+            this.serialPromptProduct = null;
+            this.serialPromptSerials = [];
+            this.serialPromptInput   = '';
+            this.recalculate();
         },
 
         confirmAddWithColor(color) {
@@ -491,10 +578,11 @@ function exchangeApp() {
                 return_quantity:   this.returnQty,
                 exchange_value:    parseFloat(this.exchangeValue || 0),
                 new_items: this.newCart.map(i => ({
-                    product_id: i.product_id,
-                    quantity:   i.qty,
-                    unit_price: i.price,
-                    color_id:   i.color_id || null,
+                    product_id:    i.product_id,
+                    quantity:      i.qty,
+                    unit_price:    i.price,
+                    color_id:      i.color_id || null,
+                    serial_number: i.serial_number || null,
                 })),
                 payment_method:  payMethod,
                 cash_amount:     payMethod === 'split' ? this.splitCash : null,
@@ -531,6 +619,8 @@ function exchangeApp() {
                     this.returnQty     = 1;
                     this.exchangeValue = 0;
                     this.newCart       = [];
+                    this.serialPromptProduct = null;
+                    this.serialPromptSerials = [];
                     this.newSubtotal   = 0;
                     this.difference    = 0;
                     this.paymentMethod = 'cash';

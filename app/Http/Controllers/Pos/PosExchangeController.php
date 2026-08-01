@@ -11,6 +11,7 @@ use App\Models\ProductColor;
 use App\Models\PosSession;
 use App\Models\ReturnItem;
 use App\Models\ReturnOrder;
+use App\Models\SerialNumber;
 use App\Models\Setting;
 use App\Models\StockMovement;
 use Illuminate\Http\Request;
@@ -65,6 +66,7 @@ class PosExchangeController extends Controller
             'new_items.*.quantity'   => 'required|integer|min:1',
             'new_items.*.unit_price' => 'required|numeric|min:0',
             'new_items.*.color_id'   => 'nullable|exists:product_colors,id',
+            'new_items.*.serial_number' => 'nullable|string|max:100',
             'payment_method'         => 'required|in:cash,bank_transfer,split,none',
             'cash_amount'            => 'nullable|numeric|min:0',
             'bank_amount'            => 'nullable|numeric|min:0',
@@ -134,11 +136,44 @@ class PosExchangeController extends Controller
             // ─── Step 2: Build new order items ─────────────────────────────────
             $subtotal   = 0;
             $orderItems = [];
+            $usedSerials = [];
 
             foreach ($request->new_items as $item) {
                 $product   = Product::lockForUpdate()->find($item['product_id']);
                 $color     = null;
                 $colorName = null;
+
+                // ── Serial number validation for serialized products ──────────
+                $serial = null;
+                if ($product->is_serialized) {
+                    $sn = trim($item['serial_number'] ?? '');
+                    if ($sn === '') {
+                        DB::rollBack();
+                        return response()->json([
+                            'error' => "Serial number required for serialized product: {$product->name}. Please scan the IMEI/serial number.",
+                        ], 422);
+                    }
+                    if (isset($usedSerials[$sn])) {
+                        DB::rollBack();
+                        return response()->json([
+                            'error' => "Duplicate serial number in this exchange: {$sn}",
+                        ], 422);
+                    }
+                    $serial = SerialNumber::where('serial_number', $sn)
+                        ->where('product_id', $product->id)
+                        ->where('status', 'in_stock')
+                        ->forShop($orderShopId)
+                        ->lockForUpdate()
+                        ->first();
+                    if (!$serial) {
+                        DB::rollBack();
+                        return response()->json([
+                            'error' => "Serial {$sn} is not in stock at this shop for product: {$product->name}. It may have already been sold, transferred, or not been registered.",
+                        ], 422);
+                    }
+                    $usedSerials[$sn] = true;
+                    $item['quantity'] = 1; // one physical unit per serial
+                }
 
                 if (!empty($item['color_id'])) {
                     $color = ProductColor::lockForUpdate()->find($item['color_id']);
@@ -168,6 +203,7 @@ class PosExchangeController extends Controller
                     'qty'        => $item['quantity'],
                     'price'      => $item['unit_price'],
                     'line_total' => $lineTotal,
+                    'serial'     => $serial,
                 ];
             }
 
@@ -217,17 +253,27 @@ class PosExchangeController extends Controller
             ]);
 
             foreach ($orderItems as $item) {
-                OrderItem::create([
-                    'order_id'        => $newOrder->id,
-                    'product_id'      => $item['product']->id,
-                    'product_name'    => $item['product']->name,
-                    'color_name'      => $item['color_name'],
-                    'product_barcode' => $item['product']->barcode,
-                    'unit_price'      => $item['price'],
-                    'cost_price'      => $item['product']->cost_price,
-                    'quantity'        => $item['qty'],
-                    'line_total'      => $item['line_total'],
+                $orderItem = OrderItem::create([
+                    'order_id'         => $newOrder->id,
+                    'product_id'       => $item['product']->id,
+                    'product_name'     => $item['product']->name,
+                    'color_name'       => $item['color_name'],
+                    'product_barcode'  => $item['product']->barcode,
+                    'unit_price'       => $item['price'],
+                    'cost_price'       => $item['serial']?->cost_price ?? $item['product']->cost_price,
+                    'quantity'         => $item['qty'],
+                    'line_total'       => $item['line_total'],
+                    'serial_number_id' => $item['serial']?->id,
                 ]);
+
+                // Mark serial number as sold
+                if ($item['serial']) {
+                    $item['serial']->update([
+                        'status'        => 'sold',
+                        'order_id'      => $newOrder->id,
+                        'order_item_id' => $orderItem->id,
+                    ]);
+                }
 
                 app(\App\Services\ShopStockService::class)->adjust(
                     $orderShopId, $item['product'], $item['color']?->id, -$item['qty'],

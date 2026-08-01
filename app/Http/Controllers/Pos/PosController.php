@@ -1129,7 +1129,7 @@ class PosController extends Controller
                     'color_id'         => $item['color']?->id,
                     'product_barcode'  => $item['product']->barcode,
                     'unit_price'       => $item['price'],
-                    'cost_price'       => $item['product']->cost_price,
+                    'cost_price'       => $item['serial']?->cost_price ?? $item['product']->cost_price,
                     'quantity'         => $item['qty'],
                     'line_total'       => $item['line_total'],
                     'serial_number_id' => $item['serial']?->id,
@@ -1892,9 +1892,13 @@ class PosController extends Controller
             ]);
 
             // ── 8. Adjust open POS session total ─────────────────────────
+            // Credited to the original seller's own still-open shift (not
+            // whoever is editing now, e.g. an admin correcting a price later) —
+            // a no-op if that shift has already closed, rather than polluting
+            // an unrelated currently-open session.
             $totalDiff = $newTotal - $oldTotal;
             if ($totalDiff != 0) {
-                PosSession::where('user_id', Auth::id())
+                PosSession::where('user_id', $order->served_by)
                     ->whereNull('closed_at')
                     ->increment('total_sales', $totalDiff);
             }
