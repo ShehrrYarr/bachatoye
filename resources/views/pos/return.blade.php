@@ -38,18 +38,14 @@
             <div x-show="orderList.length > 0" class="mt-4">
                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
                     <i class="fas fa-list mr-1"></i>
-                    <span x-text="orderList.length + ' order(s) found — only the latest can be selected'"></span>
+                    <span x-text="orderList.length + ' order(s) found — click any to select'"></span>
                 </p>
                 <div class="space-y-2">
                     <template x-for="(o, idx) in orderList" :key="o.id">
-                        <div @click="idx === 0 && selectOrder(o.order_number)"
-                             :class="idx === 0
-                                 ? 'border-indigo-300 bg-indigo-50 cursor-pointer hover:bg-indigo-100'
-                                 : 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'"
-                             class="flex items-center justify-between gap-3 border rounded-xl px-4 py-3 transition-colors">
+                        <div @click="selectOrder(o.order_number)"
+                             class="flex items-center justify-between gap-3 border rounded-xl px-4 py-3 transition-colors border-indigo-300 bg-indigo-50 cursor-pointer hover:bg-indigo-100">
                             <div class="flex items-center gap-3 min-w-0">
-                                <div :class="idx === 0 ? 'bg-indigo-600' : 'bg-gray-300'"
-                                     class="w-6 h-6 rounded-full flex items-center justify-center shrink-0">
+                                <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-indigo-600">
                                     <i class="fas fa-receipt text-white text-xs"></i>
                                 </div>
                                 <div class="min-w-0">
