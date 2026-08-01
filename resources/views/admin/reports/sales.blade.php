@@ -246,15 +246,22 @@
                     $orderRefund    = $itemProfits->sum('refund');
                     $orderProfit    = $itemProfits->sum('profit');
                     $orderMarginPct = (float) $order->total > 0 ? round($orderProfit / (float) $order->total * 100, 1) : 0;
+                    $bankLabel = $order->bankAccount
+                        ? $order->bankAccount->label . ($order->bankAccount->account_number ? ' — ' . $order->bankAccount->account_number : '')
+                        : null;
                     $orderData = [
-                        'number'   => $order->order_number,
-                        'date'     => $order->created_at->format('d M Y, h:i A'),
-                        'customer' => $order->customer_name ?: 'Walk-in',
-                        'salesman' => $order->servedBy?->name ?? '—',
-                        'payment'  => ucfirst(str_replace('_', ' ', $order->payment_method)),
-                        'is_split' => $order->payment_method === 'split',
-                        'cash'     => (float) $order->cash_amount,
-                        'bank'     => (float) $order->bank_amount,
+                        'number'      => $order->order_number,
+                        'date'        => $order->created_at->format('d M Y, h:i A'),
+                        'customer'    => $order->customer_name ?: 'Walk-in',
+                        'salesman'    => $order->servedBy?->name ?? '—',
+                        'payment'     => ucfirst(str_replace('_', ' ', $order->payment_method))
+                                            . ($order->payment_method === 'bank_transfer' && $bankLabel ? " ({$bankLabel})" : ''),
+                        // Show the cash/bank breakdown row for split, and for partial
+                        // whenever a bank portion was actually used.
+                        'is_split'    => in_array($order->payment_method, ['split', 'partial']) && (float) $order->bank_amount > 0,
+                        'cash'        => (float) $order->cash_amount,
+                        'bank'        => (float) $order->bank_amount,
+                        'bank_label'  => $bankLabel,
                         'total'    => (float) $order->total,
                         'discount' => (float) $order->discount_amount,
                         'refund'   => $orderRefund,
@@ -376,7 +383,7 @@
         {{-- Split payment breakdown (shown only for split orders) --}}
         <div id="omSplitWrap" class="hidden px-6 py-2 bg-blue-50 border-b border-blue-100 text-sm flex gap-6">
             <span class="text-gray-600">Cash: <span class="font-semibold text-gray-900" id="omCashAmt"></span></span>
-            <span class="text-gray-600">Bank: <span class="font-semibold text-gray-900" id="omBankAmt"></span></span>
+            <span class="text-gray-600"><span id="omBankLabel">Bank</span>: <span class="font-semibold text-gray-900" id="omBankAmt"></span></span>
         </div>
         {{-- Items table --}}
         <div class="overflow-y-auto flex-1 px-6 py-4">
@@ -493,6 +500,7 @@ function openOrderModal(data) {
     if (data.is_split) {
         splitWrap.classList.remove('hidden');
         document.getElementById('omCashAmt').textContent = _fmt(data.cash);
+        document.getElementById('omBankLabel').textContent = data.bank_label ? `Bank (${data.bank_label})` : 'Bank';
         document.getElementById('omBankAmt').textContent = _fmt(data.bank);
     } else {
         splitWrap.classList.add('hidden');

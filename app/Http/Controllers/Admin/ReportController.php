@@ -64,7 +64,7 @@ class ReportController extends Controller
             );
         }
 
-        $orders = $query->with(['items.returnItems.returnOrder', 'items.product.category', 'servedBy'])->latest()->get();
+        $orders = $query->with(['items.returnItems.returnOrder', 'items.product.category', 'servedBy', 'bankAccount'])->latest()->get();
 
         // Item-level, returns-aware revenue/COGS/profit — the same calculation
         // the Profit & Loss report uses, so the two reports can never diverge.
