@@ -350,7 +350,7 @@
                         @endif
                     </td>
                     <td class="text-xs whitespace-nowrap">
-                        <div class="text-gray-600">{{ $product->created_at->format('d M Y') }}</div>
+                        <div class="text-gray-600">{{ $product->created_at->format('d M Y h:i A') }}</div>
                         <div class="text-gray-400">{{ $product->createdBy?->name ?? '—' }}</div>
                     </td>
                     <td class="text-right">
