@@ -60,7 +60,7 @@ class ProductController extends Controller
         }
 
         // ── Show products (category has no children, or filters applied) ────────
-        $query = Product::with(['category', 'subcategory', 'brand', 'colors'])->latest();
+        $query = Product::with(['category', 'subcategory', 'brand', 'colors', 'createdBy'])->latest();
 
         if ($request->filled('q')) {
             $s = $request->q;
@@ -184,6 +184,8 @@ class ProductController extends Controller
         if (empty($data['barcode'])) {
             $data['barcode'] = BarcodeService::generate($data['category_id'] ?? null);
         }
+
+        $data['created_by'] = auth()->id();
 
         $product = Product::create(\Arr::except($data, ['images', 'video_embed_url', 'video_file']));
 

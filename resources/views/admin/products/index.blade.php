@@ -285,6 +285,7 @@
                     <th>Price</th>
                     <th>Stock</th>
                     <th>Status</th>
+                    <th>Created</th>
                     <th class="text-right">Actions</th>
                 </tr>
             </thead>
@@ -348,6 +349,10 @@
                             <span class="badge bg-gray-100 text-gray-500">Inactive</span>
                         @endif
                     </td>
+                    <td class="text-xs whitespace-nowrap">
+                        <div class="text-gray-600">{{ $product->created_at->format('d M Y') }}</div>
+                        <div class="text-gray-400">{{ $product->createdBy?->name ?? '—' }}</div>
+                    </td>
                     <td class="text-right">
                         <div class="flex items-center justify-end gap-2">
                             <a href="{{ route("{$rPrefix}.products.show", $product) }}" class="btn-outline btn-sm" title="View">
@@ -378,7 +383,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" class="text-center py-12 text-gray-400">
+                    <td colspan="8" class="text-center py-12 text-gray-400">
                         <i class="fas fa-box-open text-4xl mb-3"></i>
                         <p>No products found</p>
                     </td>

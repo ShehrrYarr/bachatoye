@@ -123,6 +123,7 @@ class PurchaseController extends Controller
             'track_inventory'     => true,
             'is_active'           => true,
             'show_in_ecom'        => (bool) ($data['show_in_ecom'] ?? false),
+            'created_by'          => auth()->id(),
         ]);
 
         // Save images

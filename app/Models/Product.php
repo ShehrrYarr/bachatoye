@@ -15,6 +15,7 @@ class Product extends Model
         'low_stock_threshold', 'low_stock_dismissed', 'category_id', 'subcategory_id', 'brand_id',
         'is_active', 'is_featured', 'is_new_arrival', 'show_in_ecom', 'track_inventory', 'is_serialized', 'free_delivery', 'bank_free_delivery', 'cod_enabled',
         'primary_serial_attribute_id', 'serial_attribute_ids', 'attribute_display_mode',
+        'created_by',
     ];
 
     protected function casts(): array
@@ -55,6 +56,11 @@ class Product extends Model
     public function brand()
     {
         return $this->belongsTo(Brand::class);
+    }
+
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function images()
