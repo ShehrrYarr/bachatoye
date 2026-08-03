@@ -2,13 +2,14 @@
 @section('title', 'Edit Banner')
 
 @section('content')
+@php $rPrefix = auth()->user()->panelPrefix(); @endphp
 <div class="flex items-center gap-3 mb-6">
-    <a href="{{ route('admin.banners.index') }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
+    <a href="{{ route("{$rPrefix}.banners.index") }}" class="btn-outline btn-sm"><i class="fas fa-arrow-left"></i></a>
     <h1 class="text-xl font-bold text-gray-900">Edit Banner</h1>
 </div>
 
 <div class="max-w-2xl">
-    <form method="POST" action="{{ route('admin.banners.update', $banner) }}" enctype="multipart/form-data">
+    <form method="POST" action="{{ route("{$rPrefix}.banners.update", $banner) }}" enctype="multipart/form-data">
         @csrf @method('PUT')
         <div class="card p-6 space-y-4">
             <div>
@@ -62,7 +63,7 @@
             </div>
             <div class="flex gap-3 pt-2">
                 <button type="submit" class="btn-primary">Update Banner</button>
-                <a href="{{ route('admin.banners.index') }}" class="btn-outline">Cancel</a>
+                <a href="{{ route("{$rPrefix}.banners.index") }}" class="btn-outline">Cancel</a>
             </div>
         </div>
     </form>

@@ -579,6 +579,22 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
         ->middleware('permission:brands.manage')->name('brands.update');
     Route::delete('brands/{brand}', [Admin\BrandController::class, 'destroy'])
         ->middleware('permission:brands.manage')->name('brands.destroy');
+
+    // Banner routes for salesmen
+    Route::get('banners', [Admin\BannerController::class, 'index'])
+        ->middleware('permission:banners.manage')->name('banners.index');
+    Route::get('banners/create', [Admin\BannerController::class, 'create'])
+        ->middleware('permission:banners.manage')->name('banners.create');
+    Route::post('banners', [Admin\BannerController::class, 'store'])
+        ->middleware('permission:banners.manage')->name('banners.store');
+    Route::get('banners/{banner}/edit', [Admin\BannerController::class, 'edit'])
+        ->middleware('permission:banners.manage')->name('banners.edit');
+    Route::put('banners/{banner}', [Admin\BannerController::class, 'update'])
+        ->middleware('permission:banners.manage')->name('banners.update');
+    Route::delete('banners/{banner}', [Admin\BannerController::class, 'destroy'])
+        ->middleware('permission:banners.manage')->name('banners.destroy');
+    Route::patch('banners/{banner}/toggle', [Admin\BannerController::class, 'toggle'])
+        ->middleware('permission:banners.manage')->name('banners.toggle');
 });
 
 /*

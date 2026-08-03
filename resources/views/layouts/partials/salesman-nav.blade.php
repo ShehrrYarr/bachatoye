@@ -46,6 +46,12 @@
 </a>
 @endcan
 
+@can('banners.manage')
+<a href="{{ route('salesman.banners.index') }}" class="sidebar-link {{ $is('salesman.banners') ? 'active' : '' }}">
+    <i class="fas fa-image"></i> Banners
+</a>
+@endcan
+
 @can('customers.view')
 <a href="{{ route('salesman.customers.index') }}" class="sidebar-link {{ $is('salesman.customers') ? 'active' : '' }}">
     <i class="fas fa-users"></i> Customers

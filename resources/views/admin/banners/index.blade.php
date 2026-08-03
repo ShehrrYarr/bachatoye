@@ -2,9 +2,10 @@
 @section('title', 'Banners')
 
 @section('content')
+@php $rPrefix = auth()->user()->panelPrefix(); @endphp
 <div class="flex items-center justify-between mb-6">
     <h1 class="text-xl font-bold text-gray-900">Banners</h1>
-    <a href="{{ route('admin.banners.create') }}" class="btn-primary"><i class="fas fa-plus mr-2"></i> Add Banner</a>
+    <a href="{{ route("{$rPrefix}.banners.create") }}" class="btn-primary"><i class="fas fa-plus mr-2"></i> Add Banner</a>
 </div>
 
 <div class="card">
@@ -54,8 +55,8 @@
                 </td>
                 <td class="text-right">
                     <div class="flex items-center justify-end gap-2">
-                        <a href="{{ route('admin.banners.edit', $banner) }}" class="btn-outline btn-sm"><i class="fas fa-edit"></i></a>
-                        <form method="POST" action="{{ route('admin.banners.destroy', $banner) }}" onsubmit="return confirm('Delete this banner?')">
+                        <a href="{{ route("{$rPrefix}.banners.edit", $banner) }}" class="btn-outline btn-sm"><i class="fas fa-edit"></i></a>
+                        <form method="POST" action="{{ route("{$rPrefix}.banners.destroy", $banner) }}" onsubmit="return confirm('Delete this banner?')">
                             @csrf @method('DELETE')
                             <button type="submit" class="btn-danger btn-sm"><i class="fas fa-trash"></i></button>
                         </form>

@@ -43,7 +43,8 @@ class BannerController extends Controller
         }
 
         Banner::create($data);
-        return redirect()->route('admin.banners.index')->with('success', 'Banner created.');
+        $rPrefix = auth()->user()->panelPrefix();
+        return redirect()->route("{$rPrefix}.banners.index")->with('success', 'Banner created.');
     }
 
     public function edit(Banner $banner)
@@ -71,13 +72,15 @@ class BannerController extends Controller
 
         $data['is_active'] = $request->boolean('is_active', true);
         $banner->update($data);
-        return redirect()->route('admin.banners.index')->with('success', 'Banner updated.');
+        $rPrefix = auth()->user()->panelPrefix();
+        return redirect()->route("{$rPrefix}.banners.index")->with('success', 'Banner updated.');
     }
 
     public function destroy(Banner $banner)
     {
         $banner->delete();
-        return redirect()->route('admin.banners.index')->with('success', 'Banner deleted.');
+        $rPrefix = auth()->user()->panelPrefix();
+        return redirect()->route("{$rPrefix}.banners.index")->with('success', 'Banner deleted.');
     }
 
     public function toggle(Banner $banner)
