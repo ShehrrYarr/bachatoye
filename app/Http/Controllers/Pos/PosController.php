@@ -1113,10 +1113,14 @@ class PosController extends Controller
             ]);
 
             // Preserve the original sale time for offline sales synced later,
-            // so the order lands in the correct day's books.
+            // so the order lands in the correct day's books. The browser sends
+            // this as UTC (`new Date().toISOString()`); every other timestamp
+            // in this app is naive local time (config('app.timezone')), so it
+            // must be converted before writing — otherwise the stored value is
+            // off by the UTC offset and can even land on the wrong calendar day.
             if ($request->filled('offline_created_at')) {
                 $order->forceFill([
-                    'created_at' => \Carbon\Carbon::parse($request->offline_created_at),
+                    'created_at' => \Carbon\Carbon::parse($request->offline_created_at)->setTimezone(config('app.timezone')),
                 ])->save();
             }
 
