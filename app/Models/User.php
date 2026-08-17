@@ -51,6 +51,11 @@ class User extends Authenticatable
         return $this->hasRole('subshop');
     }
 
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasRole('super-admin');
+    }
+
     /**
      * The shop this user operates. NULL = main shop (admin/salesman).
      */
@@ -69,6 +74,10 @@ class User extends Authenticatable
      */
     public function panelPrefix(): string
     {
+        if ($this->isSuperAdmin()) {
+            return 'superadmin';
+        }
+
         if ($this->hasRole('admin')) {
             return 'admin';
         }

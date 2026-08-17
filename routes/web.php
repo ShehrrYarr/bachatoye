@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Ecom;
 use App\Http\Controllers\Pos;
+use App\Http\Controllers\SuperAdmin;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -90,6 +91,19 @@ Route::prefix('auth')->name('auth.')->group(function () {
     Route::post('/forgot-password', [AuthController::class, 'sendResetLink'])->name('password.email');
     Route::get('/reset-password/{token}', [AuthController::class, 'showResetForm'])->name('password.reset');
     Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Super Admin Panel Routes — owner oversight, never visible to admin
+|--------------------------------------------------------------------------
+*/
+Route::prefix('superadmin')->name('superadmin.')->middleware(['auth', 'role:super-admin'])->group(function () {
+    Route::get('/', [SuperAdmin\DashboardController::class, 'index'])->name('dashboard');
+    Route::get('staff/{user}/history', [SuperAdmin\DashboardController::class, 'history'])->name('staff.history');
+    Route::post('staff/{user}/reset-password', [SuperAdmin\DashboardController::class, 'resetPassword'])->name('staff.reset-password');
+    Route::get('account', [SuperAdmin\DashboardController::class, 'editAccount'])->name('account.edit');
+    Route::put('account', [SuperAdmin\DashboardController::class, 'updateAccount'])->name('account.update');
 });
 
 /*
