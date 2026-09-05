@@ -103,31 +103,42 @@ class ReportController extends Controller
                             ->values()
                             ->toArray();
 
-        $topProductsQuery = DB::table('order_items')
+        // All products sold, broken down by section (one card per section on
+        // the report) — independent of the section filter above, which only
+        // narrows the main revenue/profit figures.
+        $sectionProductRows = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->leftJoin('products', 'products.id', '=', 'order_items.product_id')
+            ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
             ->whereBetween(DB::raw('DATE(orders.created_at)'), [$from, $to])
             ->where('orders.status', 'delivered')
             ->whereNull('orders.deleted_at')
             ->when($shopFilter === 'main', fn($q) => $q->whereNull('orders.shop_id'))
-            ->when($shopFilter !== '' && $shopFilter !== 'main', fn($q) => $q->where('orders.shop_id', (int) $shopFilter));
-
-        if ($sectionId) {
-            $topProductsQuery
-                ->join('products', 'products.id', '=', 'order_items.product_id')
-                ->join('categories', 'categories.id', '=', 'products.category_id')
-                ->where('categories.section_id', $sectionId);
-        }
-
-        $topProducts = $topProductsQuery
+            ->when($shopFilter !== '' && $shopFilter !== 'main', fn($q) => $q->where('orders.shop_id', (int) $shopFilter))
             ->select(
+                'categories.section_id',
                 'order_items.product_name',
                 DB::raw('SUM(order_items.quantity) as total_qty'),
                 DB::raw('SUM(order_items.quantity * order_items.unit_price) as total_revenue')
             )
-            ->groupBy('order_items.product_name')
+            ->groupBy('categories.section_id', 'order_items.product_name')
             ->orderByDesc('total_revenue')
-            ->limit(10)
-            ->get();
+            ->get()
+            ->groupBy(fn($row) => $row->section_id ?? 'none');
+
+        $sectionProducts = $sections->map(fn($section) => [
+                'name'     => $section->name,
+                'products' => $sectionProductRows->get($section->id, collect()),
+            ])
+            ->filter(fn($s) => $s['products']->isNotEmpty())
+            ->values();
+
+        if ($sectionProductRows->has('none')) {
+            $sectionProducts->push([
+                'name'     => 'Uncategorized',
+                'products' => $sectionProductRows->get('none'),
+            ]);
+        }
 
         $byPayment = $orders->groupBy('payment_method')
                             ->map(fn($g) => ['total' => $g->sum('total'), 'count' => $g->count()]);
@@ -135,7 +146,7 @@ class ReportController extends Controller
         return view('admin.reports.sales', compact(
             'orders', 'totalRevenue', 'totalRefunds', 'totalOrders', 'avgOrderValue', 'itemsSold',
             'totalExchangeValue', 'totalCogs', 'totalProfit', 'totalMarginPct',
-            'dailyData', 'topProducts', 'byPayment', 'from', 'to',
+            'dailyData', 'sectionProducts', 'byPayment', 'from', 'to',
             'sections', 'sectionId', 'shops', 'shopFilter'
         ));
     }

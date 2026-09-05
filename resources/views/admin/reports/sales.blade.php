@@ -175,44 +175,49 @@
     </div>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
 
-    {{-- Top products --}}
+    {{-- Products sold, one card per section --}}
+    @forelse($sectionProducts as $section)
     <div class="card">
-        <div class="card-header"><h2 class="font-semibold text-gray-800">Top Products</h2></div>
+        <div class="card-header"><h2 class="font-semibold text-gray-800">{{ $section['name'] }}</h2></div>
         <table class="data-table">
             <thead><tr><th>Product</th><th class="text-center">Qty</th><th class="text-right">Revenue</th></tr></thead>
             <tbody>
-                @forelse($topProducts as $prod)
+                @foreach($section['products'] as $prod)
                 <tr>
                     <td class="font-medium text-gray-800 text-sm">{{ $prod->product_name }}</td>
                     <td class="text-center text-sm">{{ $prod->total_qty }}</td>
                     <td class="text-right font-semibold text-sm">Rs. {{ number_format($prod->total_revenue) }}</td>
                 </tr>
-                @empty
-                <tr><td colspan="3" class="text-center py-6 text-gray-400">No data</td></tr>
-                @endforelse
+                @endforeach
             </tbody>
         </table>
     </div>
-
-    {{-- Sales by payment method --}}
+    @empty
     <div class="card">
-        <div class="card-header"><h2 class="font-semibold text-gray-800">By Payment Method</h2></div>
-        <div class="card-body space-y-3">
-            @foreach($byPayment as $method => $data)
-            <div>
-                <div class="flex justify-between text-sm mb-1">
-                    <span class="font-medium text-gray-700">{{ ucfirst(str_replace('_', ' ', $method)) }}</span>
-                    <span class="font-semibold">Rs. {{ number_format($data['total']) }} ({{ $data['count'] }} orders)</span>
-                </div>
-                <div class="h-2 bg-gray-100 rounded-full">
-                    <div class="h-2 bg-primary-500 rounded-full"
-                         style="width: {{ $totalRevenue > 0 ? ($data['total'] / $totalRevenue * 100) : 0 }}%"></div>
-                </div>
+        <div class="card-header"><h2 class="font-semibold text-gray-800">Products Sold</h2></div>
+        <div class="p-6 text-center text-gray-400">No data</div>
+    </div>
+    @endforelse
+</div>
+
+{{-- Sales by payment method --}}
+<div class="card mb-6">
+    <div class="card-header"><h2 class="font-semibold text-gray-800">By Payment Method</h2></div>
+    <div class="card-body space-y-3">
+        @foreach($byPayment as $method => $data)
+        <div>
+            <div class="flex justify-between text-sm mb-1">
+                <span class="font-medium text-gray-700">{{ ucfirst(str_replace('_', ' ', $method)) }}</span>
+                <span class="font-semibold">Rs. {{ number_format($data['total']) }} ({{ $data['count'] }} orders)</span>
             </div>
-            @endforeach
+            <div class="h-2 bg-gray-100 rounded-full">
+                <div class="h-2 bg-primary-500 rounded-full"
+                     style="width: {{ $totalRevenue > 0 ? ($data['total'] / $totalRevenue * 100) : 0 }}%"></div>
+            </div>
         </div>
+        @endforeach
     </div>
 </div>
 
