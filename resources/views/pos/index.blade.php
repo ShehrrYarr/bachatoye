@@ -492,7 +492,7 @@
                          x-text="`Rs. ${(item.price * item.quantity).toLocaleString()}`"></div>
                     <div x-show="showCostPrice" class="text-right mt-0.5 space-y-0.5">
                         <div class="text-xs text-amber-600 font-medium"
-                             x-text="`Cost: Rs. ${(item.cost_price * item.quantity).toLocaleString()}`"></div>
+                             x-text="`Cost: Rs. ${item.cost_price.toLocaleString()}`"></div>
                         <div class="text-xs text-green-600 font-medium"
                              x-text="`Margin: Rs. ${((item.price - item.cost_price) * item.quantity).toLocaleString()}`"></div>
                     </div>
