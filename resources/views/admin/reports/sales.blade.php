@@ -179,13 +179,13 @@
 
     {{-- Products sold, one card per section --}}
     @forelse($sectionProducts as $section)
-    <div class="card">
+    <div class="card" x-data="{ expanded: false }">
         <div class="card-header"><h2 class="font-semibold text-gray-800">{{ $section['name'] }}</h2></div>
         <table class="data-table">
             <thead><tr><th>Product</th><th class="text-center">Qty</th><th class="text-right">Revenue</th></tr></thead>
             <tbody>
                 @foreach($section['products'] as $prod)
-                <tr>
+                <tr @if($loop->iteration > 10) x-show="expanded" @endif>
                     <td class="font-medium text-gray-800 text-sm">{{ $prod->product_name }}</td>
                     <td class="text-center text-sm">{{ $prod->total_qty }}</td>
                     <td class="text-right font-semibold text-sm">Rs. {{ number_format($prod->total_revenue) }}</td>
@@ -193,6 +193,12 @@
                 @endforeach
             </tbody>
         </table>
+        @if($section['products']->count() > 10)
+        <button @click="expanded = !expanded" class="w-full text-center text-sm text-primary-600 hover:text-primary-700 font-medium py-2 border-t border-gray-100">
+            <span x-show="!expanded">Click to see more ({{ $section['products']->count() - 10 }} more)</span>
+            <span x-show="expanded">Show less</span>
+        </button>
+        @endif
     </div>
     @empty
     <div class="card">
