@@ -185,7 +185,7 @@
             <thead><tr><th>Product</th><th class="text-center">Qty</th><th class="text-right">Revenue</th></tr></thead>
             <tbody>
                 @foreach($section['products'] as $prod)
-                <tr @if($loop->iteration > 10) x-show="expanded" @endif>
+                <tr @if($loop->iteration > 5) x-show="expanded" @endif>
                     <td class="font-medium text-gray-800 text-sm">{{ $prod->product_name }}</td>
                     <td class="text-center text-sm">{{ $prod->total_qty }}</td>
                     <td class="text-right font-semibold text-sm">Rs. {{ number_format($prod->total_revenue) }}</td>
@@ -193,9 +193,9 @@
                 @endforeach
             </tbody>
         </table>
-        @if($section['products']->count() > 10)
+        @if($section['products']->count() > 5)
         <button @click="expanded = !expanded" class="w-full text-center text-sm text-primary-600 hover:text-primary-700 font-medium py-2 border-t border-gray-100">
-            <span x-show="!expanded">Click to see more ({{ $section['products']->count() - 10 }} more)</span>
+            <span x-show="!expanded">Click to see more ({{ $section['products']->count() - 5 }} more)</span>
             <span x-show="expanded">Show less</span>
         </button>
         @endif
