@@ -701,9 +701,13 @@ Route::prefix('pos')->name('pos.')->middleware(['auth', 'permission:pos.access']
     Route::delete('/holds/{hold}', [Pos\PosController::class, 'deleteHold'])->name('holds.delete');
 
     // Exchanges
-    Route::get('/exchange', [Pos\PosExchangeController::class, 'index'])->name('exchange.index');
-    Route::get('/exchange/order/{orderNumber}', [Pos\PosExchangeController::class, 'findOrder'])->name('exchange.find');
-    Route::post('/exchange', [Pos\PosExchangeController::class, 'processExchange'])->name('exchange.process');
+    // An exchange is a return plus a new sale, so it needs the returns permission
+    Route::get('/exchange', [Pos\PosExchangeController::class, 'index'])
+        ->middleware('permission:pos.process_returns')->name('exchange.index');
+    Route::get('/exchange/order/{orderNumber}', [Pos\PosExchangeController::class, 'findOrder'])
+        ->middleware('permission:pos.process_returns')->name('exchange.find');
+    Route::post('/exchange', [Pos\PosExchangeController::class, 'processExchange'])
+        ->middleware('permission:pos.process_returns')->name('exchange.process');
 
     // Buybacks (used-phone trade-ins)
     Route::get('/buyback', [Pos\PosBuybackController::class, 'index'])

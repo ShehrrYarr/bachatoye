@@ -14,6 +14,7 @@ use App\Models\ReturnOrder;
 use App\Models\SerialNumber;
 use App\Models\Setting;
 use App\Models\StockMovement;
+use App\Support\SplitPayment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -34,7 +35,7 @@ class PosExchangeController extends Controller
                       ->where('source', 'pos')
                       ->when($shopId, fn($q) => $q->forShop($shopId))
                       ->where('status', '!=', 'cancelled')
-                      ->with(['items.product', 'items.returnItems'])
+                      ->with(['items.product', 'items.returnItems.returnOrder'])
                       ->first();
 
         if (!$order) {
@@ -43,7 +44,9 @@ class PosExchangeController extends Controller
 
         $exchangeableItems = $order->items
             ->map(function ($item) {
-                $item->quantity = $item->quantity - $item->returnItems->sum('quantity');
+                $item->quantity = $item->quantity - $item->returnItems
+                    ->filter(fn($ri) => in_array($ri->returnOrder?->status, ['approved', 'completed'], true))
+                    ->sum('quantity');
                 return $item;
             })
             ->filter(fn($item) => $item->quantity > 0)
@@ -76,7 +79,10 @@ class PosExchangeController extends Controller
 
         DB::beginTransaction();
         try {
-            $originalOrder  = Order::with('items')->find($request->original_order_id);
+            // Lock the original order so a double-submitted exchange (or a return
+            // processed at the same moment) waits here and then sees the first
+            // one's return rows in the already-returned check below.
+            $originalOrder  = Order::with('items')->lockForUpdate()->find($request->original_order_id);
             $returnOrderItem = OrderItem::find($request->return_item_id);
 
             // Sub shop can only exchange its own shop's orders; the new order
@@ -99,8 +105,35 @@ class PosExchangeController extends Controller
                 return response()->json(['error' => 'Invalid order item for this order.'], 422);
             }
 
-            $returnQty     = min((int)$request->return_quantity, $returnOrderItem->quantity);
-            $exchangeValue = (float)$request->exchange_value;
+            // Same rule as POS returns: only units not already returned/exchanged
+            $alreadyReturned = (int) ReturnItem::where('order_item_id', $returnOrderItem->id)
+                ->whereHas('returnOrder', fn($q) => $q->whereIn('status', ['approved', 'completed']))
+                ->sum('quantity');
+            $returnable = $returnOrderItem->quantity - $alreadyReturned;
+            $returnQty  = (int) $request->return_quantity;
+
+            if ($returnable <= 0) {
+                DB::rollBack();
+                return response()->json(['error' => "\"{$returnOrderItem->product_name}\" has already been fully returned or exchanged."], 422);
+            }
+            if ($returnQty > $returnable) {
+                DB::rollBack();
+                return response()->json([
+                    'error' => "Only {$returnable} unit(s) of \"{$returnOrderItem->product_name}\" can still be exchanged (already returned: {$alreadyReturned}).",
+                ], 422);
+            }
+
+            // Trade-in can't exceed what the customer paid for these units —
+            // admins may override (e.g. goodwill on a faulty unit)
+            $exchangeValue = (float) $request->exchange_value;
+            $paidForUnits  = (float) $returnOrderItem->unit_price * $returnQty;
+            if (!Auth::user()->isAdmin() && $exchangeValue > $paidForUnits + 0.01) {
+                DB::rollBack();
+                return response()->json([
+                    'error' => 'Trade-in value (Rs. ' . number_format($exchangeValue) . ') is more than the customer paid for '
+                        . ($returnQty > 1 ? "these {$returnQty} units" : 'this unit') . ' (Rs. ' . number_format($paidForUnits) . '). Ask an admin to process a higher value.',
+                ], 422);
+            }
 
             // ─── Step 1: Create the Return ─────────────────────────────────────
             $returnOrder = ReturnOrder::create([
@@ -221,9 +254,9 @@ class PosExchangeController extends Controller
                 $payMethod  = 'cash';
                 $amountPaid = 0;
             } elseif ($payMethod === 'split') {
-                $cashAmount    = (float)($request->cash_amount ?? 0);
-                $bankAmount    = (float)($request->bank_amount ?? 0);
-                $amountPaid    = $cashAmount + $bankAmount;
+                [$cashAmount, $bankAmount] = SplitPayment::full(
+                    (float) $request->cash_amount, (float) $request->bank_amount, $total
+                );
                 $bankAccountId = $request->bank_account_id ?: null;
             } elseif ($payMethod === 'bank_transfer') {
                 $bankAccountId = $request->bank_account_id ?: null;
@@ -258,6 +291,7 @@ class PosExchangeController extends Controller
                     'product_id'       => $item['product']->id,
                     'product_name'     => $item['product']->name,
                     'color_name'       => $item['color_name'],
+                    'color_id'         => $item['color']?->id,
                     'product_barcode'  => $item['product']->barcode,
                     'unit_price'       => $item['price'],
                     'cost_price'       => $item['serial']?->cost_price ?? $item['product']->cost_price,

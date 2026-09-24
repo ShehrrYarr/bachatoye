@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class Order extends Model
 {
@@ -33,16 +34,26 @@ class Order extends Model
             'cash_amount'     => 'decimal:2',
             'bank_amount'     => 'decimal:2',
             'exchange_value'  => 'decimal:2',
+            'stock_deducted'  => 'boolean',
         ];
     }
 
     protected static function booted(): void
     {
+        // The number is derived from the row's own auto-increment id, which
+        // MySQL never hands out twice — max(id)+1 let two simultaneous sales
+        // pick the same number and one of them fail on the unique index.
+        // A unique placeholder holds the NOT NULL/unique column until the id exists.
         static::creating(function (Order $order) {
             if (!$order->order_number) {
-                $max  = (int) static::withTrashed()->max('id');
-                $next = str_pad($max + 1, 4, '0', STR_PAD_LEFT);
-                $order->order_number = 'ORD-' . $next;
+                $order->order_number = 'TMP-' . Str::uuid();
+            }
+        });
+
+        static::created(function (Order $order) {
+            if (str_starts_with($order->order_number, 'TMP-')) {
+                $order->order_number = 'ORD-' . str_pad($order->id, 4, '0', STR_PAD_LEFT);
+                $order->saveQuietly();
             }
         });
     }

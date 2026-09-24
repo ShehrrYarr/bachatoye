@@ -97,6 +97,12 @@
                                     <input type="number" x-model.number="exchangeValue"
                                            min="0" @input="recalculate()"
                                            class="form-input text-sm font-bold text-indigo-700">
+                                    <p x-show="!CAN_EXCEED_TRADE_IN && selectedItem && exchangeValue > selectedItem.unit_price * returnQty"
+                                       class="text-xs text-red-600 font-medium mt-1">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                                        Max Rs. <span x-text="Number(selectedItem?.unit_price * returnQty).toLocaleString()"></span>
+                                        — what the customer paid. Ask an admin for more.
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -390,6 +396,8 @@
 
 @push('scripts')
 <script>
+const CAN_EXCEED_TRADE_IN = @json(auth()->user()->isAdmin());
+
 function exchangeApp() {
     return {
         // ── Order Search ─────────────────────────────────────────────────────

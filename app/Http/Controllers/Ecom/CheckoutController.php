@@ -129,6 +129,7 @@ class CheckoutController extends Controller
                     'product_id'       => $item['product']->id,
                     'product_name'     => $item['product']->name,
                     'color_name'       => $item['color_name'] ?? null,
+                    'color_id'         => $item['color_id'] ?? null, // needed to deduct colour stock on delivery
                     'product_barcode'  => $item['product']->barcode,
                     'unit_price'       => $item['price'],
                     'cost_price'       => $serial ? $serial->cost_price : $item['product']->cost_price,

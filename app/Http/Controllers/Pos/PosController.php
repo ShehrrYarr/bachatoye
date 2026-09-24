@@ -19,6 +19,7 @@ use App\Models\Vendor;
 use App\Models\Category;
 use App\Models\HeldOrder;
 use App\Models\VendorLedger;
+use App\Support\SplitPayment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -924,7 +925,7 @@ class PosController extends Controller
         // Idempotency: if this offline sale was already synced, return the
         // existing order instead of creating a duplicate (handles lost responses).
         if ($request->filled('offline_ref')) {
-            $existing = Order::where('offline_ref', $request->offline_ref)->first();
+            $existing = Order::withTrashed()->where('offline_ref', $request->offline_ref)->first();
             if ($existing) {
                 return response()->json([
                     'success'      => true,
@@ -1054,9 +1055,9 @@ class PosController extends Controller
                 }
             } elseif ($payMethod === 'partial') {
                 if ($request->partial_pay_via === 'split') {
-                    $cashAmount = max(0, (float)($request->cash_amount ?? 0));
-                    $bankAmount = max(0, (float)($request->bank_amount ?? 0));
-                    $amountPaid = min($cashAmount + $bankAmount, $total);
+                    [$cashAmount, $bankAmount, $amountPaid] = SplitPayment::partial(
+                        (float) $request->cash_amount, (float) $request->bank_amount, $total
+                    );
                 } else {
                     $amountPaid = min((float)($request->amount_paid ?? 0), $total);
                     $bankAmount = $request->partial_pay_via === 'bank' ? $amountPaid : 0;
@@ -1073,9 +1074,10 @@ class PosController extends Controller
                     return response()->json(['error' => 'Please select a bank account for the bank portion of the partial payment.'], 422);
                 }
             } elseif ($payMethod === 'split') {
-                $cashAmount = max(0, (float)($request->cash_amount ?? 0));
-                $bankAmount = max(0, (float)($request->bank_amount ?? 0));
-                $amountPaid = $cashAmount + $bankAmount;
+                [$cashAmount, $bankAmount] = SplitPayment::full(
+                    (float) $request->cash_amount, (float) $request->bank_amount, $total
+                );
+                $amountPaid = $total;
                 $payStatus  = 'paid';
 
                 if ($bankAmount > 0 && !$request->filled('bank_account_id')) {
@@ -1257,6 +1259,24 @@ class PosController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
             return response()->json(['error' => collect($e->errors())->flatten()->first()], 422);
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            DB::rollBack();
+            // Two syncs of the same offline sale raced past the idempotency check
+            // above; the unique offline_ref index stopped the second. Answer it
+            // like any repeat sync so the client drops the sale from its queue.
+            $existing = $request->filled('offline_ref')
+                ? Order::withTrashed()->where('offline_ref', $request->offline_ref)->first()
+                : null;
+            if ($existing) {
+                return response()->json([
+                    'success'        => true,
+                    'order_id'       => $existing->id,
+                    'order_number'   => $existing->order_number,
+                    'already_synced' => true,
+                ]);
+            }
+            \Log::error('POS store() failed: ' . $e->getMessage());
+            return response()->json(['error' => 'Order failed: ' . $e->getMessage()], 500);
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('POS store() failed: ' . $e->getMessage(), [
@@ -1720,9 +1740,9 @@ class PosController extends Controller
                 }
             } elseif ($payMethod === 'partial') {
                 if ($request->partial_pay_via === 'split') {
-                    $cashAmount = max(0, (float) ($request->cash_amount ?? 0));
-                    $bankAmount = max(0, (float) ($request->bank_amount ?? 0));
-                    $amountPaid = min($cashAmount + $bankAmount, $newTotal);
+                    [$cashAmount, $bankAmount, $amountPaid] = SplitPayment::partial(
+                        (float) $request->cash_amount, (float) $request->bank_amount, $newTotal
+                    );
                 } else {
                     $amountPaid = min((float) ($request->amount_paid ?? 0), $newTotal);
                     $bankAmount = $request->partial_pay_via === 'bank' ? $amountPaid : 0;
@@ -1739,9 +1759,10 @@ class PosController extends Controller
                     return response()->json(['error' => 'Please select a bank account for the bank portion of the partial payment.'], 422);
                 }
             } elseif ($payMethod === 'split') {
-                $cashAmount = max(0, (float) ($request->cash_amount ?? 0));
-                $bankAmount = max(0, (float) ($request->bank_amount ?? 0));
-                $amountPaid = $cashAmount + $bankAmount;
+                [$cashAmount, $bankAmount] = SplitPayment::full(
+                    (float) $request->cash_amount, (float) $request->bank_amount, $newTotal
+                );
+                $amountPaid = $newTotal;
                 $payStatus  = 'paid';
 
                 if ($bankAmount > 0 && !$request->filled('bank_account_id')) {

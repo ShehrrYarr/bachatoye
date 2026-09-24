@@ -30,7 +30,9 @@ class CashBalanceService
             ? (float) (Shop::find($shopId)?->cash_opening_balance ?? 0)
             : (float) Setting::get('cash_opening_balance', 0);
 
+        // POS only — delivered online COD orders are counted in $cashInEcom
         $cashInPos = Order::where('status', 'delivered')
+            ->where('source', 'pos')
             ->forShop($shopId)
             ->whereNull('deleted_at')
             ->whereIn('payment_method', ['cash', 'split', 'partial'])

@@ -128,6 +128,7 @@
 
                         {{-- Transactions --}}
                         <div class="px-4 pt-3 pb-1 text-xs text-gray-400 font-semibold uppercase tracking-wide border-t border-gray-100">Transactions</div>
+                        @can('pos.process_returns')
                         <a href="{{ route('pos.return.index') }}" @click="showMoreMenu = false"
                            class="block px-4 py-2.5 text-sm text-purple-700 hover:bg-purple-50 flex items-center gap-2.5">
                             <i class="fas fa-undo w-4 text-center"></i> Return
@@ -136,10 +137,13 @@
                            class="block px-4 py-2.5 text-sm text-indigo-700 hover:bg-indigo-50 flex items-center gap-2.5">
                             <i class="fas fa-sync-alt w-4 text-center"></i> Exchange
                         </a>
+                        @endcan
+                        @can('pos.process_buyback')
                         <a href="{{ route('pos.buyback.index') }}" @click="showMoreMenu = false"
                            class="block px-4 py-2.5 text-sm text-teal-700 hover:bg-teal-50 flex items-center gap-2.5">
                             <i class="fas fa-hand-holding-usd w-4 text-center"></i> Buyback
                         </a>
+                        @endcan
                     </div>
                 </div>
             </div>

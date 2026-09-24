@@ -152,7 +152,9 @@ class PosReturnController extends Controller
 
         DB::beginTransaction();
         try {
-            $order = Order::with('items')->find($request->order_id);
+            // Locked so a double-submitted return (or a simultaneous exchange)
+            // waits and then sees the first one's rows in the returned-qty check
+            $order = Order::with('items')->lockForUpdate()->find($request->order_id);
 
             // Sub shop can only process returns for its own shop's orders
             $userShopId = Auth::user()->shopId();

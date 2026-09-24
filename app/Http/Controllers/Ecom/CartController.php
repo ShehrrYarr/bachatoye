@@ -177,17 +177,50 @@ class CartController extends Controller
     {
         $request->validate(['quantity' => 'required|integer|min:0']);
         $cart = $this->cart();
+        $qty  = (int) $request->quantity; // form input arrives as a string
 
-        if ($request->quantity === 0) {
-            unset($cart[$rowId]);
-        } else {
-            if (isset($cart[$rowId])) {
-                $cart[$rowId]['quantity'] = $request->quantity;
-            }
+        if (!isset($cart[$rowId])) {
+            return back();
         }
 
+        if ($qty <= 0) {
+            unset($cart[$rowId]);
+            $this->saveCart($cart);
+            return back()->with('success', 'Item removed.');
+        }
+
+        $available = $this->availableFor($cart[$rowId]);
+        if ($available <= 0) {
+            unset($cart[$rowId]);
+            $this->saveCart($cart);
+            return back()->withErrors(['quantity' => 'Sorry, that item is now out of stock and was removed from your cart.']);
+        }
+
+        $cart[$rowId]['quantity'] = min($qty, $available);
         $this->saveCart($cart);
-        return back();
+
+        return $qty > $available
+            ? back()->withErrors(['quantity' => "Only {$available} available — quantity set to {$available}."])
+            : back();
+    }
+
+    /** Most of this cart row the shop can currently sell (PHP_INT_MAX = no limit). */
+    private function availableFor(array $row): int
+    {
+        if (!empty($row['serial_id'])) {
+            return 1; // one physical used unit
+        }
+
+        $product = Product::with('colors')->find($row['product_id']);
+        if (!$product) {
+            return 0;
+        }
+
+        if (!empty($row['color_id'])) {
+            return (int) ($product->colors->find($row['color_id'])?->stock_quantity ?? 0);
+        }
+
+        return $product->track_inventory ? max(0, (int) $product->stock_quantity) : PHP_INT_MAX;
     }
 
     public function remove(string $rowId)
