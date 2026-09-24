@@ -246,9 +246,33 @@
                     </div>
 
                     {{-- Restock option --}}
-                    <div class="flex items-center gap-2 mb-4 p-3 bg-gray-50 rounded-xl">
-                        <input type="checkbox" x-model="restock" id="restock" class="w-4 h-4 text-primary-600 rounded">
-                        <label for="restock" class="text-sm text-gray-700 cursor-pointer">Restock returned items</label>
+                    <div class="mb-4">
+                        <div class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl">
+                            <input type="checkbox" x-model="restock" id="restock" class="w-4 h-4 text-primary-600 rounded">
+                            <label for="restock" class="text-sm text-gray-700 cursor-pointer">Restock returned items</label>
+                        </div>
+
+                        {{-- Unticking takes serialized units out of sale for good — make it loud --}}
+                        <div x-show="!restock" x-transition
+                             class="mt-2 p-3 bg-red-50 border-2 border-red-300 rounded-xl text-xs text-red-700">
+                            <p class="font-bold flex items-center gap-1">
+                                <i class="fas fa-exclamation-triangle"></i> Items will NOT go back to stock
+                            </p>
+                            <template x-if="serializedSelected.length">
+                                <div class="mt-1">
+                                    <p>
+                                        These phones will be marked <strong>Returned</strong> and taken out of sale permanently.
+                                        They won't show in the POS and can't be sold or bought back:
+                                    </p>
+                                    <ul class="mt-1 font-mono font-semibold">
+                                        <template x-for="i in serializedSelected" :key="i.id">
+                                            <li x-text="`${i.serial_code} — ${i.product_name}`"></li>
+                                        </template>
+                                    </ul>
+                                </div>
+                            </template>
+                            <p class="mt-1">Only untick this for faulty units or units going back to the vendor.</p>
+                        </div>
                     </div>
 
                     {{-- Refund method --}}
@@ -352,6 +376,10 @@ function returnApp() {
         customAmountEdited: false,
         processingReturn: false,
 
+        get serializedSelected() {
+            return this.returnItems.filter(i => i.selected && i.is_serialized);
+        },
+
         async findOrder() {
             const q = this.orderSearch.trim();
             if (!q) return;
@@ -418,6 +446,17 @@ function returnApp() {
 
         async processReturn() {
             if (this.selectedCount === 0 || !this.reason || this.processingReturn) return;
+            if (!this.restock && this.serializedSelected.length) {
+                const imeis = this.serializedSelected.map(i => `• ${i.serial_code} — ${i.product_name}`).join('\n');
+                const ok = confirm(
+                    'RESTOCK IS OFF\n\n' +
+                    'These phones will be marked Returned and removed from sale permanently:\n\n' +
+                    imeis + '\n\n' +
+                    'Press OK only if they are faulty or going back to the vendor.\n' +
+                    'Press Cancel to go back and tick "Restock returned items".'
+                );
+                if (!ok) return;
+            }
             this.processingReturn = true;
             try {
                 const items = this.returnItems
