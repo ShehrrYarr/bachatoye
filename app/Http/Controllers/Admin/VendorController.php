@@ -14,7 +14,7 @@ class VendorController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Vendor::withCount('purchases')->latest();
+        $query = Vendor::withCount(['purchases', 'orders as sales_count'])->latest();
 
         if ($request->filled('q')) {
             $s = $request->q;
@@ -89,9 +89,25 @@ class VendorController extends Controller
 
     public function show(Vendor $vendor)
     {
-        $vendor->load('purchases');
+        // Two paginated tables on one page — each needs its own page parameter
+        $purchases = $vendor->purchases()
+            ->orderByDesc('purchase_date')->orderByDesc('id')
+            ->paginate(15, ['*'], 'purchases_page')->withQueryString();
+
+        $sales = $vendor->orders()
+            ->with(['items', 'returns' => fn($q) => $q->whereIn('status', ['approved', 'completed'])])
+            ->latest()->latest('id')
+            ->paginate(15, ['*'], 'sales_page')->withQueryString();
+
+        $summary = [
+            'purchases_count' => $vendor->purchases()->count(),
+            'purchases_total' => (float) $vendor->purchases()->sum('total'),
+            'sales_count'     => $vendor->orders()->count(),
+            'sales_total'     => (float) $vendor->orders()->sum('total'),
+        ];
+
         $bankAccounts = BankAccount::active()->orderBy('sort_order')->orderBy('id')->get();
-        return view('admin.vendors.show', compact('vendor', 'bankAccounts'));
+        return view('admin.vendors.show', compact('vendor', 'purchases', 'sales', 'summary', 'bankAccounts'));
     }
 
     public function khata(Vendor $vendor)

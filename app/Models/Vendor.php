@@ -22,6 +22,12 @@ class Vendor extends Model
         return $this->hasMany(Purchase::class);
     }
 
+    /** POS sales made to this vendor (orders.vendor_id); deleted sales excluded. */
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
+
     public function ledgerEntries()
     {
         return $this->hasMany(VendorLedger::class);

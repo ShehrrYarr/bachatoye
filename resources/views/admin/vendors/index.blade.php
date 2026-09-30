@@ -57,6 +57,7 @@
                     <th>Vendor</th>
                     <th>Contact</th>
                     <th class="text-center">Purchases</th>
+                    <th class="text-center">Sales</th>
                     <th class="text-right">Balance</th>
                     <th class="text-right">Actions</th>
                 </tr>
@@ -78,6 +79,9 @@
                     </td>
                     <td class="text-center">
                         <span class="badge bg-blue-100 text-blue-700">{{ $vendor->purchases_count }}</span>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge bg-green-100 text-green-700">{{ $vendor->sales_count }}</span>
                     </td>
                     <td class="text-right">
                         @if($vendor->balance > 0)
@@ -107,7 +111,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="5" class="text-center text-gray-400 py-8">No vendors found.</td>
+                    <td colspan="6" class="text-center text-gray-400 py-8">No vendors found.</td>
                 </tr>
                 @endforelse
             </tbody>

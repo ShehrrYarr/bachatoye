@@ -30,7 +30,7 @@
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-    {{-- Left: purchases --}}
+    {{-- Left: purchases + sales --}}
     <div class="lg:col-span-2 space-y-5">
 
         {{-- Purchases list --}}
@@ -52,7 +52,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($vendor->purchases->sortByDesc('purchase_date')->take(15) as $purchase)
+                        @forelse($purchases as $purchase)
                         <tr>
                             <td class="text-xs">{{ $purchase->purchase_date->format('d M Y') }}</td>
                             <td class="font-mono text-xs">{{ $purchase->reference ?? '—' }}</td>
@@ -78,6 +78,89 @@
                     </tbody>
                 </table>
             </div>
+            @if($purchases->hasPages())
+            <div class="px-5 py-4 border-t border-gray-100">{{ $purchases->links() }}</div>
+            @endif
+        </div>
+
+        {{-- Sales to this vendor (POS sales with vendor_id) --}}
+        @php $canViewOrders = auth()->user()->isAdmin() || auth()->user()->can('orders.view'); @endphp
+        <div class="card" id="sales">
+            <div class="card-header">
+                <h2 class="font-semibold text-gray-800">Sale History</h2>
+                <span class="text-sm text-gray-500">{{ number_format($summary['sales_count']) }} {{ Str::plural('sale', $summary['sales_count']) }}</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="data-table text-sm">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Order</th>
+                            <th>Items</th>
+                            <th class="text-right">Total</th>
+                            <th class="text-right">Paid</th>
+                            <th class="text-right">On Khata</th>
+                            <th>Payment</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($sales as $sale)
+                        @php
+                            // Khata part = what the sale added to the vendor's ledger
+                            // (full total for khata, the unpaid rest for partial)
+                            $onKhata  = in_array($sale->payment_method, ['khata', 'partial'])
+                                ? max(0, (float) $sale->total - (float) $sale->amount_paid) : 0;
+                            $paid     = (float) $sale->total - $onKhata;
+                            $returned = (float) $sale->returns->sum('refund_amount');
+                            $items    = $sale->items;
+                        @endphp
+                        <tr>
+                            <td class="text-xs whitespace-nowrap">{{ $sale->created_at->format('d M Y') }}</td>
+                            <td class="font-mono text-xs whitespace-nowrap">
+                                @if($canViewOrders)
+                                    <a href="{{ route("{$rPrefix}.orders.show", $sale) }}" class="text-primary-600 hover:underline">{{ $sale->order_number }}</a>
+                                @else
+                                    {{ $sale->order_number }}
+                                @endif
+                                @if($returned > 0)
+                                    <div class="mt-1">
+                                        <span class="badge bg-orange-100 text-orange-700">Returned Rs. {{ number_format($returned) }}</span>
+                                    </div>
+                                @endif
+                            </td>
+                            <td class="text-xs text-gray-600">
+                                {{ $items->take(2)->map(fn($i) => $i->product_name . ' x' . $i->quantity)->join(', ') }}
+                                @if($items->count() > 2)
+                                    <span class="text-gray-400">+{{ $items->count() - 2 }} more</span>
+                                @endif
+                            </td>
+                            <td class="text-right font-semibold whitespace-nowrap">Rs. {{ number_format($sale->total) }}</td>
+                            <td class="text-right whitespace-nowrap">Rs. {{ number_format($paid) }}</td>
+                            <td class="text-right whitespace-nowrap {{ $onKhata > 0 ? 'text-green-600 font-semibold' : 'text-gray-400' }}">
+                                {{ $onKhata > 0 ? 'Rs. ' . number_format($onKhata) : '—' }}
+                            </td>
+                            <td>
+                                @php
+                                    [$payLabel, $payClass] = match ($sale->payment_method) {
+                                        'khata'         => ['Khata', 'bg-purple-100 text-purple-700'],
+                                        'partial'       => ['Partial', 'bg-orange-100 text-orange-700'],
+                                        'bank_transfer' => ['Bank', 'bg-blue-100 text-blue-700'],
+                                        'split'         => ['Cash + Bank', 'bg-indigo-100 text-indigo-700'],
+                                        default         => [ucfirst($sale->payment_method), 'bg-green-100 text-green-700'],
+                                    };
+                                @endphp
+                                <span class="badge {{ $payClass }}">{{ $payLabel }}</span>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr><td colspan="7" class="text-center text-gray-400 py-6">No sales to this vendor yet.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            @if($sales->hasPages())
+            <div class="px-5 py-4 border-t border-gray-100">{{ $sales->fragment('sales')->links() }}</div>
+            @endif
         </div>
     </div>
 
@@ -93,7 +176,7 @@
                     <div class="text-sm text-gray-500 mt-1">You owe this vendor</div>
                 @elseif($vendor->balance < 0)
                     <div class="text-3xl font-bold text-green-600">Rs. {{ number_format(abs($vendor->balance)) }}</div>
-                    <div class="text-sm text-gray-500 mt-1">Vendor owes you (overpaid)</div>
+                    <div class="text-sm text-gray-500 mt-1">Vendor owes you</div>
                 @else
                     <div class="text-3xl font-bold text-gray-400">Settled</div>
                     <div class="text-sm text-gray-500 mt-1">No outstanding balance</div>
@@ -102,11 +185,19 @@
             <dl class="border-t border-gray-100 pt-4 space-y-2 text-sm">
                 <div class="flex justify-between">
                     <dt class="text-gray-500">Total Purchases</dt>
-                    <dd class="font-semibold">{{ $vendor->purchases->count() }}</dd>
+                    <dd class="font-semibold">{{ number_format($summary['purchases_count']) }}</dd>
                 </div>
                 <div class="flex justify-between">
                     <dt class="text-gray-500">Total Spent</dt>
-                    <dd class="font-semibold">Rs. {{ number_format($vendor->purchases->sum('total')) }}</dd>
+                    <dd class="font-semibold">Rs. {{ number_format($summary['purchases_total']) }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-gray-500">Total Sales</dt>
+                    <dd class="font-semibold">{{ number_format($summary['sales_count']) }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-gray-500">Total Sold</dt>
+                    <dd class="font-semibold">Rs. {{ number_format($summary['sales_total']) }}</dd>
                 </div>
             </dl>
             <a href="{{ route("{$rPrefix}.vendors.khata", $vendor) }}"
