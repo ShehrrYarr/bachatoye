@@ -264,7 +264,7 @@ function liveSearch() {
         open: false,
         async search() {
             if (this.query.length < 2) { this.results = []; return; }
-            const res = await fetch(`/api/products/search?q=${encodeURIComponent(this.query)}`);
+            const res = await fetch(`@base/api/products/search?q=${encodeURIComponent(this.query)}`);
             this.results = await res.json();
             this.open = true;
         }

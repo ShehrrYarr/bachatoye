@@ -99,7 +99,7 @@ function heroBanner(total, interval) {
         modal: false, parentName: '', parentSlug: '', subs: [],
         open(slug) {
             const d = window._catData && window._catData[slug];
-            if (!d || !d.subs.length) { window.location.href = '/category/' + slug; return; }
+            if (!d || !d.subs.length) { window.location.href = '@base/category/' + slug; return; }
             this.parentName = d.name; this.parentSlug = slug; this.subs = d.subs; this.modal = true;
         }
     }">
@@ -142,18 +142,18 @@ function heroBanner(total, interval) {
                     <button @click="modal = false" class="t-muted"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="p-5 space-y-2" style="max-height:70vh; overflow-y:auto;">
-                    <a :href="'/category/' + parentSlug" class="flex items-center justify-between px-4 py-3"
+                    <a :href="'@base/category/' + parentSlug" class="flex items-center justify-between px-4 py-3"
                        style="background: rgb(var(--t-accent-rgb) / .12); border-radius: var(--t-radius-sm);">
                         <span class="text-sm font-bold t-accent" x-text="'All in ' + parentName"></span>
                         <i class="fas fa-arrow-right text-xs t-accent"></i>
                     </a>
                     <div class="grid grid-cols-2 gap-2">
                         <template x-for="sub in subs" :key="sub.slug">
-                            <a :href="'/category/' + sub.slug" class="flex items-center gap-2 p-3"
+                            <a :href="'@base/category/' + sub.slug" class="flex items-center gap-2 p-3"
                                style="border:1px solid var(--t-border); border-radius: var(--t-radius-sm);">
                                 <img :src="sub.image_url" class="w-9 h-9 object-cover shrink-0"
                                      style="border-radius: var(--t-radius-sm); background: var(--t-surface-2);"
-                                     onerror="this.src='/images/category-placeholder.png'">
+                                     onerror="this.src='@base/images/category-placeholder.png'">
                                 <span class="min-w-0">
                                     <span class="block text-xs font-semibold truncate" x-text="sub.name"></span>
                                     <span class="block text-[10px] t-muted" x-text="sub.count + ' items'"></span>

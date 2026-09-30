@@ -394,7 +394,7 @@ function returnApp() {
             } else {
                 // SKU / barcode → show list
                 try {
-                    const res  = await fetch(`/pos/return/search/sku?q=${encodeURIComponent(q)}`);
+                    const res  = await fetch(`@base/pos/return/search/sku?q=${encodeURIComponent(q)}`);
                     const data = await res.json();
                     if (data.error) {
                         this.error = data.error;
@@ -416,7 +416,7 @@ function returnApp() {
 
         async _loadOrder(orderNumber) {
             try {
-                const res  = await fetch(`/pos/return/order/${encodeURIComponent(orderNumber)}`);
+                const res  = await fetch(`@base/pos/return/order/${encodeURIComponent(orderNumber)}`);
                 const data = await res.json();
                 if (data.error) {
                     this.error = data.error;
@@ -469,7 +469,7 @@ function returnApp() {
                         new_selling_price:  i.is_serialized ? i.new_selling_price  : null,
                     }));
 
-                const res = await fetch('/pos/return', {
+                const res = await fetch('@base/pos/return', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
                     body: JSON.stringify({
@@ -485,7 +485,7 @@ function returnApp() {
                 });
                 const data = await res.json();
                 if (data.success && data.return_id) {
-                    window.open(`/pos/return/${data.return_id}/receipt`, '_blank', 'width=400,height=600');
+                    window.open(`@base/pos/return/${data.return_id}/receipt`, '_blank', 'width=400,height=600');
                     this.order = null;
                     this.orderSearch = '';
                     this.orderList = [];

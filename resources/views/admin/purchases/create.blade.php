@@ -1159,7 +1159,7 @@ function purchaseForm() {
 
         async loadVendor() {
             if (!this.vendorId) { this.vendorBalance = null; return; }
-            const res  = await fetch(`/admin/api/vendors/${this.vendorId}/balance`);
+            const res  = await fetch(`@base/admin/api/vendors/${this.vendorId}/balance`);
             const data = await res.json();
             this.vendorBalance = data.balance;
         },

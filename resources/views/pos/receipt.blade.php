@@ -268,7 +268,7 @@
         async function confirmDelete() {
             if (!confirm('Delete sale {{ $order->order_number }}?\n\nThis will restore all stock and reverse any Khata entries. This cannot be undone.')) return;
             try {
-                const res = await fetch('/pos/orders/{{ $order->id }}', {
+                const res = await fetch('@base/pos/orders/{{ $order->id }}', {
                     method: 'DELETE',
                     headers: {
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -279,7 +279,7 @@
                 if (data.success) {
                     alert('Sale deleted successfully.');
                     if (window.opener) { window.opener.location.reload(); window.close(); }
-                    else { window.location.href = '/pos'; }
+                    else { window.location.href = '@base/pos'; }
                 } else {
                     alert(data.error || 'Delete failed.');
                 }

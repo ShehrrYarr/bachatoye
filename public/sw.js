@@ -11,13 +11,18 @@
 // Bump CACHE_VERSION whenever you want to discard old cached assets/pages.
 const CACHE_VERSION = 'pos-v1';
 
+// Path the app is served under, taken from this worker's own URL:
+// '' at a domain root, '/alzaitoontraders' when served from a sub-path.
+const BASE = new URL('./', self.location).pathname.replace(/\/$/, '');
+const POS_PAGE = BASE + '/pos';
+
 self.addEventListener('install', (event) => {
     // Pre-cache the POS shell so it's available even if the user goes offline
     // immediately after their first visit. cache.add() sends same-origin
     // cookies, so this fetches the authenticated page. Then activate at once.
     event.waitUntil(
         caches.open(CACHE_VERSION)
-            .then((c) => c.add('/pos').catch(() => {}))
+            .then((c) => c.add(POS_PAGE).catch(() => {}))
             .then(() => self.skipWaiting())
     );
 });
@@ -26,7 +31,7 @@ self.addEventListener('install', (event) => {
 // guaranteeing the very latest page is stored before the connection is cut.
 self.addEventListener('message', (event) => {
     if (event.data === 'cache-shell') {
-        event.waitUntil(caches.open(CACHE_VERSION).then((c) => c.add('/pos').catch(() => {})));
+        event.waitUntil(caches.open(CACHE_VERSION).then((c) => c.add(POS_PAGE).catch(() => {})));
     }
 });
 
@@ -41,7 +46,7 @@ self.addEventListener('activate', (event) => {
 // Should this request be served from / written to the offline cache?
 function isCacheableAsset(url) {
     // Vite build output
-    if (url.origin === self.location.origin && url.pathname.startsWith('/build/')) return true;
+    if (url.origin === self.location.origin && url.pathname.startsWith(BASE + '/build/')) return true;
     // Cross-origin static assets we rely on (Font Awesome CSS + its font files)
     if (url.origin !== self.location.origin) {
         return /font-?awesome|cdnjs\.cloudflare\.com|\.(woff2?|ttf|eot|css)$/i.test(url.href);
@@ -58,15 +63,15 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(req.url);
 
     // ── POS page navigation: network-first, cached shell as offline fallback ──
-    if (req.mode === 'navigate' && url.origin === self.location.origin && url.pathname === '/pos') {
+    if (req.mode === 'navigate' && url.origin === self.location.origin && url.pathname === POS_PAGE) {
         event.respondWith(
             fetch(req)
                 .then((res) => {
                     const copy = res.clone();
-                    caches.open(CACHE_VERSION).then((c) => c.put('/pos', copy));
+                    caches.open(CACHE_VERSION).then((c) => c.put(POS_PAGE, copy));
                     return res;
                 })
-                .catch(() => caches.match('/pos').then((cached) => cached || caches.match(req)))
+                .catch(() => caches.match(POS_PAGE).then((cached) => cached || caches.match(req)))
         );
         return;
     }

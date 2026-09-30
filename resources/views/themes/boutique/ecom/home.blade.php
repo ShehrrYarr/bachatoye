@@ -84,7 +84,7 @@ function heroBanner(total, interval) {
         modal: false, parentName: '', parentSlug: '', subs: [],
         open(slug) {
             const d = window._catData && window._catData[slug];
-            if (!d || !d.subs.length) { window.location.href = '/category/' + slug; return; }
+            if (!d || !d.subs.length) { window.location.href = '@base/category/' + slug; return; }
             this.parentName = d.name; this.parentSlug = slug; this.subs = d.subs; this.modal = true;
         }
     }">
@@ -122,13 +122,13 @@ function heroBanner(total, interval) {
                     <button @click="modal = false" class="t-muted"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="p-6 space-y-2" style="max-height:70vh; overflow-y:auto;">
-                    <a :href="'/category/' + parentSlug" class="flex items-center justify-between py-3 text-sm t-heading"
+                    <a :href="'@base/category/' + parentSlug" class="flex items-center justify-between py-3 text-sm t-heading"
                        style="border-bottom:1px solid var(--t-border);">
                         <span x-text="'All ' + parentName"></span>
                         <i class="fas fa-arrow-right text-xs t-muted"></i>
                     </a>
                     <template x-for="sub in subs" :key="sub.slug">
-                        <a :href="'/category/' + sub.slug" class="flex items-center justify-between py-3 text-sm"
+                        <a :href="'@base/category/' + sub.slug" class="flex items-center justify-between py-3 text-sm"
                            style="border-bottom:1px solid var(--t-border);">
                             <span x-text="sub.name"></span>
                             <span class="text-xs t-muted" x-text="sub.count"></span>

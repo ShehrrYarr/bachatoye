@@ -65,7 +65,7 @@ function editSale() {
         async searchProducts() {
             if (this.searchQuery.trim().length < 2) { this.searchResults = []; return; }
             try {
-                const r = await fetch(`/pos/product/search?q=${encodeURIComponent(this.searchQuery)}`);
+                const r = await fetch(`@base/pos/product/search?q=${encodeURIComponent(this.searchQuery)}`);
                 this.searchResults = await r.json();
             } catch(e) { this.searchResults = []; }
         },
@@ -96,7 +96,7 @@ function editSale() {
             this.serialPickerLoading = true;
             this.serialPicker = { product_id: product.id, product_name: product.name, price: product.price, serials: [] };
             try {
-                const r = await fetch(`/pos/orders/${_orderData.id}/serials/${product.id}`);
+                const r = await fetch(`@base/pos/orders/${_orderData.id}/serials/${product.id}`);
                 const data = await r.json();
                 // Hide units already on a line of this edit
                 const used = this.items.map(i => i.serial_number).filter(Boolean);
@@ -164,7 +164,7 @@ function editSale() {
         async searchCustomers() {
             if (this.customerSearch.trim().length < 2) { this.customerResults = []; return; }
             try {
-                const r = await fetch(`/pos/customer/search?q=${encodeURIComponent(this.customerSearch)}`);
+                const r = await fetch(`@base/pos/customer/search?q=${encodeURIComponent(this.customerSearch)}`);
                 this.customerResults = await r.json();
             } catch(e) { this.customerResults = []; }
         },
@@ -179,7 +179,7 @@ function editSale() {
 
             this.saving = true;
             try {
-                const res = await fetch(`/pos/orders/${_orderData.id}`, {
+                const res = await fetch(`@base/pos/orders/${_orderData.id}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type':  'application/json',

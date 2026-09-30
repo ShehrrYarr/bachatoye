@@ -463,7 +463,7 @@ function exchangeApp() {
             this.difference = 0;
 
             try {
-                const res  = await fetch(`/pos/exchange/order/${encodeURIComponent(this.orderSearch.trim())}`);
+                const res  = await fetch(`@base/pos/exchange/order/${encodeURIComponent(this.orderSearch.trim())}`);
                 const data = await res.json();
                 if (data.error) {
                     this.error = data.error;
@@ -495,7 +495,7 @@ function exchangeApp() {
             const q = this.productSearch.trim();
             if (!q) { this.productResults = []; return; }
             try {
-                const res  = await fetch(`/pos/product/search?q=${encodeURIComponent(q)}`);
+                const res  = await fetch(`@base/pos/product/search?q=${encodeURIComponent(q)}`);
                 this.productResults = await res.json();
             } catch (e) { this.productResults = []; }
         },
@@ -510,7 +510,7 @@ function exchangeApp() {
                 this.serialPromptError   = '';
                 this.serialPromptSerials = [];
                 this.serialPromptLoading = true;
-                fetch(`/pos/product/${product.id}/serials`)
+                fetch(`@base/pos/product/${product.id}/serials`)
                     .then(r => r.json())
                     .then(data => { this.serialPromptSerials = data.serials || []; })
                     .catch(() => { this.serialPromptError = 'Could not load serials. Please try again.'; })
@@ -600,7 +600,7 @@ function exchangeApp() {
             };
 
             try {
-                const res  = await fetch('/pos/exchange', {
+                const res  = await fetch('@base/pos/exchange', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -612,7 +612,7 @@ function exchangeApp() {
 
                 if (data.success) {
                     // Open the new sale receipt
-                    window.open(`/pos/receipt/${data.order_id}`, '_blank', 'width=400,height=650');
+                    window.open(`@base/pos/receipt/${data.order_id}`, '_blank', 'width=400,height=650');
 
                     // Show cashback alert if needed
                     if (data.cashback > 0) {

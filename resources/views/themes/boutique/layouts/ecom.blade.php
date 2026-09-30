@@ -103,13 +103,13 @@
         <div x-show="searchOpen" x-transition x-cloak class="pb-5" x-data="liveSearch()">
             <div class="relative max-w-xl mx-auto">
                 <input type="text" x-model="query" @input.debounce.300ms="search()"
-                       @keydown.enter="window.location = '/search?q=' + encodeURIComponent(query)"
+                       @keydown.enter="window.location = '@base/search?q=' + encodeURIComponent(query)"
                        placeholder="What are you looking for?"
                        class="w-full text-center text-sm"
                        style="background:transparent; border:0; border-bottom:1px solid var(--t-border); padding:.75rem 0; color: var(--t-text); outline:none;">
                 <div x-show="results.length > 0" x-transition x-cloak class="absolute top-full left-0 right-0 mt-2 z-50 t-card overflow-hidden">
                     <template x-for="item in results" :key="item.slug">
-                        <a :href="`/products/${item.slug}`" class="flex items-center gap-3 px-4 py-3 text-left" style="border-bottom:1px solid var(--t-border);">
+                        <a :href="`@base/products/${item.slug}`" class="flex items-center gap-3 px-4 py-3 text-left" style="border-bottom:1px solid var(--t-border);">
                             <img :src="item.image" class="w-11 h-11 object-cover" style="background: var(--t-surface-2);">
                             <span class="flex-1 min-w-0">
                                 <span class="block text-sm truncate" x-text="item.name"></span>

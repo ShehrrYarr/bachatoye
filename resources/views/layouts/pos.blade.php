@@ -51,7 +51,7 @@
     // (after it has been loaded online at least once).
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js').catch((e) => console.warn('POS offline worker failed to register:', e));
+            navigator.serviceWorker.register('@base/sw.js', { scope: '@base/' }).catch((e) => console.warn('POS offline worker failed to register:', e));
         });
     }
 </script>

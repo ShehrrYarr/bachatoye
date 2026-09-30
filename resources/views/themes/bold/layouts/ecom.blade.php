@@ -77,7 +77,7 @@
                 <div class="relative">
                     <input type="text" x-model="query" @input.debounce.300ms="search()"
                            @focus="open = true" @click.outside="open = false"
-                           @keydown.enter="window.location = '/search?q=' + encodeURIComponent(query)"
+                           @keydown.enter="window.location = '@base/search?q=' + encodeURIComponent(query)"
                            placeholder="What are you hunting for today?"
                            class="w-full text-sm font-medium"
                            style="background: var(--t-surface-2); border:2px solid var(--t-border); border-radius:999px; padding:.7rem 1.25rem .7rem 3rem; color: var(--t-text);">
@@ -86,7 +86,7 @@
                     <div x-show="open && results.length > 0" x-transition x-cloak
                          class="absolute top-full left-0 right-0 mt-2 z-50 overflow-hidden t-card">
                         <template x-for="item in results" :key="item.slug">
-                            <a :href="`/products/${item.slug}`" class="flex items-center gap-3 px-4 py-3" style="border-bottom:1px solid var(--t-border);">
+                            <a :href="`@base/products/${item.slug}`" class="flex items-center gap-3 px-4 py-3" style="border-bottom:1px solid var(--t-border);">
                                 <img :src="item.image" class="w-11 h-11 object-cover" style="border-radius:12px; background: var(--t-surface-2);">
                                 <span class="flex-1 min-w-0">
                                     <span class="block text-sm font-bold truncate" x-text="item.name"></span>

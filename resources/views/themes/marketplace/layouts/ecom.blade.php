@@ -89,12 +89,12 @@
                 <div class="relative">
                     <input type="text" x-model="query" @input.debounce.300ms="search()"
                            @focus="open = true" @click.outside="open = false"
-                           @keydown.enter="window.location = '/search?q=' + encodeURIComponent(query)"
+                           @keydown.enter="window.location = '@base/search?q=' + encodeURIComponent(query)"
                            placeholder="Search phones, cases, chargers…"
                            class="w-full text-sm"
                            style="background: var(--t-surface-2); border:2px solid var(--t-border); border-radius:999px; padding:.65rem 6.5rem .65rem 2.75rem; color: var(--t-text);">
                     <i class="fas fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-sm t-muted"></i>
-                    <button type="button" @click="window.location = '/search?q=' + encodeURIComponent(query)"
+                    <button type="button" @click="window.location = '@base/search?q=' + encodeURIComponent(query)"
                             class="absolute right-1.5 top-1/2 -translate-y-1/2 text-white text-xs font-bold px-5 py-2"
                             style="background: var(--app-gradient); border-radius:999px;">
                         Search
@@ -103,7 +103,7 @@
                     <div x-show="open && results.length > 0" x-transition x-cloak
                          class="absolute top-full left-0 right-0 mt-2 z-50 overflow-hidden t-card">
                         <template x-for="item in results" :key="item.slug">
-                            <a :href="`/products/${item.slug}`" class="flex items-center gap-3 px-4 py-3 transition-colors"
+                            <a :href="`@base/products/${item.slug}`" class="flex items-center gap-3 px-4 py-3 transition-colors"
                                style="border-bottom:1px solid var(--t-border);">
                                 <img :src="item.image" class="w-11 h-11 object-cover" style="border-radius: var(--t-radius-sm); background: var(--t-surface-2);">
                                 <div class="flex-1 min-w-0">

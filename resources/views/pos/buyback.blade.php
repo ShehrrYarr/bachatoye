@@ -260,7 +260,7 @@ function buybackApp() {
             this.error = '';
             this.unit = null;
             try {
-                const res  = await fetch(`/pos/buyback/lookup?serial=${encodeURIComponent(q)}`);
+                const res  = await fetch(`@base/pos/buyback/lookup?serial=${encodeURIComponent(q)}`);
                 const data = await res.json();
                 if (data.error) {
                     this.error = data.error;
@@ -278,7 +278,7 @@ function buybackApp() {
             const q = this.sellerLookup.trim();
             if (q.length < 2) { this.sellerResults = []; return; }
             try {
-                const res  = await fetch(`/pos/customer/search?q=${encodeURIComponent(q)}`);
+                const res  = await fetch(`@base/pos/customer/search?q=${encodeURIComponent(q)}`);
                 this.sellerResults = await res.json();
             } catch(e) { this.sellerResults = []; }
         },
@@ -300,7 +300,7 @@ function buybackApp() {
             this.processing = true;
             this.error = '';
             try {
-                const res = await fetch('/pos/buyback', {
+                const res = await fetch('@base/pos/buyback', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
                     body: JSON.stringify({
@@ -320,7 +320,7 @@ function buybackApp() {
                 });
                 const data = await res.json();
                 if (data.success && data.buyback_id) {
-                    window.open(`/pos/buyback/${data.buyback_id}/receipt`, '_blank', 'width=400,height=600');
+                    window.open(`@base/pos/buyback/${data.buyback_id}/receipt`, '_blank', 'width=400,height=600');
                     this.unit = null;
                     this.serialSearch = '';
                     this.sellerLookup = '';

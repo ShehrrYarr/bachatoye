@@ -324,7 +324,7 @@
         if (!this.code.trim()) return;
         this.error = ''; this.result = null;
         try {
-            const res = await fetch(`/admin/inventory/barcode-scan?code=${encodeURIComponent(this.code)}`);
+            const res = await fetch(`@base/admin/inventory/barcode-scan?code=${encodeURIComponent(this.code)}`);
             const data = await res.json();
             if (data && data.id) { this.result = data; } else { this.error = 'Product not found.'; }
         } catch(e) { this.error = 'Lookup failed.'; }
@@ -347,7 +347,7 @@
                 Price: <span x-text="`Rs. ${Number(result?.price || 0).toLocaleString()}`"></span>
             </div>
         </div>
-        <a :href="`/admin/inventory/${result?.id}/adjust`" class="btn-primary btn-sm">Adjust</a>
+        <a :href="`@base/admin/inventory/${result?.id}/adjust`" class="btn-primary btn-sm">Adjust</a>
     </div>
     <div x-show="error" class="mt-3 text-red-600 text-sm" x-text="error"></div>
 </div>

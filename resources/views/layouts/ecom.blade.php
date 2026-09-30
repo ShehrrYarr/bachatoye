@@ -72,7 +72,7 @@
                     <div x-show="open && results.length > 0" x-transition
                          class="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
                         <template x-for="item in results" :key="item.slug">
-                            <a :href="`/products/${item.slug}`" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
+                            <a :href="`@base/products/${item.slug}`" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
                                 <img :src="item.image" class="w-10 h-10 object-cover rounded-lg bg-gray-100">
                                 <div class="flex-1 min-w-0">
                                     <div class="text-sm font-medium text-gray-800 truncate" x-text="item.name"></div>
@@ -261,7 +261,7 @@ function liveSearch() {
         open: false,
         async search() {
             if (this.query.length < 2) { this.results = []; return; }
-            const res = await fetch(`/api/products/search?q=${encodeURIComponent(this.query)}`);
+            const res = await fetch(`@base/api/products/search?q=${encodeURIComponent(this.query)}`);
             this.results = await res.json();
             this.open = true;
         }

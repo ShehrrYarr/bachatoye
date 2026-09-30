@@ -1682,12 +1682,12 @@
                                         </td>
                                         <td class="px-4 py-3 text-center">
                                             <div class="flex items-center justify-center gap-1.5">
-                                                <a :href="`/pos/receipt/${o.id}`" target="_blank"
+                                                <a :href="`@base/pos/receipt/${o.id}`" target="_blank"
                                                    class="inline-flex items-center gap-1 text-xs bg-gray-50 hover:bg-gray-100 text-gray-600 font-medium px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap">
                                                     <i class="fas fa-receipt text-[10px]"></i> Receipt
                                                 </a>
                                                 @if($canEditSale)
-                                                <a :href="`/pos/orders/${o.id}/edit`"
+                                                <a :href="`@base/pos/orders/${o.id}/edit`"
                                                    class="inline-flex items-center gap-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 font-medium px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap">
                                                     <i class="fas fa-edit text-[10px]"></i> Edit
                                                 </a>
@@ -1782,7 +1782,7 @@
                                             <div class="text-xs text-gray-400 capitalize" x-text="r.refund_method.replace('_', ' ')"></div>
                                         </td>
                                         <td class="px-4 py-3 text-center">
-                                            <a :href="`/pos/return/${r.id}/receipt`" target="_blank"
+                                            <a :href="`@base/pos/return/${r.id}/receipt`" target="_blank"
                                                class="inline-flex items-center gap-1 text-xs bg-gray-50 hover:bg-gray-100 text-gray-600 font-medium px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap">
                                                 <i class="fas fa-receipt text-[10px]"></i> Receipt
                                             </a>
@@ -2407,7 +2407,7 @@ function posApp() {
         // reports the network interface, not whether the server is reachable).
         async checkConnection() {
             try {
-                const res = await fetch('/pos/ping', { method: 'GET', cache: 'no-store' });
+                const res = await fetch('@base/pos/ping', { method: 'GET', cache: 'no-store' });
                 this.isOnline = res.ok;
             } catch(e) {
                 this.isOnline = false;
@@ -2426,7 +2426,7 @@ function posApp() {
         // Returns true on success. Fails gracefully (keeps existing cache).
         async refreshCatalog() {
             try {
-                const res = await fetch('/pos/catalog', { cache: 'no-store' });
+                const res = await fetch('@base/pos/catalog', { cache: 'no-store' });
                 if (!res.ok) { this.catalogError = 'Server returned HTTP ' + res.status + ' for /pos/catalog'; return false; }
                 const data = await res.json();
                 if (Array.isArray(data)) {
@@ -2447,7 +2447,7 @@ function posApp() {
         // Download customers + vendors and cache them for offline use.
         async refreshCustomers() {
             try {
-                const res = await fetch('/pos/customers-cache', { cache: 'no-store' });
+                const res = await fetch('@base/pos/customers-cache', { cache: 'no-store' });
                 if (!res.ok) return false;
                 const data = await res.json();
                 if (Array.isArray(data)) {
@@ -2608,7 +2608,7 @@ function posApp() {
             }
             this.loading = true;
             try {
-                let url = '/pos/product/search?q=';
+                let url = '@base/pos/product/search?q=';
                 if (this.selectedCategory) url += `&category=${this.selectedCategory.id}`;
                 const res = await fetch(url);
                 this.displayProducts = await res.json();
@@ -2682,7 +2682,7 @@ function posApp() {
             this.loading = true;
             try {
                 // Search across ALL products (ignore category filter when searching)
-                const res = await fetch(`/pos/product/search?q=${encodeURIComponent(this.searchQuery)}`);
+                const res = await fetch(`@base/pos/product/search?q=${encodeURIComponent(this.searchQuery)}`);
                 this.displayProducts = await res.json();
             } catch(e) {
                 this.isOnline = false;
@@ -2701,7 +2701,7 @@ function posApp() {
             }
 
             try {
-                const res = await fetch(`/pos/product/barcode/${encodeURIComponent(this.searchQuery)}`);
+                const res = await fetch(`@base/pos/product/barcode/${encodeURIComponent(this.searchQuery)}`);
                 if (res.ok) {
                     const product = await res.json();
                     if (product && product.id) {
@@ -2844,7 +2844,7 @@ function posApp() {
                 }
 
                 this.serialPromptLoading = true;
-                fetch(`/pos/product/${product.id}/serials`)
+                fetch(`@base/pos/product/${product.id}/serials`)
                     .then(r => r.json())
                     .then(data => { this.serialPromptSerials = data.serials || []; })
                     .catch(() => {
@@ -2898,7 +2898,7 @@ function posApp() {
             this.serialPromptLoading = true;
             this.serialPromptError   = '';
             try {
-                const res  = await fetch(`/pos/product/barcode/${encodeURIComponent(sn)}`);
+                const res  = await fetch(`@base/pos/product/barcode/${encodeURIComponent(sn)}`);
                 const data = await res.json().catch(() => ({}));
                 if (res.ok && data.is_serialized && data.serial_number) {
                     if (data.id !== this.serialPromptProduct.id) {
@@ -3096,7 +3096,7 @@ function posApp() {
                 return;
             }
             try {
-                const res = await fetch(`/pos/customer/search?q=${encodeURIComponent(this.customerSearch)}`);
+                const res = await fetch(`@base/pos/customer/search?q=${encodeURIComponent(this.customerSearch)}`);
                 this.customerResults = await res.json();
             } catch(e) {
                 // Network dropped — fall back to the cached list
@@ -3117,7 +3117,7 @@ function posApp() {
         async createCustomer() {
             if (!this.newCustomer.name || !this.newCustomer.phone) return;
             try {
-                const res = await fetch('/pos/customer', {
+                const res = await fetch('@base/pos/customer', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
                     body: JSON.stringify(this.newCustomer)
@@ -3184,14 +3184,14 @@ function posApp() {
             }
 
             try {
-                const res = await fetch('/pos/order', {
+                const res = await fetch('@base/pos/order', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
                     body: JSON.stringify(payload)
                 });
                 const data = await res.json();
                 if (data.success && data.order_id) {
-                    window.open(`/pos/receipt/${data.order_id}`, '_blank', 'width=400,height=700');
+                    window.open(`@base/pos/receipt/${data.order_id}`, '_blank', 'width=400,height=700');
                     this.resetAfterSale();
                     window.dispatchEvent(new CustomEvent('pos:order-placed'));
                 } else {
@@ -3247,7 +3247,7 @@ function posApp() {
 
             for (const ord of this.offlineOrders) {
                 try {
-                    const res  = await fetch('/pos/order', {
+                    const res  = await fetch('@base/pos/order', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
                         body: JSON.stringify(ord.payload)
@@ -3332,7 +3332,7 @@ function posApp() {
 
         async openSession(cash) {
             try {
-                const res = await fetch('/pos/session/open', {
+                const res = await fetch('@base/pos/session/open', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
                     body: JSON.stringify({ opening_cash: parseFloat(cash) || 0 })
@@ -3343,7 +3343,7 @@ function posApp() {
 
         async closeSession() {
             try {
-                const res = await fetch('/pos/session/close', {
+                const res = await fetch('@base/pos/session/close', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
                 });
@@ -3416,7 +3416,7 @@ function posApp() {
             this.orderNotes       = held.orderNotes    || '';
             // Delete from server then remove from local list
             try {
-                await fetch(`/pos/holds/${id}`, {
+                await fetch(`@base/pos/holds/${id}`, {
                     method: 'DELETE',
                     headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
                 });
@@ -3432,7 +3432,7 @@ function posApp() {
         async deleteHeldOrder(id) {
             if (!confirm('Remove this held order? It cannot be recovered.')) return;
             try {
-                const r = await fetch(`/pos/holds/${id}`, {
+                const r = await fetch(`@base/pos/holds/${id}`, {
                     method: 'DELETE',
                     headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
                 });
@@ -3488,7 +3488,7 @@ function posStats() {
 
         async refresh() {
             try {
-                const res = await fetch('/pos/stats');
+                const res = await fetch('@base/pos/stats');
                 if (res.ok) this.stats = await res.json();
             } catch(e) { console.error('Stats refresh failed', e); }
         },
@@ -3496,7 +3496,7 @@ function posStats() {
         async loadActivity() {
             this.activityLoading = true;
             try {
-                const res = await fetch('/pos/today-activity');
+                const res = await fetch('@base/pos/today-activity');
                 if (res.ok) {
                     const data = await res.json();
                     this.orders           = data.orders           ?? [];
@@ -3525,7 +3525,7 @@ function posStats() {
         async deleteSale(orderId, orderNumber, idx) {
             if (!confirm(`Delete sale ${orderNumber}?\n\nThis will restore all stock and reverse any Khata entries. This cannot be undone.`)) return;
             try {
-                const res = await fetch(`/pos/orders/${orderId}`, {
+                const res = await fetch(`@base/pos/orders/${orderId}`, {
                     method: 'DELETE',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,

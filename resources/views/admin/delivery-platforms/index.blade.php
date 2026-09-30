@@ -132,7 +132,7 @@
 function openEdit(id, name, contact, notes) {
     document.getElementById('addForm').classList.add('hidden');
     document.getElementById('editForm').classList.remove('hidden');
-    document.getElementById('editFormEl').action = `/admin/delivery-platforms/${id}`;
+    document.getElementById('editFormEl').action = `@base/admin/delivery-platforms/${id}`;
     document.getElementById('editName').value    = name;
     document.getElementById('editContact').value = contact;
     document.getElementById('editNotes').value   = notes;
