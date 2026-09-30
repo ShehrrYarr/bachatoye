@@ -290,6 +290,15 @@ class SettingController extends Controller
         try {
             Artisan::call('optimize');
             $output = Artisan::output();
+
+            // Under a sub-path (e.g. /alzaitoontraders) Laravel's cached route
+            // matcher answers the app's root URL with 405 — it trims the
+            // trailing slash and loses the base path. Keep routes uncached there.
+            if (request()->getBaseUrl() !== '') {
+                Artisan::call('route:clear');
+                $output .= "\nRoute cache skipped (app runs under a sub-path).";
+            }
+
             return response()->json([
                 'success' => true,
                 'output'  => trim($output) ?: 'Optimization complete.',
