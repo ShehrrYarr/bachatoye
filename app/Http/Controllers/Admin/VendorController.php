@@ -23,12 +23,24 @@ class VendorController extends Controller
                                       ->orWhere('company', 'like', "%{$s}%"));
         }
 
-        if ($request->balance === 'outstanding') {
-            $query->where('balance', '>', 0);
-        }
+        // balance > 0 = we owe the vendor; balance < 0 = the vendor owes us
+        // ('outstanding' is the old name for we_owe — kept for saved links)
+        match ($request->balance) {
+            'owes_us'                => $query->where('balance', '<', 0),
+            'we_owe', 'outstanding'  => $query->where('balance', '>', 0),
+            default                  => null,
+        };
 
         $vendors = $query->paginate(20)->withQueryString();
-        return view('admin.vendors.index', compact('vendors'));
+
+        $totals = Vendor::selectRaw('
+                COALESCE(SUM(CASE WHEN balance < 0 THEN -balance END), 0) AS owes_us,
+                SUM(balance < 0) AS owes_us_count,
+                COALESCE(SUM(CASE WHEN balance > 0 THEN balance END), 0) AS we_owe,
+                SUM(balance > 0) AS we_owe_count
+            ')->first();
+
+        return view('admin.vendors.index', compact('vendors', 'totals'));
     }
 
     public function create()

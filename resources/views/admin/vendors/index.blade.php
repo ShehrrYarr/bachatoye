@@ -12,13 +12,36 @@
     @endcan
 </div>
 
+@php $balanceFilter = request('balance') === 'outstanding' ? 'we_owe' : request('balance'); @endphp
+
+{{-- Totals — each card applies its filter --}}
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+    <a href="{{ route("{$rPrefix}.vendors.index", ['balance' => 'owes_us']) }}"
+       class="stat-card hover:shadow-md transition-all {{ $balanceFilter === 'owes_us' ? 'ring-2 ring-green-500' : '' }}">
+        <div class="stat-icon bg-green-100"><i class="fas fa-hand-holding-usd text-green-600"></i></div>
+        <div>
+            <div class="text-2xl font-extrabold text-green-600">Rs. {{ number_format($totals->owes_us) }}</div>
+            <div class="text-sm text-gray-500">Vendors owe us · {{ (int) $totals->owes_us_count }} {{ Str::plural('vendor', (int) $totals->owes_us_count) }}</div>
+        </div>
+    </a>
+    <a href="{{ route("{$rPrefix}.vendors.index", ['balance' => 'we_owe']) }}"
+       class="stat-card hover:shadow-md transition-all {{ $balanceFilter === 'we_owe' ? 'ring-2 ring-red-400' : '' }}">
+        <div class="stat-icon bg-red-100"><i class="fas fa-file-invoice-dollar text-red-600"></i></div>
+        <div>
+            <div class="text-2xl font-extrabold text-red-600">Rs. {{ number_format($totals->we_owe) }}</div>
+            <div class="text-sm text-gray-500">We owe vendors · {{ (int) $totals->we_owe_count }} {{ Str::plural('vendor', (int) $totals->we_owe_count) }}</div>
+        </div>
+    </a>
+</div>
+
 {{-- Filters --}}
 <form method="GET" class="flex flex-wrap gap-3 mb-5">
     <input type="text" name="q" value="{{ request('q') }}" placeholder="Search name, phone, company..."
            class="form-input w-64">
     <select name="balance" class="form-select w-44">
         <option value="">All Vendors</option>
-        <option value="outstanding" {{ request('balance') === 'outstanding' ? 'selected' : '' }}>With Outstanding Balance</option>
+        <option value="owes_us" {{ $balanceFilter === 'owes_us' ? 'selected' : '' }}>They owe us</option>
+        <option value="we_owe" {{ $balanceFilter === 'we_owe' ? 'selected' : '' }}>We owe them</option>
     </select>
     <button type="submit" class="btn-outline btn-sm">Filter</button>
     @if(request()->hasAny(['q','balance']))
@@ -34,7 +57,7 @@
                     <th>Vendor</th>
                     <th>Contact</th>
                     <th class="text-center">Purchases</th>
-                    <th class="text-right">Balance Owed</th>
+                    <th class="text-right">Balance</th>
                     <th class="text-right">Actions</th>
                 </tr>
             </thead>
@@ -58,9 +81,9 @@
                     </td>
                     <td class="text-right">
                         @if($vendor->balance > 0)
-                            <span class="font-semibold text-red-600">Rs. {{ number_format($vendor->balance) }}</span>
+                            <span class="font-semibold text-red-600">We owe Rs. {{ number_format($vendor->balance) }}</span>
                         @elseif($vendor->balance < 0)
-                            <span class="font-semibold text-green-600">Cr. Rs. {{ number_format(abs($vendor->balance)) }}</span>
+                            <span class="font-semibold text-green-600">Owes us Rs. {{ number_format(abs($vendor->balance)) }}</span>
                         @else
                             <span class="text-gray-400">Settled</span>
                         @endif
