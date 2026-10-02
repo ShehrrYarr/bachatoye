@@ -351,7 +351,7 @@
 function openEdit(id, bank) {
     document.getElementById('form-title').textContent = 'Edit Bank Account';
     document.getElementById('btn-label').textContent  = 'Update Account';
-    document.getElementById('bank-form').action       = '/{{ $rPrefix === 'shop' ? 'shop' : 'admin' }}/bank-accounts/' + id;
+    document.getElementById('bank-form').action       = '@base/{{ $rPrefix === 'shop' ? 'shop' : 'admin' }}/bank-accounts/' + id;
     document.getElementById('method-field').innerHTML = '<input type="hidden" name="_method" value="PUT">';
 
     document.getElementById('f-label').value            = bank.label;

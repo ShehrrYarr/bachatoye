@@ -453,7 +453,7 @@ function subcatPicker(initCat, initSub) {
             this.subcategories = [];
             if (!this.categoryId) return;
             try {
-                const res  = await fetch(`/{{ $rPrefix }}/categories/${this.categoryId}/subcategories`);
+                const res  = await fetch(`@base/{{ $rPrefix }}/categories/${this.categoryId}/subcategories`);
                 this.subcategories = await res.json();
             } catch (e) { this.subcategories = []; }
         },
@@ -468,7 +468,7 @@ function productEditForm() {
         async generateBarcode() {
             try {
                 const categoryId = document.querySelector('[name="category_id"]')?.value || '';
-                const url = '/{{ $rPrefix }}/products/generate-barcode' + (categoryId ? '?category_id=' + categoryId : '');
+                const url = '@base/{{ $rPrefix }}/products/generate-barcode' + (categoryId ? '?category_id=' + categoryId : '');
                 const res = await fetch(url);
                 const data = await res.json();
                 document.getElementById('barcode').value = data.barcode;

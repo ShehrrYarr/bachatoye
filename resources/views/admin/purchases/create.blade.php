@@ -829,8 +829,8 @@
 <script>
     const _categoriesData    = {!! $categoriesJson !!};
     const _serialAttrDefs         = {!! json_encode($serialAttributeDefs->map(fn($d) => ['name' => $d->name, 'options' => $d->options])->values()) !!};
-    const _serialCheckUrl         = '/{{ auth()->user()->panelPrefix() }}/api/serials/check';
-    const _serialImageUploadUrl   = '/{{ auth()->user()->panelPrefix() }}/purchases/temp-serial-image';
+    const _serialCheckUrl         = '@base/{{ auth()->user()->panelPrefix() }}/api/serials/check';
+    const _serialImageUploadUrl   = '@base/{{ auth()->user()->panelPrefix() }}/purchases/temp-serial-image';
     const _purchaseDraft          = {!! json_encode($draft ?? null) !!};
     const _editPurchaseId         = {!! json_encode($editPurchase->id ?? null) !!};
 </script>
@@ -917,7 +917,7 @@ function purchaseForm() {
 
         async searchProducts() {
             if (this.searchQuery.length < 2) { this.searchResults = []; return; }
-            const res = await fetch(`/{{ auth()->user()->panelPrefix() }}/api/products/search?q=${encodeURIComponent(this.searchQuery)}`);
+            const res = await fetch(`@base/{{ auth()->user()->panelPrefix() }}/api/products/search?q=${encodeURIComponent(this.searchQuery)}`);
             this.searchResults = await res.json();
             this.showDropdown = true;
         },
@@ -1159,7 +1159,7 @@ function purchaseForm() {
 
         async loadVendor() {
             if (!this.vendorId) { this.vendorBalance = null; return; }
-            const res  = await fetch(`@base/admin/api/vendors/${this.vendorId}/balance`);
+            const res  = await fetch(`@base/{{ $rPrefix }}/api/vendors/${this.vendorId}/balance`);
             const data = await res.json();
             this.vendorBalance = data.balance;
         },

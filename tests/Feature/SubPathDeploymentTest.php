@@ -46,6 +46,51 @@ class SubPathDeploymentTest extends TestCase
         $this->assertStringNotContainsString("fetch('/pos/", $html);
     }
 
+    // One sub-path request per test: Laravel's test client keeps request state
+    // between calls, so a second sub-path request in the same test 404s.
+    public function test_product_create_subcategory_lookup_uses_the_prefix_under_a_sub_path(): void
+    {
+        $this->actingAs($this->makeAdmin())->withServerVariables($this->subPath())
+            ->get('/alzaitoontraders/admin/products/create')->assertOk()
+            ->assertSee('fetch(`/alzaitoontraders/admin/categories/${this.categoryId}/subcategories`)', false);
+    }
+
+    public function test_product_edit_urls_use_the_prefix_under_a_sub_path(): void
+    {
+        $product = $this->makeProduct();
+
+        $this->actingAs($this->makeAdmin())->withServerVariables($this->subPath())
+            ->get("/alzaitoontraders/admin/products/{$product->id}/edit")->assertOk()
+            ->assertSee('fetch(`/alzaitoontraders/admin/categories/${this.categoryId}/subcategories`)', false)
+            ->assertSee("'/alzaitoontraders/admin/products/generate-barcode'", false);
+    }
+
+    public function test_purchase_form_urls_use_the_prefix_under_a_sub_path(): void
+    {
+        $this->actingAs($this->makeAdmin())->withServerVariables($this->subPath())
+            ->get('/alzaitoontraders/admin/purchases/create')->assertOk()
+            ->assertSee('fetch(`/alzaitoontraders/admin/api/products/search?q=', false)
+            ->assertSee("'/alzaitoontraders/admin/api/serials/check'", false)
+            ->assertSee("'/alzaitoontraders/admin/purchases/temp-serial-image'", false)
+            ->assertSee('fetch(`/alzaitoontraders/admin/api/vendors/${this.vendorId}/balance`)', false);
+    }
+
+    public function test_salesman_purchase_form_can_load_vendor_balance(): void
+    {
+        $salesman = $this->makeUser('salesman', ['purchases.manage']);
+        $vendor   = \App\Models\Vendor::create(['name' => 'Test Vendor', 'balance' => -2500]);
+
+        $this->actingAs($salesman)->get('/salesman/purchases/create')->assertOk()
+            ->assertSee('fetch(`/salesman/api/vendors/${this.vendorId}/balance`)', false);
+
+        $this->actingAs($salesman)->getJson("/salesman/api/vendors/{$vendor->id}/balance")
+            ->assertOk()->assertJson(['balance' => -2500]);
+
+        // Still closed to salesmen who can't record purchases
+        $this->actingAs($this->makeUser('salesman', ['vendors.view']))
+            ->getJson("/salesman/api/vendors/{$vendor->id}/balance")->assertForbidden();
+    }
+
     public function test_storefront_search_uses_the_prefix_under_a_sub_path(): void
     {
         $html = $this->withServerVariables($this->subPath())

@@ -416,7 +416,7 @@ function subcatPicker(initCat, initSub) {
             this.subcategories = [];
             if (!this.categoryId) return;
             try {
-                const res  = await fetch(`/{{ $rPrefix }}/categories/${this.categoryId}/subcategories`);
+                const res  = await fetch(`@base/{{ $rPrefix }}/categories/${this.categoryId}/subcategories`);
                 this.subcategories = await res.json();
             } catch (e) { this.subcategories = []; }
         },

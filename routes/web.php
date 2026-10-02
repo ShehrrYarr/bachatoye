@@ -479,6 +479,9 @@ Route::prefix('salesman')->name('salesman.')->middleware(['auth', 'role:salesman
     Route::post('api/products/quick-create', [Admin\PurchaseController::class, 'quickCreateProduct'])
         ->middleware('permission:purchases.manage')->name('api.products.quick-create');
 
+    Route::get('api/vendors/{vendor}/balance', fn(\App\Models\Vendor $vendor) => response()->json(['balance' => $vendor->balance]))
+        ->middleware('permission:purchases.manage')->name('api.vendor.balance');
+
     Route::get('api/serials/check', function (\Illuminate\Http\Request $request) {
         $serial = trim($request->input('serial', ''));
         if ($serial === '') return response()->json(['exists' => false]);
